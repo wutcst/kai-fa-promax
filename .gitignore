@@ -1,0 +1,36 @@
+# Maven
+target/
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# Node
+node_modules/
+dist/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+application-local.yml
+
+# Java
+*.class
+*.ctxt
+.mtj.tmp/
+hs_err_pid*
+
+# Docker
+docker-compose.override.yml
