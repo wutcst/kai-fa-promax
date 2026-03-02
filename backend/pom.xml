@@ -24,6 +24,7 @@
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <hutool.version>5.8.24</hutool.version>
         <jwt.version>0.12.3</jwt.version>
+        <freemarker.version>2.3.32</freemarker.version>
     </properties>
 
     <dependencies>
@@ -77,13 +78,8 @@
             <version>${mybatis-plus.version}</version>
         </dependency>
 
-        <!-- MyBatis-Plus Generator (代码生成器，可选) -->
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-generator</artifactId>
-            <version>${mybatis-plus.version}</version>
-            <scope>test</scope>
-        </dependency>
+        <!-- MyBatis-Plus Generator (代码生成器，dev only，不打入生产包) -->
+        <!-- 注意: generator 需要 freemarker 模板引擎，已在 properties 中声明版本 -->
 
         <!-- Lombok -->
         <dependency>
