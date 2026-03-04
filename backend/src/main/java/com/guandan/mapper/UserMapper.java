@@ -17,5 +17,5 @@ public interface UserMapper {
     User findByUsername(String username);
 
     @Select("SELECT * FROM users WHERE id = #{id} AND is_deleted = 0")
-    User findById(Long id);
+    User selectById(Long id);
 }
