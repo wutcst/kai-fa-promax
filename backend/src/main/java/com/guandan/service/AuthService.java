@@ -17,13 +17,15 @@ public class AuthService {
     }
 
     public RegisterResponse register(RegisterRequest request) {
-        User existing = userMapper.findByUsername(request.getUsername());
+        // 用户名去空格再查重
+        String normalizedUsername = request.getUsername().trim();
+        User existing = userMapper.findByUsername(normalizedUsername);
         if (existing != null) {
             throw new IllegalArgumentException("用户名已存在");
         }
 
         User user = new User();
-        user.setUsername(request.getUsername());
+        user.setUsername(normalizedUsername);
         user.setPasswordHash(PasswordUtil.hash(request.getPassword()));
         user.setNickname(request.getNickname());
         user.setAvatarUrl(request.getAvatar());
