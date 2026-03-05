@@ -7,6 +7,10 @@ import com.guandan.mapper.UserMapper;
 import com.guandan.util.PasswordUtil;
 import org.springframework.stereotype.Service;
 
+/**
+ * 认证服务 — 处理用户注册和登录业务逻辑。
+ * 密码使用 SHA-256 + 随机盐哈希存储，Token 将在 Issue 1-C 引入 JWT 后替换。
+ */
 @Service
 public class AuthService {
 
@@ -16,6 +20,11 @@ public class AuthService {
         this.userMapper = userMapper;
     }
 
+    /**
+     * 用户注册：校验用户名唯一性，哈希密码后写入数据库。
+     * @param request 注册请求（已通过 JSR380 校验）
+     * @return 注册结果（含 placeholder token，后续替换为 JWT）
+     */
     public RegisterResponse register(RegisterRequest request) {
         // 用户名去空格再查重
         String normalizedUsername = request.getUsername().trim();
