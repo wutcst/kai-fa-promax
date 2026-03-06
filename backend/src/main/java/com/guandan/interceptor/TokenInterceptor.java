@@ -42,7 +42,7 @@ public class TokenInterceptor implements HandlerInterceptor {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
 
         String token = extractToken(request);
-        if (token == null || token.isEmpty()) {
+        if (token == null || token.isBlank()) {
             throw new BusinessException(ResponseCode.UNAUTHORIZED.getCode(), "未登录，请先登录");
         }
 
