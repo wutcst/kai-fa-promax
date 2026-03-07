@@ -14,6 +14,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+/**
+ * Token 鉴权拦截器。
+ * 流程: 提取 Bearer Token → Agent Token 旁路 → JWT 验证 → 缓存校验 → 写入 UserContext。
+ */
 @Component
 public class TokenInterceptor implements HandlerInterceptor {
 
