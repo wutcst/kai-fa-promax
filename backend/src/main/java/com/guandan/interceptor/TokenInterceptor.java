@@ -26,7 +26,7 @@ public class TokenInterceptor implements HandlerInterceptor {
     @Autowired
     private AgentTokenService agentTokenService;
 
-    private static final String AUTH_HEADER = "Authorization";
+    private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
 
     @Override
@@ -74,7 +74,7 @@ public class TokenInterceptor implements HandlerInterceptor {
     }
 
     private String extractToken(HttpServletRequest request) {
-        String header = request.getHeader(AUTH_HEADER);
+        String header = request.getHeader(AUTHORIZATION_HEADER);
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             return header.substring(BEARER_PREFIX.length());
         }
