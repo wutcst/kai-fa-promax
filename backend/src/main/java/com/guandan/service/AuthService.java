@@ -62,4 +62,8 @@ public class AuthService {
     public boolean isUsernameAvailable(String username) {
         return userMapper.findByUsername(username.trim()) == null;
     }
+
+    public void logout(Long userId) {
+        tokenCache.removeToken(userId);
+    }
 }

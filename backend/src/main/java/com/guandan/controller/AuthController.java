@@ -37,6 +37,13 @@ public class AuthController {
         return Result.ok(authService.login(request));
     }
 
+    @IgnoreAuth
+    @PostMapping("/logout")
+    public Result<String> logout() {
+        authService.logout(UserContext.getUserId());
+        return Result.ok("退出登录成功");
+    }
+
     @GetMapping("/user/info")
     public Result<UserInfoResponse> userInfo() {
         return Result.ok(userService.currentUserInfo(UserContext.getUserId()));
