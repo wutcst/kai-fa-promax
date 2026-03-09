@@ -23,19 +23,20 @@ public class GlobalExceptionHandler {
         return Result.error(ResponseCode.BUSINESS_ERROR.getCode(), e.getMessage());
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Result<Void> handleValidationException(MethodArgumentNotValidException e) {
-        String msg = e.getBindingResult().getFieldErrors().stream()
-                .map(FieldError::getDefaultMessage)
-                .collect(Collectors.joining(", "));
-        return Result.error(ResponseCode.PARAM_ERROR.getCode(), msg);
-    }
-
-    @ExceptionHandler(BindException.class)
-    public Result<Void> handleBindException(BindException e) {
-        String msg = e.getBindingResult().getFieldErrors().stream()
-                .map(FieldError::getDefaultMessage)
-                .collect(Collectors.joining(", "));
+    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
+    public Result<Void> handleValidationExceptions(Exception e) {
+        String msg;
+        if (e instanceof MethodArgumentNotValidException ex) {
+            msg = ex.getBindingResult().getFieldErrors().stream()
+                    .map(FieldError::getDefaultMessage)
+                    .collect(Collectors.joining(", "));
+        } else if (e instanceof BindException ex) {
+            msg = ex.getBindingResult().getFieldErrors().stream()
+                    .map(FieldError::getDefaultMessage)
+                    .collect(Collectors.joining(", "));
+        } else {
+            msg = "参数校验失败";
+        }
         return Result.error(ResponseCode.PARAM_ERROR.getCode(), msg);
     }
 
