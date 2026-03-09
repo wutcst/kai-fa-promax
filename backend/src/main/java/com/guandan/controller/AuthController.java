@@ -37,7 +37,6 @@ public class AuthController {
         return Result.ok(authService.login(request));
     }
 
-    @IgnoreAuth
     @PostMapping("/logout")
     public Result<String> logout() {
         authService.logout(UserContext.getUserId());
