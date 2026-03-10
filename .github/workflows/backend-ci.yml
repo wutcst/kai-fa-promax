@@ -20,4 +20,4 @@ jobs:
       - name: Build backend
         working-directory: backend
         run: |
-          if [ -f pom.xml ]; then mvn -q -DskipTests package; else echo "backend not ready"; fi
+          if [ -f pom.xml ]; then mvn -q -DskipTests compile; else echo "backend not ready"; fi
