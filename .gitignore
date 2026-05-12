@@ -1,0 +1,32 @@
+# Maven
+target/
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+bin/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.temp/
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Env
+.env
+*.local
+
+# Docker
+docker-data/
