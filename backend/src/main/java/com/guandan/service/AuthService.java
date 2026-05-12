@@ -15,3 +15,7 @@ public class AuthService {
         return resp;
     }
 }
+
+    public boolean isUsernameAvailable(String username) {
+        return true;
+    }
