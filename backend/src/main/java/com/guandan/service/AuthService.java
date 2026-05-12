@@ -6,6 +6,7 @@ import com.guandan.dto.RegisterResponse;
 import com.guandan.dto.UserInfoResponse;
 import com.guandan.entity.User;
 import com.guandan.util.PasswordUtil;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 /**
@@ -14,6 +15,9 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class AuthService {
+
+    @Resource
+    private UserService userService;
 
     /**
      * 用户注册
@@ -24,15 +28,38 @@ public class AuthService {
      */
     public RegisterResponse register(RegisterRequest request) {
         // 校验用户名是否已存在
+        User exists = userService.findByUsername(request.getUsername());
+        if (exists != null) {
+            throw new RuntimeException("该账号已被注册");
+        }
+
         // 加密密码
         String hashedPassword = PasswordUtil.hashPassword(request.getPassword());
 
         // 保存用户信息
-        // 生成Token
-        // 返回注册结果
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setPassword(hashedPassword);
+        user.setNickname(request.getNickname());
+        user.setAvatar(request.getAvatar());
+        user.setPhone(request.getPhone());
+        user.setOnline(1);
 
+        boolean saved = userService.saveUser(user);
+        if (!saved) {
+            throw new RuntimeException("注册失败，请稍后重试");
+        }
+
+        // 生成Token
+        String token = "temp_token_" + user.getId();
+
+        // 返回注册结果
         RegisterResponse response = new RegisterResponse();
-        // TODO: 补充完整实现
+        response.setUserId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setToken(token);
+        response.setNickname(user.getNickname());
+        response.setAvatar(user.getAvatar());
         return response;
     }
 
@@ -46,12 +73,30 @@ public class AuthService {
      */
     public LoginResponse login(String username, String password) {
         // 查询用户信息
-        // 校验密码
-        // 生成Token
-        // 返回登录结果
+        User user = userService.findByUsername(username);
+        if (user == null) {
+            throw new RuntimeException("账号不存在");
+        }
 
+        // 校验密码
+        if (!PasswordUtil.checkPassword(password, user.getPassword())) {
+            throw new RuntimeException("密码错误");
+        }
+
+        // 更新在线状态
+        user.setOnline(1);
+        userService.updateUser(user);
+
+        // 生成Token
+        String token = "temp_token_" + user.getId();
+
+        // 返回登录结果
         LoginResponse response = new LoginResponse();
-        // TODO: 补充完整实现
+        response.setToken(token);
+        response.setUserId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setNickname(user.getNickname());
+        response.setAvatar(user.getAvatar());
         return response;
     }
 
@@ -63,8 +108,17 @@ public class AuthService {
      */
     public UserInfoResponse getUserInfo(Long userId) {
         // 查询用户详情
+        User user = userService.findById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+
         UserInfoResponse response = new UserInfoResponse();
-        // TODO: 补充完整实现
+        response.setUserId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setNickname(user.getNickname());
+        response.setAvatar(user.getAvatar());
+        response.setPhone(user.getPhone());
         return response;
     }
 
@@ -75,9 +129,19 @@ public class AuthService {
      * @return 用户ID
      */
     public Long validateToken(String token) {
-        // 解析Token
-        // 验证有效性
-        // 返回用户ID
-        return null;
+        if (token == null || token.isEmpty()) {
+            throw new RuntimeException("Token不能为空");
+        }
+
+        if (!token.startsWith("temp_token_")) {
+            throw new RuntimeException("Token格式无效");
+        }
+
+        String userIdStr = token.substring("temp_token_".length());
+        try {
+            return Long.parseLong(userIdStr);
+        } catch (NumberFormatException e) {
+            throw new RuntimeException("Token解析失败");
+        }
     }
 }
