@@ -27,20 +27,40 @@ public class AuthService {
      * @return 注册响应（含用户信息 + Token）
      */
     public RegisterResponse register(RegisterRequest request) {
-        // 校验用户名是否已存在
-        User exists = userService.findByUsername(request.getUsername());
+        // 参数空值校验
+        if (request == null) {
+            throw new RuntimeException("注册请求参数不能为空");
+        }
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+            throw new RuntimeException("用户名不能为空");
+        }
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            throw new RuntimeException("密码不能为空");
+        }
+        if (request.getNickname() == null || request.getNickname().trim().isEmpty()) {
+            throw new RuntimeException("昵称不能为空");
+        }
+
+        // 校验用户名是否已存在（重复提交保护）
+        User exists = userService.findByUsername(request.getUsername().trim());
         if (exists != null) {
             throw new RuntimeException("该账号已被注册");
         }
 
+        // 密码长度二次校验
+        String rawPassword = request.getPassword().trim();
+        if (rawPassword.length() < 6 || rawPassword.length() > 10) {
+            throw new RuntimeException("密码长度必须在6-10位之间");
+        }
+
         // 加密密码
-        String hashedPassword = PasswordUtil.hashPassword(request.getPassword());
+        String hashedPassword = PasswordUtil.hashPassword(rawPassword);
 
         // 保存用户信息
         User user = new User();
-        user.setUsername(request.getUsername());
+        user.setUsername(request.getUsername().trim());
         user.setPassword(hashedPassword);
-        user.setNickname(request.getNickname());
+        user.setNickname(request.getNickname().trim());
         user.setAvatar(request.getAvatar());
         user.setPhone(request.getPhone());
         user.setOnline(1);
@@ -51,6 +71,9 @@ public class AuthService {
         }
 
         // 生成Token
+        if (user.getId() == null) {
+            throw new RuntimeException("用户ID获取失败，注册异常");
+        }
         String token = "temp_token_" + user.getId();
 
         // 返回注册结果
@@ -72,10 +95,23 @@ public class AuthService {
      * @return 登录响应（含用户信息 + Token）
      */
     public LoginResponse login(String username, String password) {
+        // 参数空值校验
+        if (username == null || username.trim().isEmpty()) {
+            throw new RuntimeException("用户名不能为空");
+        }
+        if (password == null || password.trim().isEmpty()) {
+            throw new RuntimeException("密码不能为空");
+        }
+
         // 查询用户信息
-        User user = userService.findByUsername(username);
+        User user = userService.findByUsername(username.trim());
         if (user == null) {
             throw new RuntimeException("账号不存在");
+        }
+
+        // 校验账号状态
+        if (user.getOnline() != null && user.getOnline() == 1) {
+            throw new RuntimeException("该账号已登录，请先退出");
         }
 
         // 校验密码
@@ -85,15 +121,22 @@ public class AuthService {
 
         // 更新在线状态
         user.setOnline(1);
-        userService.updateUser(user);
+        boolean updated = userService.updateUser(user);
+        if (!updated) {
+            throw new RuntimeException("登录状态更新失败");
+        }
 
         // 生成Token
-        String token = "temp_token_" + user.getId();
+        Long userId = user.getId();
+        if (userId == null) {
+            throw new RuntimeException("用户ID异常");
+        }
+        String token = "temp_token_" + userId;
 
         // 返回登录结果
         LoginResponse response = new LoginResponse();
         response.setToken(token);
-        response.setUserId(user.getId());
+        response.setUserId(userId);
         response.setUsername(user.getUsername());
         response.setNickname(user.getNickname());
         response.setAvatar(user.getAvatar());
