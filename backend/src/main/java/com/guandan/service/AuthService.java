@@ -8,7 +8,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthService {
 
+    @Override
     public RegisterResponse register(RegisterRequest request) {
+        if (request.getUsername() == null || request.getUsername().isBlank()) {
+            throw new IllegalArgumentException("用户名不能为空");
+        }
         String hashedPassword = PasswordUtil.hash(request.getPassword());
         RegisterResponse resp = new RegisterResponse();
         resp.setUsername(request.getUsername());
