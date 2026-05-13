@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 /**
  * 认证服务类
  * 处理用户注册和登录的核心业务逻辑
+ * 负责用户身份认证、Token管理等
  */
 @Service
 public class AuthService {
@@ -20,26 +21,15 @@ public class AuthService {
     private UserService userService;
 
     /**
-     * 用户注册
-     * 校验用户名唯一性，加密密码，保存用户信息，返回Token
+     * 处理用户注册申请
+     * 校验参数→查重→加密→保存→生成Token→返回结果
      *
      * @param request 注册请求
      * @return 注册响应（含用户信息 + Token）
      */
-    public RegisterResponse register(RegisterRequest request) {
-        // 参数空值校验
-        if (request == null) {
-            throw new RuntimeException("注册请求参数不能为空");
-        }
-        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
-            throw new RuntimeException("用户名不能为空");
-        }
-        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
-            throw new RuntimeException("密码不能为空");
-        }
-        if (request.getNickname() == null || request.getNickname().trim().isEmpty()) {
-            throw new RuntimeException("昵称不能为空");
-        }
+    public RegisterResponse handleRegistration(RegisterRequest request) {
+        // 提取公共校验方法
+        validateRegisterRequest(request);
 
         // 校验用户名是否已存在（重复提交保护）
         User exists = userService.findByUsername(request.getUsername().trim());
@@ -47,23 +37,11 @@ public class AuthService {
             throw new RuntimeException("该账号已被注册");
         }
 
-        // 密码长度二次校验
-        String rawPassword = request.getPassword().trim();
-        if (rawPassword.length() < 6 || rawPassword.length() > 10) {
-            throw new RuntimeException("密码长度必须在6-10位之间");
-        }
-
         // 加密密码
-        String hashedPassword = PasswordUtil.hashPassword(rawPassword);
+        String hashedPassword = PasswordUtil.hashPassword(request.getPassword().trim());
 
-        // 保存用户信息
-        User user = new User();
-        user.setUsername(request.getUsername().trim());
-        user.setPassword(hashedPassword);
-        user.setNickname(request.getNickname().trim());
-        user.setAvatar(request.getAvatar());
-        user.setPhone(request.getPhone());
-        user.setOnline(1);
+        // 构建用户实体
+        User user = buildUserEntity(request, hashedPassword);
 
         boolean saved = userService.saveUser(user);
         if (!saved) {
@@ -87,21 +65,16 @@ public class AuthService {
     }
 
     /**
-     * 用户登录
-     * 验证用户名密码，生成Token，返回用户信息
+     * 处理用户登录申请
+     * 校验参数→验证身份→更新状态→生成Token→返回结果
      *
      * @param username 用户名
      * @param password 密码
      * @return 登录响应（含用户信息 + Token）
      */
-    public LoginResponse login(String username, String password) {
+    public LoginResponse handleLogin(String username, String password) {
         // 参数空值校验
-        if (username == null || username.trim().isEmpty()) {
-            throw new RuntimeException("用户名不能为空");
-        }
-        if (password == null || password.trim().isEmpty()) {
-            throw new RuntimeException("密码不能为空");
-        }
+        validateLoginParams(username, password);
 
         // 查询用户信息
         User user = userService.findByUsername(username.trim());
@@ -141,6 +114,68 @@ public class AuthService {
         response.setNickname(user.getNickname());
         response.setAvatar(user.getAvatar());
         return response;
+    }
+
+    /**
+     * 校验注册请求参数合法性
+     */
+    private void validateRegisterRequest(RegisterRequest request) {
+        if (request == null) {
+            throw new RuntimeException("注册请求参数不能为空");
+        }
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+            throw new RuntimeException("用户名不能为空");
+        }
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+            throw new RuntimeException("密码不能为空");
+        }
+        if (request.getNickname() == null || request.getNickname().trim().isEmpty()) {
+            throw new RuntimeException("昵称不能为空");
+        }
+
+        String rawPassword = request.getPassword().trim();
+        if (rawPassword.length() < 6 || rawPassword.length() > 10) {
+            throw new RuntimeException("密码长度必须在6-10位之间");
+        }
+    }
+
+    /**
+     * 构建用户实体对象
+     */
+    private User buildUserEntity(RegisterRequest request, String hashedPassword) {
+        User user = new User();
+        user.setUsername(request.getUsername().trim());
+        user.setPassword(hashedPassword);
+        user.setNickname(request.getNickname().trim());
+        user.setAvatar(request.getAvatar());
+        user.setPhone(request.getPhone());
+        user.setOnline(1);
+        return user;
+    }
+
+    /**
+     * 构建注册响应对象
+     */
+    private RegisterResponse buildRegisterResponse(User user, String token) {
+        RegisterResponse response = new RegisterResponse();
+        response.setUserId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setToken(token);
+        response.setNickname(user.getNickname());
+        response.setAvatar(user.getAvatar());
+        return response;
+    }
+
+    /**
+     * 校验登录参数合法性
+     */
+    private void validateLoginParams(String username, String password) {
+        if (username == null || username.trim().isEmpty()) {
+            throw new RuntimeException("用户名不能为空");
+        }
+        if (password == null || password.trim().isEmpty()) {
+            throw new RuntimeException("密码不能为空");
+        }
     }
 
     /**
