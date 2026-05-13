@@ -30,7 +30,7 @@ public class AuthController {
     @PostMapping("/register")
     public Result<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
         try {
-            RegisterResponse response = authService.register(request);
+            RegisterResponse response = authService.handleRegistration(request);
             return Result.success(response);
         } catch (Exception e) {
             return Result.error(e.getMessage());
@@ -47,7 +47,7 @@ public class AuthController {
     @PostMapping("/login")
     public Result<?> login(@Valid @RequestBody RegisterRequest request) {
         try {
-            return Result.success(authService.login(request.getUsername(), request.getPassword()));
+            return Result.success(authService.handleLogin(request.getUsername(), request.getPassword()));
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }
