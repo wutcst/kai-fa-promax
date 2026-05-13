@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthService {
 
-    @Override
     public RegisterResponse register(RegisterRequest request) {
         if (request.getUsername() == null || request.getUsername().isBlank()) {
             throw new IllegalArgumentException("用户名不能为空");
@@ -18,8 +17,8 @@ public class AuthService {
         resp.setUsername(request.getUsername());
         return resp;
     }
-}
 
     public boolean isUsernameAvailable(String username) {
-        return true;
+        return username != null && !username.isBlank();
     }
+}
