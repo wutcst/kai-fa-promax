@@ -22,9 +22,22 @@ public class AuthService {
 
     /**
      * 处理用户注册申请
-     * 校验参数→查重→加密→保存→生成Token→返回结果
      *
-     * @param request 注册请求
+     * 完整流程：
+     * 1. 校验请求参数非空及格式合法性
+     * 2. 检查用户名唯一性（防重复注册）
+     * 3. BCrypt 加密密码
+     * 4. 构建用户实体并持久化
+     * 5. 生成临时 Token
+     * 6. 封装并返回注册响应
+     *
+     * 异常场景：
+     * - 参数为空或格式非法 → 抛出对应提示
+     * - 用户名已存在 → 抛"该账号已被注册"
+     * - 保存失败（数据库异常）→ 抛"注册失败，请稍后重试"
+     * - 用户ID获取异常 → 抛"用户ID获取失败"
+     *
+     * @param request 注册请求（username/password/nickname 必填）
      * @return 注册响应（含用户信息 + Token）
      */
     public RegisterResponse handleRegistration(RegisterRequest request) {
@@ -66,10 +79,25 @@ public class AuthService {
 
     /**
      * 处理用户登录申请
-     * 校验参数→验证身份→更新状态→生成Token→返回结果
      *
-     * @param username 用户名
-     * @param password 密码
+     * 完整流程：
+     * 1. 校验参数非空
+     * 2. 按用户名查询用户信息
+     * 3. 校验用户是否存在及账号状态
+     * 4. BCrypt 验证密码一致性
+     * 5. 更新在线状态
+     * 6. 生成临时 Token
+     * 7. 封装并返回登录响应
+     *
+     * 异常场景：
+     * - 参数为空 → 抛对应提示
+     * - 用户不存在 → 抛"账号不存在"
+     * - 已在线登录 → 抛"请先退出"
+     * - 密码错误 → 抛"密码错误"
+     * - 状态更新失败 → 抛"登录状态更新失败"
+     *
+     * @param username 用户名（6位数字账号）
+     * @param password 密码（6-10位字母数字）
      * @return 登录响应（含用户信息 + Token）
      */
     public LoginResponse handleLogin(String username, String password) {
@@ -118,6 +146,15 @@ public class AuthService {
 
     /**
      * 校验注册请求参数合法性
+     *
+     * 校验规则：
+     * - request 对象非空
+     * - username 非空且不为纯空格
+     * - password 非空且不为纯空格，长度6-10
+     * - nickname 非空且不为纯空格
+     *
+     * @param request 注册请求
+     * @throws RuntimeException 任一校验不通过时抛出对应提示
      */
     private void validateRegisterRequest(RegisterRequest request) {
         if (request == null) {
@@ -141,6 +178,13 @@ public class AuthService {
 
     /**
      * 构建用户实体对象
+     *
+     * 将注册请求中的字段映射为用户实体，
+     * 初始在线状态设为在线（1）。
+     *
+     * @param request 注册请求
+     * @param hashedPassword 已加密的密码
+     * @return 填充完成的用户实体
      */
     private User buildUserEntity(RegisterRequest request, String hashedPassword) {
         User user = new User();
@@ -155,6 +199,12 @@ public class AuthService {
 
     /**
      * 构建注册响应对象
+     *
+     * 将持久化后的用户信息和Token封装为响应。
+     *
+     * @param user 已保存的用户实体
+     * @param token 认证Token
+     * @return 注册响应
      */
     private RegisterResponse buildRegisterResponse(User user, String token) {
         RegisterResponse response = new RegisterResponse();
@@ -168,6 +218,14 @@ public class AuthService {
 
     /**
      * 校验登录参数合法性
+     *
+     * 校验规则：
+     * - username 非空且不为纯空格
+     * - password 非空且不为纯空格
+     *
+     * @param username 用户名
+     * @param password 密码
+     * @throws RuntimeException 任一校验不通过时抛出对应提示
      */
     private void validateLoginParams(String username, String password) {
         if (username == null || username.trim().isEmpty()) {
