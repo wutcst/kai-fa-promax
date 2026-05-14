@@ -36,4 +36,19 @@ public class User {
 
     /** 在线状态：0-离线，1-在线 */
     private Integer online;
+
+    /** 逻辑删除标记：0-正常，1-已删除 */
+    private Integer deleted;
+
+    /** 创建时间 */
+    private java.time.LocalDateTime createTime;
+
+    /**
+     * 检查用户账号是否正常可用
+     *
+     * @return true=可用，false=已删除或不存在
+     */
+    public boolean isActive() {
+        return deleted == null || deleted == 0;
+    }
 }
