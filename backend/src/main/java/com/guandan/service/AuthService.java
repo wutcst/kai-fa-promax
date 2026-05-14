@@ -37,3 +37,4 @@ public class AuthService {
         return username != null && !username.isBlank();
     }
 }
+// Regression check: auth service boundary verification

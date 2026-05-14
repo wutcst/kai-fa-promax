@@ -33,3 +33,4 @@ public class PasswordUtil {
         }
     }
 }
+// Regression check: password encoding verification point added

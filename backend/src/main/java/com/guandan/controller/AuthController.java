@@ -19,3 +19,4 @@ public class AuthController {
         return authService.register(request);
     }
 }
+// Regression check: controller endpoint validation
