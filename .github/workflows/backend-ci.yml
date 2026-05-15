@@ -5,9 +5,15 @@ on:
     branches:
       - master
       - backend
+    paths:
+      - 'backend/**'
+      - 'pom.xml'
   pull_request:
     branches:
       - master
+    paths:
+      - 'backend/**'
+      - 'pom.xml'
 
 jobs:
   build:
