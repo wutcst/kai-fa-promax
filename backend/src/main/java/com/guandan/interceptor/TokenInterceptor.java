@@ -26,21 +26,32 @@ public class TokenInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        // 非Controller方法直接放行
+        // 非Controller方法直接放行（静态资源、swagger等）
         if (!(handler instanceof HandlerMethod)) {
+            log.debug("非HandlerMethod放行: {}", request.getRequestURI());
             return true;
         }
 
-        // 预检请求放行
+        // OPTIONS预检请求直接放行
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            log.debug("OPTIONS预检放行: {}", request.getRequestURI());
             return true;
+        }
+
+        // 空请求处理
+        if (request.getRequestURI() == null) {
+            log.warn("请求URI为空");
+            return false;
         }
 
         // 从请求头提取Token
         String token = extractToken(request);
+
+        // Token缺失处理
         if (token == null || token.isEmpty()) {
             log.warn("Token缺失: {}", request.getRequestURI());
             response.setStatus(401);
+            response.setContentType("application/json;charset=UTF-8");
             response.getWriter().write("{\"code\":401,\"message\":\"未登录，请先登录\"}");
             return false;
         }
@@ -49,9 +60,18 @@ public class TokenInterceptor implements HandlerInterceptor {
         try {
             Long userId = authService.validateToken(token);
             if (userId == null) {
-                log.warn("Token无效: {}", request.getRequestURI());
+                log.warn("Token验证结果为空: {}", request.getRequestURI());
                 response.setStatus(401);
+                response.setContentType("application/json;charset=UTF-8");
                 response.getWriter().write("{\"code\":401,\"message\":\"登录已过期，请重新登录\"}");
+                return false;
+            }
+
+            // 检查userId合法性
+            if (userId <= 0) {
+                log.warn("Token解析出非法userId: {}", userId);
+                response.setStatus(401);
+                response.getWriter().write("{\"code\":401,\"message\":\"用户信息异常，请重新登录\"}");
                 return false;
             }
 
