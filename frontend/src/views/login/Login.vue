@@ -88,10 +88,15 @@ const handleLogin = () => {
     if (!valid) return
     login(loginForm)
       .then(res => {
-        localStorage.setItem('token', res.token)
-        localStorage.setItem('username', res.username)
-        localStorage.setItem('nickname', res.nickname || '玩家')
+        const userInfo = res.data || res
+        localStorage.setItem('token', userInfo.token)
+        localStorage.setItem('username', userInfo.username)
+        localStorage.setItem('nickname', userInfo.nickname || '玩家')
+        localStorage.setItem('userId', String(userInfo.userId))
         localStorage.setItem('isLogin', 'true')
+
+        sessionStorage.setItem('token', userInfo.token)
+        sessionStorage.setItem('isLogin', 'true')
         ElMessage.success('登录成功')
         setTimeout(() => router.push('/lobby'), 1000)
       })
