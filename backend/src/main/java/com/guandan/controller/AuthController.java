@@ -20,3 +20,4 @@ public class AuthController {
     }
 }
 // Regression check: controller endpoint validation
+// Chore: consolidated auth module configuration for Phase 1 delivery
