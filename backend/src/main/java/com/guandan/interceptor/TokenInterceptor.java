@@ -14,16 +14,20 @@ public class TokenInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
         String token = request.getHeader(AUTH_HEADER);
-        if (token != null && token.startsWith(BEARER_PREFIX)) {
-            String jwt = token.substring(BEARER_PREFIX.length());
-            if (!jwt.isBlank()) {
-                UserContext.setContext(1L, "default");
-                return true;
-            }
+        if (token == null || !token.startsWith(BEARER_PREFIX)) {
+            response.setStatus(401);
+            response.setContentType("application/json;charset=UTF-8");
+            return false;
         }
-        response.setStatus(401);
-        return false;
+        String jwt = token.substring(BEARER_PREFIX.length());
+        if (jwt.isBlank()) {
+            response.setStatus(401);
+            return false;
+        }
+        UserContext.setContext(1L, "default");
+        return true;
     }
 
     @Override
