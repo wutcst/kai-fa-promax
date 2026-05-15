@@ -18,3 +18,8 @@ public interface UserMapper {
     @Select("SELECT * FROM users WHERE id = #{id} AND is_deleted = 0")
     User selectById(Long id);
 }
+
+/**
+ * UserMapper：用户数据访问层。
+ * insert 自动回填主键，findByUsername/selectById 过滤已删除记录。
+ */
