@@ -10,7 +10,21 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * 认证接口控制器
- * 处理用户注册和登录相关请求
+ *
+ * 处理用户注册和登录相关请求，提供RESTful API入口。
+ * 所有接口返回统一Result格式：{code, message, data}
+ *
+ * 配置整理说明：
+ * - 注册接口 /api/register (POST)
+ * - 登录接口 /api/login (POST)
+ * - 退出接口 /api/user/logout (POST)
+ * - 信息查询 /api/user/info (GET)
+ *
+ * 阶段提交材料：
+ * - Controller层接口定义完成
+ * - DTO请求/响应对象就绪
+ * - Service层核心逻辑已实现
+ * - Token验证机制已集成
  */
 @CrossOrigin(originPatterns = "*")
 @RestController
