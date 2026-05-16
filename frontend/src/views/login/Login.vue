@@ -86,8 +86,13 @@ const registerRules = reactive({
 const handleLogin = () => {
   loginFormRef.value.validate(valid => {
     if (!valid) return
+
     login(loginForm)
       .then(res => {
+        if (!res || !res.token) {
+          ElMessage.error('登录返回数据异常')
+          return
+        }
         const userInfo = res.data || res
         localStorage.setItem('token', userInfo.token)
         localStorage.setItem('username', userInfo.username)
@@ -97,6 +102,7 @@ const handleLogin = () => {
 
         sessionStorage.setItem('token', userInfo.token)
         sessionStorage.setItem('isLogin', 'true')
+
         ElMessage.success('登录成功')
         setTimeout(() => router.push('/lobby'), 1000)
       })
