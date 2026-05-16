@@ -134,38 +134,92 @@ const handleRegister = () => {
 .login-page {
   width: 100vw;
   height: 100vh;
+  min-height: 600px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: url('@/assets/images/bg.jpg') no-repeat center center;
+  background-size: cover;
+  position: relative;
 }
 
 .title-banner {
   text-align: center;
-  margin-bottom: 30px;
-  color: white;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
 }
 
 .title-banner h1 {
-  font-size: 36px;
-  margin-bottom: 8px;
+  font-size: 42px;
+  color: #4a2c18;
+  text-shadow: 0 2px 4px rgba(255, 236, 174, 0.8);
+  font-family: 'ChillRoundGothic', 'Microsoft YaHei', sans-serif;
+  letter-spacing: 4px;
+}
+
+.title-banner p {
+  font-size: 16px;
+  color: #6f4e2e;
+  font-weight: bold;
 }
 
 .login-container {
-  width: 400px;
-  background: white;
-  border-radius: 12px;
-  padding: 30px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  width: 440px;
+  background: linear-gradient(180deg, #f1dfbd 0%, #dabc88 100%);
+  border: 3px solid #b87934;
+  border-radius: 18px;
+  padding: 30px 35px;
+  box-shadow: 0 10px 30px rgba(75, 44, 14, 0.3);
+  position: relative;
+  z-index: 2;
+}
+
+.login-tabs {
+  margin-bottom: 15px;
+}
+
+:deep(.el-tabs__item) {
+  font-size: 16px;
+  font-weight: bold;
+  color: #6b4a2c;
+}
+
+:deep(.el-tabs__item.is-active) {
+  color: #7a3f16;
 }
 
 .login-form {
-  margin-top: 10px;
+  padding: 0 4px;
 }
 
-.login-btn, .register-btn {
+.login-form :deep(.el-form-item__label) {
+  font-weight: bold;
+  color: #5a3518;
+}
+
+.login-btn {
   width: 100%;
-  margin-top: 10px;
+  padding: 12px 0;
+  font-size: 17px;
+  font-weight: bold;
+  color: #fff7ea;
+  background: linear-gradient(180deg, #d7983c 0%, #b96f1d 100%);
+  border: 1px solid rgba(255, 236, 183, 0.78);
+  letter-spacing: 2px;
+  margin-top: 8px;
+}
+
+.register-btn {
+  width: 100%;
+  padding: 12px 0;
+  font-size: 17px;
+  font-weight: bold;
+  color: #fff7ea;
+  background: linear-gradient(180deg, #8b5a31 0%, #6d421f 100%);
+  border: 1px solid rgba(255, 236, 183, 0.78);
+  letter-spacing: 2px;
+  margin-top: 8px;
 }
 </style>
