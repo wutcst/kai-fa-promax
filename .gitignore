@@ -1,10 +1,10 @@
-# Maven
+# Maven Build Output
 target/
 *.class
 *.jar
 *.war
 
-# IDE
+# IDE Settings
 .idea/
 *.iml
 .vscode/
@@ -15,20 +15,20 @@ bin/
 frontend/.vscode/
 backend/.idea/
 
-# Node
+# Dependencies
 node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.temp/
 
-# OS
+# OS Files
 .DS_Store
 Thumbs.db
 *.log
 *.swp
 *.swo
 
-# Backend
+# Backend Temp
 backend/target/
 backend/*.log
 backend/.settings/
