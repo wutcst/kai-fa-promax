@@ -18,3 +18,4 @@ CREATE TABLE user_stats (
 
 ALTER TABLE users ADD INDEX idx_username (username);
 ALTER TABLE user_stats ADD FOREIGN KEY (user_id) REFERENCES users(id);
+-- Regression check: schema constraint verification point
