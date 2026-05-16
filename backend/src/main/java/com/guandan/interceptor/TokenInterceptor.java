@@ -12,7 +12,21 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
  * Token拦截器
- * 验证请求的Token有效性，将用户信息注入上下文
+ * <p>
+ * 验证请求的Token有效性，将用户信息注入上下文。
+ * <p>
+ * ── 回归验证点 ────────────────────────────────────────────
+ * 1. 无Token请求 → 返回 401 "未登录，请先登录"
+ * 2. Token格式错误（长度<10）→ 返回 401 "Token格式不正确"
+ * 3. Token过期/无效 → 返回 401 "登录已过期，请重新登录"
+ * 4. 解析出非法userId（<=0）→ 返回 401 "用户信息异常，请重新登录"
+ * 5. OPTIONS预检请求直接放行
+ * 6. 非HandlerMethod（静态资源）直接放行
+ * 7. 认证服务异常 → 返回 500 "认证服务异常"
+ * 8. 验证通过后 userId 正确注入 UserContext
+ * 9. afterCompletion 时 UserContext.clear() 清理
+ * 10. 日志输出包含请求URI和userId
+ * ─────────────────────────────────────────────────────────
  */
 @Slf4j
 @Component
