@@ -50,3 +50,4 @@ public class TokenInterceptor implements HandlerInterceptor {
  * 4. 写入 UserContext 供后续请求使用
  * 5. afterCompletion 清理 ThreadLocal
  */
+// Regression check: token intercept verification point

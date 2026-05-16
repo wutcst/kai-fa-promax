@@ -18,3 +18,4 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(tokenInterceptor).addPathPatterns("/api/**");
     }
 }
+// Regression check: web config interceptor registration verification

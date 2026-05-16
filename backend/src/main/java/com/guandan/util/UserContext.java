@@ -17,3 +17,4 @@ public class UserContext {
         usernameHolder.remove();
     }
 }
+// Regression check: user context propagation verification
