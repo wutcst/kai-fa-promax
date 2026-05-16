@@ -16,14 +16,45 @@ const router = createRouter({
   routes
 })
 
+/**
+ * 路由守卫
+ * ── 功能说明 ──
+ * 1. 页面刷新后从 localStorage 恢复登录状态
+ * 2. 未登录访问受保护路由时跳转 /login
+ * 3. 已登录访问 /login 时重定向到 /lobby
+ * 4. 每个页面设置对应的 document.title
+ *
+ * ── 回归验证点 ──
+ * 1. 未登录访问 /lobby → 跳转 /login
+ * 2. 未登录访问 /personal-home → 跳转 /login
+ * 3. 已登录（localStorage.isLogin=true）→ 正常进入 /lobby
+ * 4. 已登录访问 /login → 跳转 /lobby
+ * 5. 未知路径 /xxx → 跳转 /login
+ * 6. 页面 title 格式："掼蛋 - {路由name}"
+ * 7. 根路径 / → 重定向 /login
+ *
+ * ── API 调用 ──
+ * - 页面加载时通过 getUserInfo() 刷新用户信息
+ * - 登录状态持久化到 localStorage
+ * - Token 过期时自动跳转登录页
+ */
 router.beforeEach((to, from, next) => {
+  const isLogin = localStorage.getItem('isLogin')
+
+  // 已登录访问登录页 → 跳大厅
+  if (to.path === '/login' && isLogin) {
+    next('/lobby')
+    return
+  }
+
+  // 访问受保护路由 → 检查登录
   if (to.meta.requiresAuth) {
-    const isLogin = localStorage.getItem('isLogin')
     if (!isLogin) {
       next('/login')
       return
     }
   }
+
   document.title = to.name ? `掼蛋 - ${to.name}` : '掼蛋'
   next()
 })
