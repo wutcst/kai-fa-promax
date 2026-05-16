@@ -42,3 +42,11 @@ public class TokenInterceptor implements HandlerInterceptor {
         return null;
     }
 }
+/**
+ * 鉴权流程：
+ * 1. OPTIONS 预检放行
+ * 2. 提取 Authorization: Bearer <token>
+ * 3. Token 为空或空白 → 401
+ * 4. 写入 UserContext 供后续请求使用
+ * 5. afterCompletion 清理 ThreadLocal
+ */
