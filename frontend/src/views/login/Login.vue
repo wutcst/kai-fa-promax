@@ -2,11 +2,17 @@
   <div class="login-container">
     <h2>掼蛋 - 登录</h2>
     <form @submit.prevent="handleLogin">
-      <input v-model="username" placeholder="账号（6位数字）" maxlength="6" />
-      <input v-model="password" type="password" placeholder="密码（6-10位）" maxlength="10" />
-      <button type="submit" :disabled="loading">登录</button>
+      <div class="form-group">
+        <label>账号</label>
+        <input v-model="username" placeholder="请输入6位数字账号" maxlength="6" />
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input v-model="password" type="password" placeholder="请输入密码" maxlength="10" />
+      </div>
+      <button type="submit" :disabled="loading" class="btn-primary">登录</button>
     </form>
-    <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
+    <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
   </div>
 </template>
 
@@ -36,3 +42,13 @@ const handleLogin = async () => {
   }
 }
 </script>
+
+<style scoped>
+.login-container { max-width: 360px; margin: 80px auto; padding: 24px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; margin-bottom: 4px; font-size: 14px; }
+.form-group input { width: 100%; padding: 8px 12px; border: 1px solid #dcdfe6; border-radius: 4px; }
+.btn-primary { width: 100%; padding: 10px; background: #409eff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.error-msg { color: #f56c6c; margin-top: 12px; text-align: center; }
+</style>
