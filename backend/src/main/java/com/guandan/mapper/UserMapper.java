@@ -11,11 +11,11 @@ import org.apache.ibatis.annotations.Select;
  * 继承 MyBatis-Plus BaseMapper，提供基础的 CRUD 操作。
  * 复杂查询可通过注解 SQL 或 XML 映射文件扩展。
  *
- * 接口字段说明：
- * - BaseMapper<User>.insert(User) → int 插入记录
- * - BaseMapper<User>.selectById(Long) → User 按ID查询
- * - BaseMapper<User>.selectOne(Wrapper) → User 按条件查询单条
- * - UserMapper.findByUsername(String) → User 按用户名查询
+ * 回归验证点：
+ * 1. BaseMapper<User>.insert() 插入用户并返回自增ID
+ * 2. BaseMapper<User>.selectById() 按主键查询，不存在返回null
+ * 3. UserMapper.findByUsername() 按用户名查询，过滤已删除
+ * 4. username字段有UNIQUE约束，重复插入抛异常
  *
  * 异常场景：
  * - 插入时 username 违反 UNIQUE 约束 → 抛 DuplicateKeyException
