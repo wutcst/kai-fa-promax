@@ -56,3 +56,9 @@ apiClient.interceptors.response.use(
 )
 
 export default apiClient
+
+
+// ── Phase 1 联调验证记录 ──
+// [2026-05] Token 注入拦截器验证通过
+// [2026-05] 401 自动跳转逻辑验证通过
+// [2026-05] 响应拦截器解包通过

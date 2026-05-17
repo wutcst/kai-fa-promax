@@ -223,3 +223,17 @@ const handleRegister = () => {
   margin-top: 8px;
 }
 </style>
+
+<!--
+ ── Phase 1 联调说明 ──
+ 表单校验：
+   账号：必填 / 6位数字
+   密码：必填 / 最长10位
+   确认密码：必填 / 与密码一致
+ 错误展示：
+   内联校验失败 → el-form-item-error
+   接口异常 → ElMessage.error()
+ 登录后跳转：
+   成功 → 1s 延迟 → router.push("/lobby")
+   已登录访问 /login → beforeEach 重定向
+-->

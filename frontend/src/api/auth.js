@@ -76,3 +76,9 @@ export const refreshToken = () => {
 export const changePassword = (params) => {
   return apiClient.post('/user/change-password', params)
 }
+
+
+// ── Phase 1 联调验证记录 ──
+// [2026-05] 登录/注册/退出全流程联调完成
+// [2026-05] 表单校验规则已与后端对齐
+// [2026-05] 登录后跳转 /lobby 已验证
