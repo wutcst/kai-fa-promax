@@ -17,7 +17,15 @@
 
     <div class="room-list">
       <h3>房间列表</h3>
-      <div v-if="rooms.length === 0" class="empty-state">暂无房间，创建一个吧</div>
+      <div v-if="loading" class="loading-state">加载中...</div>
+      <div v-else-if="loadError" class="error-state">
+        <p>{{ loadError }}</p>
+        <el-button size="small" @click="fetchRooms">重新加载</el-button>
+      </div>
+      <div v-else-if="rooms.length === 0" class="empty-state">
+        <p>暂无房间，创建一个吧</p>
+        <el-button type="primary" size="small" @click="showCreateDialog = true">立即创建</el-button>
+      </div>
       <div v-for="room in rooms" :key="room.id" class="room-card">
         <span>房间 {{ room.roomNo }}</span>
         <span>{{ room.playerCount }}/4人</span>
@@ -25,19 +33,51 @@
         <el-button size="small" @click="joinRoom(room.roomNo)">加入</el-button>
       </div>
     </div>
+
+    <!-- 创建房间对话框 -->
+    <el-dialog v-model="showCreateDialog" title="创建房间" width="400px">
+      <el-form :model="createForm">
+        <el-form-item label="房间名称">
+          <el-input v-model="createForm.roomName" placeholder="输入房间名称（选填）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCreateDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleCreateRoom" :loading="creating">确认创建</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 加入房间对话框 -->
+    <el-dialog v-model="showJoinDialog" title="加入房间" width="400px">
+      <el-form :model="joinForm">
+        <el-form-item label="房间号">
+          <el-input v-model="joinForm.roomNo" placeholder="输入6位房间号" maxlength="6" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showJoinDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleJoinRoom" :loading="joining">确认加入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const nickname = ref(localStorage.getItem('nickname') || '玩家')
 const rooms = ref([])
+const loading = ref(false)
+const loadError = ref('')
 const showCreateDialog = ref(false)
 const showJoinDialog = ref(false)
+const creating = ref(false)
+const joining = ref(false)
+const createForm = ref({ roomName: '' })
+const joinForm = ref({ roomNo: '' })
 
 const goToPersonal = () => router.push('/personal-home')
 
@@ -55,6 +95,59 @@ const quickMatch = () => {
 const joinRoom = (roomNo) => {
   ElMessage.info(`加入房间 ${roomNo}`)
 }
+
+const fetchRooms = async () => {
+  loading.value = true
+  loadError.value = ''
+  try {
+    // TODO: 接入真实API
+    rooms.value = []
+  } catch (err) {
+    console.error('获取房间列表失败:', err)
+    loadError.value = '获取房间列表失败，请检查网络后重试'
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleCreateRoom = async () => {
+  creating.value = true
+  try {
+    // TODO: 接入真实创建房间API
+    ElMessage.success('房间创建成功')
+    showCreateDialog.value = false
+    createForm.value.roomName = ''
+    await fetchRooms()
+  } catch (err) {
+    console.error('创建房间失败:', err)
+    ElMessage.error('创建房间失败，请稍后重试')
+  } finally {
+    creating.value = false
+  }
+}
+
+const handleJoinRoom = async () => {
+  if (!joinForm.value.roomNo || joinForm.value.roomNo.length < 6) {
+    ElMessage.warning('请输入正确的6位房间号')
+    return
+  }
+  joining.value = true
+  try {
+    // TODO: 接入真实加入房间API
+    ElMessage.success(`已加入房间 ${joinForm.value.roomNo}`)
+    showJoinDialog.value = false
+    joinForm.value.roomNo = ''
+  } catch (err) {
+    console.error('加入房间失败:', err)
+    ElMessage.error('加入房间失败，请检查房间号是否正确')
+  } finally {
+    joining.value = false
+  }
+}
+
+onMounted(() => {
+  fetchRooms()
+})
 </script>
 
 <style scoped>
@@ -90,5 +183,18 @@ const joinRoom = (roomNo) => {
   text-align: center;
   padding: 40px;
   color: #999;
+}
+.loading-state {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+.error-state {
+  text-align: center;
+  padding: 40px;
+  color: #e74c3c;
+}
+.error-state p {
+  margin-bottom: 12px;
 }
 </style>
