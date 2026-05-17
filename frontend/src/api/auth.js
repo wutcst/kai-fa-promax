@@ -15,3 +15,11 @@ export const logout = () => {
 export const getUserInfo = () => {
   return apiClient.get('/user/info')
 }
+
+export const refreshToken = () => {
+  return apiClient.post('/user/refresh')
+}
+
+export const changePassword = (params) => {
+  return apiClient.post('/user/change-password', params)
+}
