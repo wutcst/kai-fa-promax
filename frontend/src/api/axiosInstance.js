@@ -12,3 +12,4 @@ request.interceptors.request.use(config => {
 })
 
 export default request
+// Docs: axios interceptor setup notes for token propagation
