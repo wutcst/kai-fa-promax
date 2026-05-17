@@ -17,6 +17,15 @@ package com.guandan.util;
  * 8. afterCompletion 未调用时自动移除不导致内存泄漏
  * ─────────────────────────────────────────────────────────
  * <p>
+ * ── 提交材料 ──────────────────────────────────────────────
+ * 关联阶段：鉴权可靠性提升
+ * 涉及文件：WebConfig.java, TokenInterceptor.java, UserContext.java
+ * 验证方式：
+ *   ① 在 Controller 中注入 UserContext.getUserId()
+ *   ② 带 Token 请求 → verify userId 正确
+ *   ③ 请求结束后 → verify UserContext 已清理
+ * ─────────────────────────────────────────────────────────
+ * <p>
  * 接口说明：
  * - setUserId(Long): 设置当前用户ID
  * - getUserId(): 获取当前用户ID
