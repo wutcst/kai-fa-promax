@@ -10,6 +10,13 @@ import lombok.Data;
  *
  * 对应数据库 user 表，存储用户账号信息和基本资料。
  * 密码字段存储 BCrypt 加密后的密文，不存明文。
+ *
+ * 回归验证点：
+ * 1. 字段username唯一约束，长度50
+ * 2. 密码字段长度100，存储加密密文
+ * 3. online字段默认0（离线）
+ * 4. deleted字段用于逻辑删除
+ * 5. create_time自动填充创建时间
  */
 @Data
 @TableName("user")
