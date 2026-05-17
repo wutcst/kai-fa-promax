@@ -1,3 +1,28 @@
+/**
+ * 用户注册接口 (POST /api/register)
+ *
+ * 测试验证点：
+ * 1. 正常注册流程 - 返回userId、username、token、nickname
+ * 2. 重复用户名 - 返回"该账号已被注册"
+ * 3. 空参数请求 - 返回参数校验错误
+ * 4. 密码格式非法 - 返回校验提示
+ *
+ * 用户登录接口 (POST /api/login)
+ *
+ * 测试验证点：
+ * 1. 正常登录流程 - 返回token和用户信息
+ * 2. 账号不存在 - 返回"账号不存在"
+ * 3. 密码错误 - 返回"密码错误"
+ * 4. 空参数请求 - 返回参数校验错误
+ *
+ * 密码加密工具 (PasswordUtil)
+ *
+ * 测试验证点：
+ * 1. hashPassword返回密文非空且不等同明文
+ * 2. checkPassword对正确密码返回true
+ * 3. checkPassword对错误密码返回false
+ */
+
 package com.guandan.controller;
 
 import com.guandan.common.Result;
@@ -13,18 +38,6 @@ import org.springframework.web.bind.annotation.*;
  *
  * 处理用户注册和登录相关请求，提供RESTful API入口。
  * 所有接口返回统一Result格式：{code, message, data}
- *
- * 配置整理说明：
- * - 注册接口 /api/register (POST)
- * - 登录接口 /api/login (POST)
- * - 退出接口 /api/user/logout (POST)
- * - 信息查询 /api/user/info (GET)
- *
- * 阶段提交材料：
- * - Controller层接口定义完成
- * - DTO请求/响应对象就绪
- * - Service层核心逻辑已实现
- * - Token验证机制已集成
  */
 @CrossOrigin(originPatterns = "*")
 @RestController
@@ -35,28 +48,11 @@ public class AuthController {
     private AuthService authService;
 
     /**
-     * 用户注册接口
+     * 用户注册接口 (POST /api/register)
      *
-     * 接收新用户注册信息，完成账号创建并返回认证Token。
-     *
-     * 请求参数（application/json）：
-     * - username: String, 必填, 6位纯数字
-     * - password: String, 必填, 6-10位字母数字
-     * - nickname: String, 必填, 最多10位（字母/数字/汉字）
-     * - avatar: String, 可选, Base64 SVG
-     * - phone: String, 可选, 手机号
-     *
-     * 返回结构：
-     * - code: int, 200=成功, 500=失败
-     * - message: String, 提示信息
-     * - data: RegisterResponse {userId, username, token, nickname, avatar}
-     *
-     * 异常场景：
-     * - 400: 参数校验不通过
-     * - 500: 该账号已被注册 / 注册失败，请稍后重试
-     *
-     * @param request 注册请求体
-     * @return 注册结果（用户信息 + Token）
+     * 请求体：{username(6位数字), password(6-10位), nickname(最多10位), avatar(可选), phone(可选)}
+     * 成功返回：{code:200, data:{userId, username, token, nickname, avatar}}
+     * 失败返回：{code:500, message:"错误描述"}
      */
     @PostMapping("/register")
     public Result<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -69,25 +65,11 @@ public class AuthController {
     }
 
     /**
-     * 用户登录接口
+     * 用户登录接口 (POST /api/login)
      *
-     * 验证用户身份并返回认证Token。
-     *
-     * 请求参数（application/json）：
-     * - username: String, 必填, 6位数字账号
-     * - password: String, 必填, 登录密码
-     *
-     * 返回结构：
-     * - code: int, 200=成功, 500=失败
-     * - message: String, 提示信息
-     * - data: LoginResponse {token, userId, username, nickname, avatar}
-     *
-     * 异常场景：
-     * - 400: 参数校验不通过
-     * - 500: 账号不存在 / 密码错误 / 该账号已登录
-     *
-     * @param request 登录请求体
-     * @return 登录结果
+     * 请求体：{username(6位数字), password}
+     * 成功返回：{code:200, data:{token, userId, username, nickname, avatar}}
+     * 失败返回：{code:500, message:"账号不存在/密码错误"}
      */
     @PostMapping("/login")
     public Result<?> login(@Valid @RequestBody RegisterRequest request) {
