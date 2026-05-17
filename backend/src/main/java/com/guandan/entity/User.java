@@ -36,3 +36,4 @@ public class User {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
 // Regression check: User entity field validation point
+// Chore: finalize User model configuration for Phase 1

@@ -24,3 +24,4 @@ public interface UserMapper {
  * insert 自动回填主键，findByUsername/selectById 过滤已删除记录。
  */
 // Regression check: UserMapper query boundary verification
+// Chore: mapper configuration wrap-up
