@@ -1,3 +1,33 @@
+/**
+ * Axios 实例配置
+ *
+ * ── 功能说明 ──
+ * 创建 axios 实例，配置 baseURL、超时时间、请求/响应拦截器。
+ *
+ * ── 联调说明 ──
+ * 1. 请求拦截器自动从 localStorage 读取 token 并注入请求头
+ * 2. 响应拦截器自动解包 response.data
+ * 3. 401 未认证时自动清理存储并跳转登录页
+ *
+ * ── 请求拦截 ──
+ * - 从 localStorage 获取 'token'
+ * - 存在则设置 Authorization: Bearer {token}
+ *
+ * ── 响应拦截 ──
+ * - 成功：返回 response.data（解包一层）
+ * - 失败：401状态 → 清除登录状态 → 跳转首页
+ * - 其他错误：原样返回 Promise.reject(error)
+ *
+ * ── 配置选项 ──
+ * - baseURL: '/api'（需配合 vite proxy 或 nginx 反向代理）
+ * - timeout: 10000ms（10秒超时）
+ * - Content-Type: application/json
+ *
+ * ── 环境配置 ──
+ * 开发环境：vite.config.js 配置 proxy → localhost:8081
+ * 生产环境：nginx 反向代理 /api → 后端服务
+ */
+
 import axios from 'axios'
 
 const apiClient = axios.create({
