@@ -23,6 +23,14 @@ frontend/.temp/
 .DS_Store
 Thumbs.db
 *.log
+*.swp
+*.swo
+
+# Backend
+backend/target/
+backend/*.log
+backend/.settings/
+backend/bin/
 
 # Env
 .env
