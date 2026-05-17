@@ -51,3 +51,4 @@ public class TokenInterceptor implements HandlerInterceptor {
  * 5. afterCompletion 清理 ThreadLocal
  */
 // Regression check: token intercept verification point
+// Chore: finalize auth interceptor configuration

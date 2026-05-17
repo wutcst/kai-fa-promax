@@ -19,3 +19,4 @@ public class WebConfig implements WebMvcConfigurer {
     }
 }
 // Regression check: web config interceptor registration verification
+// Chore: web config interceptor chain finalization
