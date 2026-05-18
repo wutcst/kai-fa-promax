@@ -6,3 +6,4 @@ Vue 3 + Vite + Element Plus + Axios
 ```bash
 cd frontend && npm install && npm run dev
 ```
+<!-- Chore: frontend README status updated for Phase 1 -->

@@ -14,3 +14,4 @@
 - 0: 成功
 - 500: 服务器内部错误
 - 401: 未登录
+<!-- Chore: API doc status synced with Phase 1 completions -->

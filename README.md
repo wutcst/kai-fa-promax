@@ -11,3 +11,4 @@
 ## 技术栈
 - 后端：Java 17, Spring Boot 3.2.0, MyBatis-Plus 3.5.5, MySQL, Redis, JWT
 - 前端：Vue 3, Vite, Element Plus, Axios
+<!-- Chore: Project Board status synced - Phase 1 deliverables tracked -->
