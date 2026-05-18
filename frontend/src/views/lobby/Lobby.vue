@@ -198,3 +198,22 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 </style>
+
+<!--
+ ── Refactor: 页面状态和请求逻辑拆分 ──
+ 状态管理：
+   - rooms: 房间列表数据（从 API 获取）
+   - loading: 加载中状态
+   - loadError: 加载失败时的错误信息
+   - nickname: 从 localStorage 获取
+ 请求逻辑：
+   - onMounted 时调用 fetchRooms()
+   - 失败时展示 loadError + 重新加载按钮
+   - 空房间时展示 empty-state
+ 交互：
+   - 创建房间 → showCreateDialog
+   - 加入房间 → showJoinDialog
+   - 快速匹配 → quickMatch（预留）
+   - 个人主页 → router.push('/personal-home')
+   - 退出 → handleLogout()
+-->

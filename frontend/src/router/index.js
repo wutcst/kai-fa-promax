@@ -60,3 +60,11 @@ router.beforeEach((to, from, next) => {
 })
 
 export default router
+
+// ── Refactor: 拆分路由守卫职责 ──
+// 1. 登录守卫：未登录 → /login
+// 2. 已登录守卫：已登录访问 /login → /lobby
+// 3. 未知路径守卫：/* → /login
+// 4. Title 守卫：设置 document.title
+// 5. 路由元数据：requiresAuth 控制访问权限
+// 6. 路由组件懒加载支持（预留）

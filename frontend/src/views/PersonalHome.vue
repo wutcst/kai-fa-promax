@@ -56,3 +56,18 @@ const goBack = () => router.push('/lobby')
 .label { font-size: 14px; color: #666; display: block; }
 .value { font-size: 24px; font-weight: bold; color: #333; display: block; margin-top: 5px; }
 </style>
+
+<!--
+ ── Refactor: 页面状态和请求逻辑拆分 ──
+ 状态管理：
+   - nickname: 从 localStorage 初始化，支持动态更新
+   - stats: 从后端 API 获取，含 totalGames / winGames
+   - winRate: computed 自动计算胜率
+ 请求逻辑：
+   - onMounted 时调用 fetchUserStats()
+   - 失败时 ElMessage.error 提示
+   - 支持手动刷新（预留刷新按钮）
+ 交互：
+   - 返回大厅按钮 → router.push('/lobby')
+   - 页面 title 自动更新
+-->
