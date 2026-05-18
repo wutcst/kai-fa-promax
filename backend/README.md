@@ -1,5 +1,7 @@
 # 掼蛋游戏后端服务
 
+> Project Board: Phase 1 后端模块验收完成 | Status: ✅ Synced
+
 ## 项目简介
 
 掼蛋游戏后端服务是一个基于Spring Boot 3.x开发的在线掼蛋游戏服务器，提供用户认证、房间管理、游戏控制、WebSocket实时通信等核心功能。

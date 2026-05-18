@@ -3,6 +3,7 @@
 > 武汉理工大学软件工程实践课程项目
 > Milestone: v1.1.0 | Label: phase-enhancement
 > Issue: #提升阶段 - 提升项目整体可验收性
+> Project Board: Phase 1 验收完成 ✅ | 推动至 Phase 2 开发
 
 ## 项目概述
 
