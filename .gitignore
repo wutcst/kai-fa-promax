@@ -33,3 +33,4 @@ docker-compose.override.yml
 *.bak
 *.swp
 ~*
+# IDE config grouping - refined ignore rules for consistent dev environment
