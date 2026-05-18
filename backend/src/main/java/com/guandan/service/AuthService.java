@@ -39,3 +39,4 @@ public class AuthService {
 }
 // Regression check: auth service boundary verification
 // Chore: finalize auth service wiring and stage materials
+// Test: manual regression verification points for all Phase 1 auth endpoints
