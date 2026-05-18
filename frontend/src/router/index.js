@@ -25,3 +25,4 @@ router.beforeEach((to, from, next) => {
 
 export default router
 // Refactor: consolidate route guard logic and lazy loading
+// Docs: frontend integration notes for route guard auth check

@@ -26,3 +26,4 @@ onMounted(() => {
 .user-card { background: #f5f7fa; padding: 16px; border-radius: 8px; margin-top: 16px; }
 </style>
 // Refactor: extract personal home page request logic into composable
+// Docs: frontend integration notes for personal page data flow
