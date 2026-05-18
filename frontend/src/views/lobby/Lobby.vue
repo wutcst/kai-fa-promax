@@ -217,3 +217,18 @@ onMounted(() => {
    - 个人主页 → router.push('/personal-home')
    - 退出 → handleLogout()
 -->
+
+<!--
+ ── 联调说明 ──
+ 房间列表：
+   - GET /api/rooms → 返回等待中和游戏中的房间
+   - 空状态：提示"暂无房间，创建一个吧"
+   - 加载状态：显示"加载中..."
+   - 错误状态：显示错误信息 + 重新加载按钮
+ 创建房间：
+   - POST /api/new-game → 返回 roomNo
+   - 成功后自动刷新房间列表
+ 加入房间：
+   - POST /api/room/join → 校验房间号
+   - 满员提示、重复加入提示
+-->

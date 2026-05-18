@@ -68,3 +68,10 @@ export default router
 // 4. Title 守卫：设置 document.title
 // 5. 路由元数据：requiresAuth 控制访问权限
 // 6. 路由组件懒加载支持（预留）
+
+// ── 联调说明 ──
+// 1. beforeEach 守卫已覆盖全部路由切换场景
+// 2. localStorage 持久化 isLogin / token
+// 3. 页面刷新后从 localStorage 恢复登录状态
+// 4. 未知路径统一兜底到 /login
+// 5. 根路径 / → /login 重定向

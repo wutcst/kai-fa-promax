@@ -71,3 +71,17 @@ const goBack = () => router.push('/lobby')
    - 返回大厅按钮 → router.push('/lobby')
    - 页面 title 自动更新
 -->
+
+<!--
+ ── 联调说明 ──
+ 前端数据：
+   - nickname 从 localStorage 读取
+   - 统计数据从 getUserInfo / userStats API 获取
+   - winRate = winGames / totalGames * 100
+ 后端接口：
+   - GET /api/user/info → 用户基本信息
+   - GET /api/user/stats → 游戏统计数据
+ 错误处理：
+   - 加载失败 → ElMessage.error
+   - 数据缺失 → 默认值 0
+-->
