@@ -15,3 +15,4 @@ onMounted(() => {
   username.value = localStorage.getItem('username') || ''
 })
 </script>
+// Refactor: split lobby page state into loading/empty/error/list states

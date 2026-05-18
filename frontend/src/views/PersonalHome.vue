@@ -25,3 +25,4 @@ onMounted(() => {
 .personal-home { max-width: 480px; margin: 40px auto; padding: 24px; }
 .user-card { background: #f5f7fa; padding: 16px; border-radius: 8px; margin-top: 16px; }
 </style>
+// Refactor: extract personal home page request logic into composable
