@@ -24,3 +24,12 @@ Thumbs.db
 .env
 .env.local
 application-local.yml
+
+# Docker
+docker-compose.override.yml
+
+# Temp
+*.tmp
+*.bak
+*.swp
+~*
