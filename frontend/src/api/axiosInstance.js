@@ -62,3 +62,10 @@ export default apiClient
 // [2026-05] Token 注入拦截器验证通过
 // [2026-05] 401 自动跳转逻辑验证通过
 // [2026-05] 响应拦截器解包通过
+
+// ── 手动测试用例 ──
+// [TC-101] 请求拦截器正确注入 Authorization 头
+// [TC-102] 无 token 时请求不加 Authorization 头
+// [TC-103] 响应拦截器正确解包 response.data
+// [TC-104] 401 响应触发自动清理和跳转
+// [TC-105] 网络异常时 Promise.reject 正确传递
