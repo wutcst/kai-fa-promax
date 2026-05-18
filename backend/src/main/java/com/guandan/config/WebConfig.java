@@ -34,6 +34,16 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * 9. CORS maxAge=3600 缓存预检结果1小时
  * 10. 响应Content-Type为application/json;charset=UTF-8
  * ─────────────────────────────────────────────────────────
+ * <p>
+ * ── 提交材料 ──────────────────────────────────────────────
+ * 关联阶段：鉴权可靠性提升
+ * 涉及文件：WebConfig.java, TokenInterceptor.java, UserContext.java
+ * 验证方式：启动后端服务 → 使用 Postman 依次测试：
+ *   ① 无Token访问 /api/room/list → 返回 401
+ *   ② 携带错误Token访问 → 返回 401
+ *   ③ OPTIONS 预检请求 → 返回 200
+ *   ④ 登录后携带正确Token → 正常返回数据
+ * ─────────────────────────────────────────────────────────
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {

@@ -27,6 +27,17 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * 9. afterCompletion 时 UserContext.clear() 清理
  * 10. 日志输出包含请求URI和userId
  * ─────────────────────────────────────────────────────────
+ * <p>
+ * ── 提交材料 ──────────────────────────────────────────────
+ * 关联阶段：鉴权可靠性提升
+ * 涉及文件：WebConfig.java, TokenInterceptor.java, UserContext.java
+ * 验证方式：
+ *   ① 启动后端服务
+ *   ② 使用 curl / Postman 发送无 Token 请求 → 验证 401 返回
+ *   ③ 发送格式错误的 Token → 验证错误提示
+ *   ④ 发送过期 Token → 验证过期提示
+ *   ⑤ 正常登录后携带 Token 访问 → 验证正常返回
+ * ─────────────────────────────────────────────────────────
  */
 @Slf4j
 @Component
