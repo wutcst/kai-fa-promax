@@ -17,3 +17,4 @@ onMounted(() => {
 </script>
 // Refactor: split lobby page state into loading/empty/error/list states
 // Docs: frontend integration notes for lobby empty state handling
+// Docs: component usage guide for Lobby page room list and state
