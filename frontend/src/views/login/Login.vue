@@ -250,3 +250,15 @@ const handleRegister = () => {
  [✓] 网络错误有 ElMessage 提示
  [✓] 重复提交防抖（按钮 disable）
 -->
+
+<!--
+ ── 组件使用说明 ──
+ 依赖组件：el-tabs, el-form, el-input, el-button, el-message
+ 外部 API：
+   - login(params) → POST /api/login
+   - register(params) → POST /api/register
+ 数据流：
+   - 输入：表单数据 (username, password, nickname, confirmPwd)
+   - 输出：localStorage (token, userId, username, nickname, isLogin)
+   - 跳转：/lobby（登录成功）
+-->
