@@ -80,3 +80,14 @@ public class AuthController {
         }
     }
 }
+
+    // ── Phase 1 配置说明 ──
+    // 1. 登录：POST /api/login → AuthService.handleLogin()
+    // 2. 注册：POST /api/register → AuthService.handleRegistration()
+    // 3. 退出：POST /api/user/logout → 清除服务端 Token 缓存
+    // 4. 信息：GET /api/user/info → AuthService.getUserInfo()
+    // 5. Token：JWT，24h 过期，Authorization: Bearer
+    // 6. 密码：BCrypt 加密（强度 10）
+    // 7. 跨域：@CrossOrigin(originPatterns = "*")
+    // 8. 校验：@Valid + 全局异常处理
+    // 9. 响应格式：统一 Result<T> 包装
