@@ -232,3 +232,19 @@ onMounted(() => {
    - POST /api/room/join → 校验房间号
    - 满员提示、重复加入提示
 -->
+
+<!--
+ ── 组件使用说明 ──
+ 依赖组件：el-button, el-dialog, el-form, el-input, el-table
+ 外部 API：
+   - fetchRooms() → GET /api/rooms
+   - createRoom() → POST /api/new-game
+   - joinRoom() → POST /api/room/join
+   - quickMatch() → POST /api/match/quick (预留)
+  Props：无（独立页面组件）
+ Emits：无
+ 数据流：
+   - 输入：localStorage (token, nickname)
+   - 输出：同页内状态管理
+ 状态覆盖：loading / loaded / empty / error
+-->
