@@ -53,3 +53,4 @@ const handleLogin = async () => {
 .error-msg { color: #f56c6c; margin-top: 12px; text-align: center; }
 </style>
 // Docs: frontend integration notes for auth API error handling and redirect flow
+// Test: manual test case - form validation on empty submit
