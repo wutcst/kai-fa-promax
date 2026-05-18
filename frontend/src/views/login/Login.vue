@@ -55,3 +55,4 @@ const handleLogin = async () => {
 // Docs: frontend integration notes for auth API error handling and redirect flow
 // Test: manual test case - form validation on empty submit
 // Docs: component usage guide for Login page props and events
+// Test: manual checklist - login page all validation scenarios
