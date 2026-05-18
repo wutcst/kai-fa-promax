@@ -7,3 +7,4 @@ Vue 3 + Vite + Element Plus + Axios
 cd frontend && npm install && npm run dev
 ```
 <!-- Chore: frontend README status updated for Phase 1 -->
+<!-- Docs: frontend acceptance - pages and routes verified -->
