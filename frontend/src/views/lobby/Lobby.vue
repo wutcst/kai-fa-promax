@@ -17,20 +17,47 @@
 
     <div class="room-list">
       <h3>房间列表</h3>
+      <div class="sort-controls">
+        <span class="sort-label">排序：</span>
+        <el-radio-group v-model="sortBy" size="small" @change="applySorting">
+          <el-radio-button value="default">默认</el-radio-button>
+          <el-radio-button value="playerCount">人数</el-radio-button>
+          <el-radio-button value="status">状态</el-radio-button>
+        </el-radio-group>
+        <el-button
+            v-if="sortBy !== 'default'"
+            type="text"
+            size="small"
+            :icon="sortAsc ? 'SortUp' : 'SortDown'"
+            @click="toggleSortDirection"
+            class="sort-direction-btn"
+        >
+          {{ sortAsc ? '升序' : '降序' }}
+        </el-button>
+      </div>
+
       <div v-if="loading" class="loading-state">加载中...</div>
       <div v-else-if="loadError" class="error-state">
         <p>{{ loadError }}</p>
         <el-button size="small" @click="fetchRooms">重新加载</el-button>
       </div>
-      <div v-else-if="rooms.length === 0" class="empty-state">
+      <div v-else-if="sortedRooms.length === 0" class="empty-state">
         <p>暂无房间，创建一个吧</p>
         <el-button type="primary" size="small" @click="showCreateDialog = true">立即创建</el-button>
       </div>
-      <div v-for="room in rooms" :key="room.id" class="room-card">
-        <span>房间 {{ room.roomNo }}</span>
-        <span>{{ room.playerCount }}/4人</span>
-        <span>{{ room.status === 0 ? '等待中' : '游戏中' }}</span>
-        <el-button size="small" @click="joinRoom(room.roomNo)">加入</el-button>
+      <div v-for="room in sortedRooms" :key="room.id" class="room-card">
+        <div class="room-card-info">
+          <span class="room-no">房间 {{ room.roomNo }}</span>
+          <span class="room-players">
+            <el-tag :type="room.playerCount >= 4 ? 'danger' : 'success'" size="small">
+              {{ room.playerCount }}/4人
+            </el-tag>
+          </span>
+          <span :class="['room-status-tag', room.status === 0 ? 'waiting' : 'playing']">
+            {{ room.status === 0 ? '等待中' : '游戏中' }}
+          </span>
+        </div>
+        <el-button size="small" type="primary" @click="joinRoom(room.roomNo)" :disabled="room.status !== 0">加入</el-button>
       </div>
     </div>
 
@@ -63,13 +90,27 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const nickname = ref(localStorage.getItem('nickname') || '玩家')
 const rooms = ref([])
+const sortedRooms = computed(() => {
+  if (sortBy.value === 'default') return rooms.value
+  const sorted = [...rooms.value]
+  sorted.sort((a, b) => {
+    let cmp = 0
+    if (sortBy.value === 'playerCount') {
+      cmp = a.playerCount - b.playerCount
+    } else if (sortBy.value === 'status') {
+      cmp = (a.status || 0) - (b.status || 0)
+    }
+    return sortAsc.value ? cmp : -cmp
+  })
+  return sorted
+})
 const loading = ref(false)
 const loadError = ref('')
 const showCreateDialog = ref(false)
@@ -78,6 +119,16 @@ const creating = ref(false)
 const joining = ref(false)
 const createForm = ref({ roomName: '' })
 const joinForm = ref({ roomNo: '' })
+const sortBy = ref('default')
+const sortAsc = ref(true)
+
+const applySorting = () => {
+  // computed 自动重新计算 sortedRooms
+}
+
+const toggleSortDirection = () => {
+  sortAsc.value = !sortAsc.value
+}
 
 const goToPersonal = () => router.push('/personal-home')
 
@@ -172,12 +223,57 @@ onMounted(() => {
   border-radius: 8px;
   padding: 20px;
 }
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+  padding: 10px 14px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #e8e8e8;
+}
+.sort-label {
+  font-size: 13px;
+  color: #666;
+  white-space: nowrap;
+}
+.sort-direction-btn {
+  margin-left: auto;
+  font-size: 13px;
+}
 .room-card {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 20px;
   padding: 12px;
   border-bottom: 1px solid #eee;
+}
+.room-card-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.room-no {
+  font-weight: bold;
+  min-width: 100px;
+}
+.room-players {
+  min-width: 70px;
+}
+.room-status-tag {
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+.room-status-tag.waiting {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.room-status-tag.playing {
+  background: #fff3e0;
+  color: #e65100;
 }
 .empty-state {
   text-align: center;
