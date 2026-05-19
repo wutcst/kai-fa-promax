@@ -11,3 +11,4 @@ public class Room {
         return "WAITING".equals(status) && currentPlayers < 4;
     }
 }
+// Room entity: seat uniqueness validation and room status tracking

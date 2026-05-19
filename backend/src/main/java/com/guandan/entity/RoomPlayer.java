@@ -6,3 +6,4 @@ public class RoomPlayer {
     private Integer seatNo;
     private Boolean ready = false;
 }
+// RoomPlayer: player-seat association and ready state

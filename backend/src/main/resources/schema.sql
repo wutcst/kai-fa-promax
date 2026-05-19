@@ -15,3 +15,4 @@ CREATE TABLE user_stats (
   win_games INT DEFAULT 0,
   score INT DEFAULT 0
 );
+-- Room schema: unique constraints and default states
