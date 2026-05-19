@@ -1,9 +1,13 @@
 package com.guandan.game.util;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.TreeMap;
 
 /**
  * 卡牌工具类
@@ -484,5 +488,166 @@ public class CardUtils {
             baseName += "(逢人配)";
         }
         return baseName;
+    }
+
+    // ============================================================
+    //  新增：发牌与手牌分析工具（提升开局可追踪性）
+    // ============================================================
+
+    /**
+     * 生成一副新牌（0-107），包含两副标准扑克
+     * @return 未洗牌的卡牌ID列表
+     */
+    public static List<Integer> createNewDeck() {
+        List<Integer> deck = new ArrayList<>();
+        for (int i = 0; i < 108; i++) {
+            deck.add(i);
+        }
+        return deck;
+    }
+
+    /**
+     * 洗牌
+     * @param deck 卡牌列表
+     * @param random 随机数生成器（传入null使用默认）
+     */
+    public static void shuffleDeck(List<Integer> deck, Random random) {
+        if (deck == null) return;
+        if (random != null) {
+            Collections.shuffle(deck, random);
+        } else {
+            Collections.shuffle(deck);
+        }
+    }
+
+    /**
+     * 发牌：将牌堆均分给指定数量的玩家
+     * @param deck 洗好的牌堆
+     * @param playerCount 玩家数量
+     * @return 每个玩家的手牌列表
+     */
+    public static List<List<Integer>> dealCards(List<Integer> deck, int playerCount) {
+        List<List<Integer>> hands = new ArrayList<>();
+        if (deck == null || playerCount <= 0) return hands;
+
+        for (int i = 0; i < playerCount; i++) {
+            hands.add(new ArrayList<>());
+        }
+
+        int totalCards = deck.size();
+        int cardsPerPlayer = totalCards / playerCount;
+
+        int index = 0;
+        for (int i = 0; i < playerCount; i++) {
+            for (int j = 0; j < cardsPerPlayer && index < totalCards; j++) {
+                hands.get(i).add(deck.get(index++));
+            }
+        }
+
+        return hands;
+    }
+
+    /**
+     * 分析一手牌的牌型分布
+     * @param handCards 手牌卡牌ID列表
+     * @param levelCardRank 级牌点数
+     * @return 牌型分布统计Map
+     */
+    public static Map<String, Object> analyzeHand(List<Integer> handCards, int levelCardRank) {
+        Map<String, Object> analysis = new LinkedHashMap<>();
+        if (handCards == null || handCards.isEmpty()) {
+            analysis.put("totalCards", 0);
+            return analysis;
+        }
+
+        analysis.put("totalCards", handCards.size());
+
+        // 统计各点数数量
+        Map<Integer, Integer> rankCount = new TreeMap<>();
+        for (int cardId : handCards) {
+            int rank = getRank(cardId);
+            rankCount.put(rank, rankCount.getOrDefault(rank, 0) + 1);
+        }
+        analysis.put("rankDistribution", new TreeMap<>(rankCount));
+
+        // 级牌和逢人配
+        List<Integer> levelCards = getLevelCards(handCards, levelCardRank);
+        List<Integer> wildCards = getWildCards(handCards, levelCardRank);
+        analysis.put("levelCardCount", levelCards.size());
+        analysis.put("wildCardCount", wildCards.size());
+
+        // 炸弹数量（4张及以上同点数）
+        long bombCount = rankCount.values().stream().filter(c -> c >= 4).count();
+        analysis.put("bombCount", bombCount);
+
+        // 统计花色分布
+        Map<String, Integer> suitDistribution = new LinkedHashMap<>();
+        suitDistribution.put("方块", 0);
+        suitDistribution.put("梅花", 0);
+        suitDistribution.put("红桃", 0);
+        suitDistribution.put("黑桃", 0);
+        int jokerCount = 0;
+
+        for (int cardId : handCards) {
+            if (cardId >= 104) {
+                jokerCount++;
+            } else {
+                int suit = getSuit(cardId);
+                if (suit >= 0 && suit <= 3) {
+                    suitDistribution.put(SUITS[suit], suitDistribution.get(SUITS[suit]) + 1);
+                }
+            }
+        }
+        analysis.put("suitDistribution", suitDistribution);
+        analysis.put("jokerCount", jokerCount);
+
+        return analysis;
+    }
+
+    /**
+     * 将手牌按花色和点数排序（掼蛋常用排序：先按花色，再按点数）
+     * @param cardIds 卡牌ID列表
+     * @param levelCardRank 级牌点数（用于级牌优先）
+     * @return 排序后的卡牌ID列表
+     */
+    public static List<Integer> sortHandCards(List<Integer> cardIds, int levelCardRank) {
+        if (cardIds == null) return new ArrayList<>();
+        List<Integer> sorted = new ArrayList<>(cardIds);
+        sorted.sort((a, b) -> {
+            // 级牌优先排在前面
+            boolean aIsLevel = isLevelCard(a, levelCardRank);
+            boolean bIsLevel = isLevelCard(b, levelCardRank);
+            if (aIsLevel && !bIsLevel) return -1;
+            if (!aIsLevel && bIsLevel) return 1;
+
+            // 逢人配（红桃级牌）最优先
+            boolean aIsWild = isWildCard(a, levelCardRank);
+            boolean bIsWild = isWildCard(b, levelCardRank);
+            if (aIsWild && !bIsWild) return -1;
+            if (!aIsWild && bIsWild) return 1;
+
+            // 按点数从大到小
+            int rankA = getGameLevel(a, levelCardRank);
+            int rankB = getGameLevel(b, levelCardRank);
+            if (rankA != rankB) return rankB - rankA;
+
+            // 同点数按花色
+            return getSuit(a) - getSuit(b);
+        });
+        return sorted;
+    }
+
+    /**
+     * 批量转换卡牌ID列表为可读字符串列表
+     * @param cardIds 卡牌ID列表
+     * @return 字符串列表
+     */
+    public static List<String> idsToStringList(List<Integer> cardIds) {
+        if (cardIds == null) return new ArrayList<>();
+        List<String> result = new ArrayList<>();
+        for (int id : cardIds) {
+            result.add(idToString(id));
+        }
+        return result;
     }
 }
