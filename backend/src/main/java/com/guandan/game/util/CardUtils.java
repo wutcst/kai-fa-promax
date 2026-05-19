@@ -11,25 +11,6 @@ import java.util.Map;
  *
  * 将卡牌ID (0-107) 转换为可读字符串，用于调试
  * 卡牌ID范围：0-107 (两副牌，每副54张)
- *
- * ── Phase 3 阶段标记 ──────────────────────────────────────
- * 所属阶段：Phase 3 —— 游戏开局与牌型规则
- * 关联文件：GameRoom.java, GameLogicService.java, GameReferee.java
- * 职责说明：卡牌 ID 与可读字符串的相互转换，以及牌型识别核心逻辑
- *           是牌型规则引擎的基础工具类
- * 核心方法：
- *   - getCardType(List, int): 识别牌型（单张/对子/三张/顺子/三带二/钢板/同花顺/炸弹）
- *   - getCardValue(List): 获取牌值用于比较大小
- *   - isWildCard(int, int): 判断逢人配（红桃级牌）
- *   - getGameLevel(int, int): 获取卡牌等级（大小王 > 级牌 > 普通牌）
- * 牌型规则：
- *   - 炸弹：4张及以上同点数
- *   - 顺子：5张及以上连续点数（不含大小王和2）
- *   - 三带二：5张牌，一个点数出现3次，另一个出现2次
- *   - 钢板：6张牌，两个连续点数各出现3次
- *   - 同花顺：5张同花色的顺子
- *   - 逢人配：红桃级牌，可作为任意牌使用
- * ─────────────────────────────────────────────────────────
  */
 public class CardUtils {
 
@@ -105,7 +86,7 @@ public class CardUtils {
         }
         return result;
     }
-
+    
     /**
      * 获取点数名称
      * @param rankIndex 点数索引 (0-12对应3-A, 13-14对应小王/大王)
@@ -339,7 +320,7 @@ public class CardUtils {
         }
 
         // 三带二应该有两个不同的点数，一个出现3次，一个出现2次
-        return rankCount.size() == 2 &&
+        return rankCount.size() == 2 && 
                rankCount.values().stream().anyMatch(count -> count == 3) &&
                rankCount.values().stream().anyMatch(count -> count == 2);
     }

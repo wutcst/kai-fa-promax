@@ -25,41 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * 负责游戏房间管理、发牌、出牌验证等核心逻辑
  * 注意：这里的房间管理是内存级别的（用于游戏进行中）
  * 数据库层面的房间管理由成员B的 RoomService 负责
- *
- * ── Phase 3 阶段标记 ──────────────────────────────────────
- * 所属阶段：Phase 3 —— 游戏开局与牌型规则
- * 关联文件：GameRoom.java, CardUtils.java, GameReferee.java, GameAlgorithm.java
- * 职责说明：GameLogicService 是 Phase 3 的核心服务类，统筹游戏全流程：
- *           1. 游戏开局（joinRoom → startGame → 洗牌发牌）
- *           2. 出牌验证（playCards → GameReferee.canBeat → CardUtils 牌型识别）
- *           3. 回合推进（nextTurn → AI 自动出牌 → 清空桌面检测）
- *           4. 游戏结算（checkGameEnd → 排名计算 → 升级判定 → 保存记录）
- * 关键流程：
- *   - startGame: 不足 4 人时自动补 AI → 生成 108 张牌 → 洗牌 → 每人 27 张 → 发牌记录
- *   - playCards: 回合检查 → 跳过处理 → 牌型合法性 → 管牌判断 → 移除手牌 → 头游判定
- *   - checkGameEnd: 3 人出完牌结束 → 计算队伍排名 → 按掼蛋规则升级 → 更新数据库
- * ─────────────────────────────────────────────────────────
- *
- * ## 回归验证点
- * - [TC-GAME-001] startGame 创建房间 + 自动补 AI → 房间达到 4 人
- * - [TC-GAME-002] startGame 洗牌发牌 → 每人 27 张，共 108 张
- * - [TC-GAME-003] playCards 当前玩家回合出牌 → 牌型合法且能管住上一手 → 移除手牌成功
- * - [TC-GAME-004] playCards 非当前玩家出牌 → 返回 false
- * - [TC-GAME-005] playCards 出空（跳过）→ 连续跳过计数增加
- * - [TC-GAME-006] playCards 牌型不合法 → 返回 false
- * - [TC-GAME-007] playCards 管不住上一手牌 → 返回 false
- * - [TC-GAME-008] playCards 手牌中不包含指定的卡牌 → 返回 false
- * - [TC-GAME-009] 连续 3 人跳过 → 清空桌面，恢复出牌权
- * - [TC-GAME-010] 第一个出完牌的玩家记录为头游 → firstFinishPlayerId 正确设置
- * - [TC-GAME-011] checkGameEnd 3 人出完 → 游戏结算，计算升级级数
- * - [TC-GAME-012] checkGameEnd A 队头游+二游 → 升 3 级
- * - [TC-GAME-013] checkGameEnd A 队头游+三游 → 升 2 级
- * - [TC-GAME-014] checkGameEnd A 队头游+末游 → 升 1 级
- * - [TC-GAME-015] checkGameEnd B 队头游+二游 → 升 3 级
- * - [TC-GAME-016] checkGameEnd 升级后级牌更新 → 数据库 levelTeamA/levelTeamB 更新
- * - [TC-GAME-017] getPlayerRank 排名映射正确 → 头游1/二游2/三游3/末游4
- * - [TC-GAME-018] removePlayer 断开连接 → 数据库和内存均移除，剩余无人时房间状态置为 FINISHED
- * - [TC-GAME-019] 接风规则 → 头游出完牌后队友接风（隔一位）
  */
 @Slf4j
 @Service
