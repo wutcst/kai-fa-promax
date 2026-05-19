@@ -56,4 +56,22 @@ public class Room {
     /** 当前在线人数（非数据库字段，运行时计算） */
     @TableField(exist = false)
     private Integer userCount;
+
+    /** 玩家数量 */
+    @TableField(exist = false)
+    private Integer playerCount;
+
+    /** 初始化级别默认值为2（掼蛋起始级别） */
+    public void initLevels() {
+        this.levelTeamA = 2;
+        this.levelTeamB = 2;
+    }
+
+    public boolean isFull() {
+        return playerCount != null && playerCount >= 4;
+    }
+
+    public boolean isWaiting() {
+        return status != null && status == 0;
+    }
 }
