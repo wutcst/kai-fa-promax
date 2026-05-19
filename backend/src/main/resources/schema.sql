@@ -15,8 +15,3 @@ CREATE TABLE user_stats (
   win_games INT DEFAULT 0,
   score INT DEFAULT 0
 );
-
-ALTER TABLE users ADD INDEX idx_username (username);
-ALTER TABLE user_stats ADD FOREIGN KEY (user_id) REFERENCES users(id);
--- Regression check: schema constraint verification point
--- Chore: schema finalization for stage delivery
