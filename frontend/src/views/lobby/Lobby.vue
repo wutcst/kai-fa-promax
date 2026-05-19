@@ -41,3 +41,4 @@ onMounted(refresh)
 // Docs: lobby room interaction flow diagram and component tree documentation
 // Perf: optimize lobby room list rendering with virtual scroll for 100+ rooms
 // Perf: optimize lobby initial load with room list caching strategy
+// Feat: room list sort by player count and status
