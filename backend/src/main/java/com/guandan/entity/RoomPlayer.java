@@ -44,4 +44,9 @@ public class RoomPlayer {
     /** 最后更新时间 */
     @TableField("update_time")
     private LocalDateTime updateTime;
+
+    /** 是否为空座位 */
+    public boolean isEmptySeat() {
+        return userId == null;
+    }
 }
