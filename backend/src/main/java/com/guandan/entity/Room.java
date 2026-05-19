@@ -6,6 +6,9 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 房间实体
  *
@@ -61,17 +64,205 @@ public class Room {
     @TableField(exist = false)
     private Integer playerCount;
 
+    /** 房间内玩家列表（非数据库字段） */
+    @TableField(exist = false)
+    private List<RoomPlayer> players = new ArrayList<>();
+
+    /** 房间号正则：6位数字 */
+    public static final String ROOM_NO_REGEX = "^\\d{6}$";
+
+    /** 最大玩家数 */
+    public static final int MAX_PLAYERS = 4;
+
+    /** 状态枚举值 */
+    public static final int STATUS_WAITING = 0;
+    public static final int STATUS_PLAYING = 1;
+    public static final int STATUS_ENDED = 2;
+
     /** 初始化级别默认值为2（掼蛋起始级别） */
     public void initLevels() {
         this.levelTeamA = 2;
         this.levelTeamB = 2;
     }
 
-    public boolean isFull() {
-        return playerCount != null && playerCount >= 4;
+    /** 校验房间号格式 */
+    public boolean isValidRoomNo() {
+        return roomNo != null && roomNo.matches(ROOM_NO_REGEX);
     }
 
-    public boolean isWaiting() {
-        return status != null && status == 0;
+    /** 校验房间状态值是否合法 */
+    public boolean isValidStatus() {
+        return status != null && status >= STATUS_WAITING && status <= STATUS_ENDED;
     }
+
+    /** 房间是否已满 */
+    public boolean isFull() {
+        return playerCount != null && playerCount >= MAX_PLAYERS;
+    }
+
+    /** 房间是否在等待中 */
+    public boolean isWaiting() {
+        return status != null && status == STATUS_WAITING;
+    }
+
+    /** 房间是否游戏中 */
+    public boolean isPlaying() {
+        return status != null && status == STATUS_PLAYING;
+    }
+
+    /** 房间是否已结束 */
+    public boolean isEnded() {
+        return status != null && status == STATUS_ENDED;
+    }
+
+    /** 房间是否可加入：等待中且未满员 */
+    public boolean isJoinable() {
+        return isWaiting() && !isFull();
+    }
+
+    /** 房间是否可开始：有至少2名玩家且房主已准备 */
+    public boolean isStartable() {
+        return isWaiting() && playerCount != null && playerCount >= 2;
+    }
+
+    /** 切换到游戏中状态 */
+    public boolean startGame() {
+        if (!isWaiting()) {
+            return false;
+        }
+        this.status = STATUS_PLAYING;
+        return true;
+    }
+
+    /** 切换到结束状态 */
+    public boolean endGame() {
+        if (status == null || status == STATUS_ENDED) {
+            return false;
+        }
+        this.status = STATUS_ENDED;
+        return true;
+    }
+
+    /** 重置为等待状态 */
+    public boolean resetToWaiting() {
+        if (status == null) {
+            return false;
+        }
+        this.status = STATUS_WAITING;
+        this.levelTeamA = 2;
+        this.levelTeamB = 2;
+        this.currentTrumpSuit = null;
+        this.nextTributeState = null;
+        return true;
+    }
+
+    /** 判断房间号是否被占用（重复校验） */
+    public boolean isDuplicateRoomNo() {
+        return roomNo != null && id == null;
+    }
+
+    /** 获取指定用户在房间中的玩家记录 */
+    public RoomPlayer findPlayerByUserId(Long userId) {
+        if (userId == null || players == null) {
+            return null;
+        }
+        return players.stream()
+                .filter(p -> userId.equals(p.getUserId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /** 获取已占用的座位号列表 */
+    public List<Integer> getOccupiedSeats() {
+        List<Integer> seats = new ArrayList<>();
+        if (players == null) {
+            return seats;
+        }
+        for (RoomPlayer player : players) {
+            if (player.getSeatIndex() != null && !player.isEmptySeat()) {
+                seats.add(player.getSeatIndex());
+            }
+        }
+        return seats;
+    }
+
+    /** 查找最小可用座位号 */
+    public Integer findAvailableSeat() {
+        List<Integer> occupied = getOccupiedSeats();
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+            if (!occupied.contains(i)) {
+                return i;
+            }
+        }
+        return null;
+    }
+
+    /** 是否为房主 */
+    public boolean isCreator(Long userId) {
+        return creatorId != null && creatorId.equals(userId);
+    }
+
+    /** A队玩家数量 */
+    public int getTeamACount() {
+        if (players == null) return 0;
+        return (int) players.stream().filter(p -> !p.isEmptySeat() && isTeamA(p.getSeatIndex())).count();
+    }
+
+    /** B队玩家数量 */
+    public int getTeamBCount() {
+        if (players == null) return 0;
+        return (int) players.stream().filter(p -> !p.isEmptySeat() && !isTeamA(p.getSeatIndex())).count();
+    }
+
+    /** 根据座位号判断所属队伍：座位0和2为A队，1和3为B队 */
+    public static boolean isTeamA(Integer seatIndex) {
+        return seatIndex != null && seatIndex % 2 == 0;
+    }
+
+    /** 校验房间配置JSON格式 */
+    public boolean isValidConfig() {
+        return config == null || config.trim().startsWith("{");
+    }
+
+    /** 所有玩家是否都已准备 */
+    public boolean isAllPlayersReady(List<RoomPlayer> roomPlayers) {
+        if (roomPlayers == null || roomPlayers.isEmpty()) {
+            return false;
+        }
+        return roomPlayers.stream()
+                .filter(p -> !p.isEmptySeat())
+                .allMatch(RoomPlayer::isReady);
+    }
+
+    /** 更新当前主牌花色 */
+    public void updateTrumpSuit(String suit) {
+        if (suit != null && !suit.trim().isEmpty()) {
+            this.currentTrumpSuit = suit;
+        }
+    }
+
+    /** 更新进贡状态 */
+    public void updateTributeState(String state) {
+        if (state != null) {
+            this.nextTributeState = state;
+        }
+    }
+
+    /** 获取当前在线玩家数量 */
+    public int getOnlineCount() {
+        if (players == null) return 0;
+        return (int) players.stream().filter(p -> !p.isEmptySeat()).count();
+    }
+
+    /** 格式化房间状态为可读字符串 */
+    public String getStatusDisplay() {
+        if (status == null) return "未知";
+        switch (status) {
+            case STATUS_WAITING: return "等待中";
+            case STATUS_PLAYING: return "游戏中";
+            case STATUS_ENDED: return "已结束";
+            default: return "未知";
+        }
+    }
+
 }
