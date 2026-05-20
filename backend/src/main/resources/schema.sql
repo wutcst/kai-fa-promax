@@ -17,3 +17,4 @@ CREATE TABLE user_stats (
 );
 -- Room schema: unique constraints and default states
 -- Fix: add NOT NULL constraints to critical columns
+-- Refactor: reorganize DDL statements with clear sections
