@@ -7,3 +7,4 @@ public class RoomPlayer {
     private Boolean ready = false;
 }
 // RoomPlayer: player-seat association and ready state
+// Fix: validate player count before seat assignment

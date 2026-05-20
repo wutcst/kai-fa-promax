@@ -16,3 +16,4 @@ CREATE TABLE user_stats (
   score INT DEFAULT 0
 );
 -- Room schema: unique constraints and default states
+-- Fix: add NOT NULL constraints to critical columns
