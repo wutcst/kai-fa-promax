@@ -16,7 +16,9 @@
               <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" maxlength="10" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" class="login-btn" @click="handleLogin">登录游戏</el-button>
+              <el-button type="primary" class="login-btn" @click="handleLogin">
+      <el-icon style="margin-right: 4px;"><User /></el-icon>登录游戏
+    </el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -131,6 +133,7 @@ const handleRegister = () => {
 </script>
 
 <style scoped>
+/* ── 页面布局 ── */
 .login-page {
   width: 100vw;
   height: 100vh;
@@ -142,6 +145,14 @@ const handleRegister = () => {
   background: url('@/assets/images/bg.jpg') no-repeat center center;
   background-size: cover;
   position: relative;
+}
+
+.login-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(60, 30, 10, 0.15) 100%);
+  pointer-events: none;
 }
 
 .title-banner {
@@ -165,6 +176,7 @@ const handleRegister = () => {
   font-weight: bold;
 }
 
+/* ── 登录卡片 ── */
 .login-container {
   width: 440px;
   background: linear-gradient(180deg, #f1dfbd 0%, #dabc88 100%);
@@ -174,6 +186,11 @@ const handleRegister = () => {
   box-shadow: 0 10px 30px rgba(75, 44, 14, 0.3);
   position: relative;
   z-index: 2;
+  transition: box-shadow 0.3s ease;
+}
+
+.login-container:hover {
+  box-shadow: 0 12px 40px rgba(75, 44, 14, 0.4);
 }
 
 .login-tabs {
@@ -184,6 +201,12 @@ const handleRegister = () => {
   font-size: 16px;
   font-weight: bold;
   color: #6b4a2c;
+  transition: color 0.25s ease, background 0.25s ease;
+}
+
+:deep(.el-tabs__item:hover) {
+  color: #7a3f16;
+  background: rgba(184, 121, 52, 0.06);
 }
 
 :deep(.el-tabs__item.is-active) {
@@ -199,6 +222,38 @@ const handleRegister = () => {
   color: #5a3518;
 }
 
+/* ── 输入框聚焦和悬停样式增强 ── */
+:deep(.el-input__wrapper) {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+}
+
+:deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #b87934 inset, 0 2px 6px rgba(184, 121, 52, 0.12) !important;
+  background: #fffcf3 !important;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px #b87934 inset, 0 0 0 3px rgba(184, 121, 52, 0.18), 0 2px 8px rgba(184, 121, 52, 0.1) !important;
+  background: #fffef9 !important;
+}
+
+:deep(.el-input__inner) {
+  transition: color 0.25s ease;
+}
+
+:deep(.el-input__inner:focus) {
+  color: #3a1f0e;
+}
+
+:deep(.el-form-item.is-error .el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #f56c6c inset, 0 2px 6px rgba(245, 108, 108, 0.1) !important;
+}
+
+:deep(.el-form-item.is-error .el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px #f56c6c inset, 0 0 0 3px rgba(245, 108, 108, 0.15) !important;
+}
+
+/* ── 按钮聚焦和悬停样式 ── */
 .login-btn {
   width: 100%;
   padding: 12px 0;
@@ -209,6 +264,41 @@ const handleRegister = () => {
   border: 1px solid rgba(255, 236, 183, 0.78);
   letter-spacing: 2px;
   margin-top: 8px;
+  transition: all 0.3s ease, transform 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transition: left 0.5s ease;
+}
+
+.login-btn:hover::after {
+  left: 100%;
+}
+
+.login-btn:hover {
+  background: linear-gradient(180deg, #e1a64d 0%, #c77b27 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(185, 111, 29, 0.3);
+}
+
+.login-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(185, 111, 29, 0.3), 0 4px 12px rgba(185, 111, 29, 0.2);
+}
+
+.login-btn:active {
+  transform: translateY(0);
+  background: linear-gradient(180deg, #a86012 0%, #8d4d0e 100%);
+  box-shadow: 0 2px 6px rgba(185, 111, 29, 0.2);
 }
 
 .register-btn {
@@ -221,6 +311,61 @@ const handleRegister = () => {
   border: 1px solid rgba(255, 236, 183, 0.78);
   letter-spacing: 2px;
   margin-top: 8px;
+  transition: all 0.3s ease, transform 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.register-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  transition: left 0.5s ease;
+}
+
+.register-btn:hover::after {
+  left: 100%;
+}
+
+.register-btn:hover {
+  background: linear-gradient(180deg, #9b6b40 0%, #7b4c26 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(109, 66, 31, 0.3);
+}
+
+.register-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(109, 66, 31, 0.3), 0 4px 12px rgba(109, 66, 31, 0.2);
+}
+
+.register-btn:active {
+  transform: translateY(0);
+  background: linear-gradient(180deg, #5d3517 0%, #4d2b12 100%);
+  box-shadow: 0 2px 6px rgba(109, 66, 31, 0.2);
+}
+
+/* ── Tab 过渡动画 ── */
+:deep(.el-tabs__content) {
+  transition: opacity 0.2s ease;
+}
+
+.login-fade-enter-active,
+.login-fade-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.login-fade-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.login-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 </style>
 
