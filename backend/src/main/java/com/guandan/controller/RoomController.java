@@ -3,6 +3,7 @@ package com.guandan.controller;
 import com.guandan.common.Result;
 import com.guandan.dto.JoinRoomRequest;
 import com.guandan.dto.NewGameRequest;
+import com.guandan.dto.LeaveRoomRequest;
 import com.guandan.entity.Room;
 import com.guandan.entity.RoomPlayer;
 import com.guandan.service.AuthService;
@@ -162,11 +163,54 @@ public class RoomController {
                 return Result.success(null);
             }
 
-            // 设置玩家数量
             Integer playerCount = roomService.getPlayerCount(room.getId());
             room.setPlayerCount(playerCount);
 
             return Result.success(room);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 离开房间
+     *
+     * POST /api/room/leave
+     *
+     * @param token   用户认证Token
+     * @param request 离开请求
+     * @return 操作结果
+     */
+    @PostMapping("/room/leave")
+    public Result<String> leaveRoom(
+            @RequestHeader("Authorization") String token,
+            @Valid @RequestBody LeaveRoomRequest request) {
+        try {
+            Long userId = getUserIdFromToken(token);
+            if (userId == null) {
+                return Result.error("用户未登录或Token已过期");
+            }
+            roomService.leaveRoom(roomService.getRoomByRoomNo(request.getRoomNo()).getId(), userId);
+            return Result.success("退出房间成功");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取房间详情
+     *
+     * GET /api/room/detail/{roomNo}
+     */
+    @GetMapping("/room/detail/{roomNo}")
+    public Result<Room> getRoomDetail(@PathVariable String roomNo) {
+        try {
+            Room room = roomService.getRoomByRoomNo(roomNo);
+            if (room == null) {
+                return Result.error("房间不存在");
+            }
+            Room detail = roomService.getRoomDetail(room.getId());
+            return Result.success(detail);
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }

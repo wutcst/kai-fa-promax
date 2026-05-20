@@ -203,6 +203,100 @@ public class RoomService {
         return roomMapper.selectById(roomPlayer.getRoomId());
     }
 
+    /**
+     * 检查用户是否在指定房间中
+     */
+    public boolean isUserInRoom(Long userId, Long roomId) {
+        if (userId == null || roomId == null) return false;
+        QueryWrapper<RoomPlayer> query = new QueryWrapper<>();
+        query.eq("user_id", userId);
+        query.eq("room_id", roomId);
+        return roomPlayerMapper.selectCount(query) > 0;
+    }
+
+    /**
+     * 检查用户是否已在某个房间中（跨房间防重复）
+     */
+    public boolean isUserInAnyRoom(Long userId) {
+        if (userId == null) return false;
+        QueryWrapper<RoomPlayer> query = new QueryWrapper<>();
+        query.eq("user_id", userId);
+        return roomPlayerMapper.selectCount(query) > 0;
+    }
+
+    /**
+     * 获取用户在房间中的记录
+     */
+    public RoomPlayer getRoomPlayer(Long roomId, Long userId) {
+        if (roomId == null || userId == null) return null;
+        QueryWrapper<RoomPlayer> query = new QueryWrapper<>();
+        query.eq("room_id", roomId);
+        query.eq("user_id", userId);
+        return roomPlayerMapper.selectOne(query);
+    }
+
+    /**
+     * 获取房间详情（含玩家列表）
+     */
+    public Room getRoomDetail(Long roomId) {
+        if (roomId == null) return null;
+        Room room = roomMapper.selectById(roomId);
+        if (room == null) return null;
+        List<RoomPlayer> players = getRoomPlayers(roomId);
+        room.setPlayers(players);
+        room.setPlayerCount(players.size());
+        room.setUserCount(players.size());
+        return room;
+    }
+
+    /**
+     * 用户离开房间
+     */
+    public void leaveRoom(Long roomId, Long userId) {
+        if (roomId == null || userId == null) return;
+        QueryWrapper<RoomPlayer> query = new QueryWrapper<>();
+        query.eq("room_id", roomId);
+        query.eq("user_id", userId);
+        roomPlayerMapper.delete(query);
+        log.info("用户 {} 离开房间 {}", userId, roomId);
+
+        int remaining = getPlayerCount(roomId);
+        if (remaining == 0) {
+            roomMapper.deleteById(roomId);
+            log.info("房间 {} 无玩家，自动删除", roomId);
+        }
+    }
+
+    /**
+     * 踢出玩家（房主操作）
+     */
+    public boolean kickPlayer(Long roomId, Long operatorId, Long targetUserId) {
+        Room room = roomMapper.selectById(roomId);
+        if (room == null || !room.getCreatorId().equals(operatorId)) {
+            return false;
+        }
+        if (operatorId.equals(targetUserId)) return false;
+        QueryWrapper<RoomPlayer> query = new QueryWrapper<>();
+        query.eq("room_id", roomId);
+        query.eq("user_id", targetUserId);
+        int affected = roomPlayerMapper.delete(query);
+        log.info("用户 {} 被房主 {} 踢出房间 {}", targetUserId, operatorId, roomId);
+        return affected > 0;
+    }
+
+    /**
+     * 转移房主
+     */
+    public boolean transferCreator(Long roomId, Long currentCreatorId, Long newCreatorId) {
+        Room room = roomMapper.selectById(roomId);
+        if (room == null || !room.getCreatorId().equals(currentCreatorId)) return false;
+        if (!isUserInRoom(newCreatorId, roomId)) return false;
+        room.setCreatorId(newCreatorId);
+        roomMapper.updateById(room);
+        log.info("房主转移：房间 {}，从 {} 到 {}", roomId, currentCreatorId, newCreatorId);
+        return true;
+    }
+
     private String generateRoomNo() {
         Random random = new Random();
         int roomNo = 100000 + random.nextInt(900000);
