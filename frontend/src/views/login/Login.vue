@@ -56,3 +56,4 @@ const handleLogin = async () => {
 // Test: manual test case - form validation on empty submit
 // Docs: component usage guide for Login page props and events
 // Test: manual checklist - login page all validation scenarios
+// Style: login form input focus and hover ring effects
