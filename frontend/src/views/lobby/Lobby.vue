@@ -62,28 +62,87 @@
     </div>
 
     <!-- 创建房间对话框 -->
-    <el-dialog v-model="showCreateDialog" title="创建房间" width="400px">
-      <el-form :model="createForm">
-        <el-form-item label="房间名称">
-          <el-input v-model="createForm.roomName" placeholder="输入房间名称（选填）" />
+    <el-dialog v-model="showCreateDialog" title="创建房间" width="420px" :close-on-click-modal="false" @close="resetCreateForm">
+      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="80px" @submit.prevent>
+        <el-form-item label="房间名称" prop="roomName">
+          <el-input
+              v-model="createForm.roomName"
+              placeholder="输入房间名称（2-20个字符）"
+              maxlength="20"
+              show-word-limit
+              :disabled="creating"
+          />
+        </el-form-item>
+        <el-form-item label="房间密码" prop="password">
+          <el-input
+              v-model="createForm.password"
+              placeholder="选填，设置后需密码加入"
+              maxlength="8"
+              show-password
+              :disabled="creating"
+          />
+        </el-form-item>
+        <el-form-item label="游戏局数" prop="maxRounds">
+          <el-radio-group v-model="createForm.maxRounds" :disabled="creating">
+            <el-radio :value="8">8局</el-radio>
+            <el-radio :value="12">12局</el-radio>
+            <el-radio :value="16">16局</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="createError" class="form-error-item">
+          <div class="form-error-message">
+            <el-icon><WarningFilled /></el-icon>
+            <span>{{ createError }}</span>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleCreateRoom" :loading="creating">确认创建</el-button>
+        <div class="dialog-footer">
+          <el-button @click="showCreateDialog = false" :disabled="creating" :loading="creating">
+            取消
+          </el-button>
+          <el-button type="primary" @click="handleCreateRoom" :loading="creating" :disabled="creating">
+            {{ creating ? '创建中...' : '确认创建' }}
+          </el-button>
+        </div>
       </template>
     </el-dialog>
 
     <!-- 加入房间对话框 -->
-    <el-dialog v-model="showJoinDialog" title="加入房间" width="400px">
-      <el-form :model="joinForm">
-        <el-form-item label="房间号">
-          <el-input v-model="joinForm.roomNo" placeholder="输入6位房间号" maxlength="6" />
+    <el-dialog v-model="showJoinDialog" title="加入房间" width="400px" :close-on-click-modal="false" @close="resetJoinForm">
+      <el-form ref="joinFormRef" :model="joinForm" :rules="joinRules" label-width="80px" @submit.prevent>
+        <el-form-item label="房间号" prop="roomNo">
+          <el-input
+              v-model="joinForm.roomNo"
+              placeholder="输入6位房间号"
+              maxlength="6"
+              show-word-limit
+              :disabled="joining"
+          />
+        </el-form-item>
+        <el-form-item v-if="joinForm.needPassword" label="房间密码" prop="password">
+          <el-input
+              v-model="joinForm.password"
+              placeholder="请输入房间密码"
+              maxlength="8"
+              show-password
+              :disabled="joining"
+          />
+        </el-form-item>
+        <el-form-item v-if="joinError" class="form-error-item">
+          <div class="form-error-message">
+            <el-icon><WarningFilled /></el-icon>
+            <span>{{ joinError }}</span>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showJoinDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleJoinRoom" :loading="joining">确认加入</el-button>
+        <div class="dialog-footer">
+          <el-button @click="showJoinDialog = false" :disabled="joining">取消</el-button>
+          <el-button type="primary" @click="handleJoinRoom" :loading="joining" :disabled="joining">
+            {{ joining ? '加入中...' : '确认加入' }}
+          </el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -93,6 +152,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { WarningFilled } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const nickname = ref(localStorage.getItem('nickname') || '玩家')
@@ -117,8 +177,12 @@ const showCreateDialog = ref(false)
 const showJoinDialog = ref(false)
 const creating = ref(false)
 const joining = ref(false)
-const createForm = ref({ roomName: '' })
-const joinForm = ref({ roomNo: '' })
+const createFormRef = ref(null)
+const joinFormRef = ref(null)
+const createForm = ref({ roomName: '', password: '', maxRounds: 12 })
+const joinForm = ref({ roomNo: '', password: '', needPassword: false })
+const createError = ref('')
+const joinError = ref('')
 const sortBy = ref('default')
 const sortAsc = ref(true)
 
@@ -128,6 +192,35 @@ const applySorting = () => {
 
 const toggleSortDirection = () => {
   sortAsc.value = !sortAsc.value
+}
+
+const createRules = {
+  roomName: [
+    { required: true, message: '请输入房间名称', trigger: 'blur' },
+    { min: 2, max: 20, message: '房间名称为2-20个字符', trigger: 'blur' }
+  ],
+  password: [
+    { pattern: /^$|^\d{4,8}$/, message: '密码为4-8位数字（留空则不设密码）', trigger: 'blur' }
+  ]
+}
+
+const joinRules = {
+  roomNo: [
+    { required: true, message: '请输入房间号', trigger: 'blur' },
+    { pattern: /^\d{6}$/, message: '房间号为6位数字', trigger: 'blur' }
+  ]
+}
+
+const resetCreateForm = () => {
+  createForm.value = { roomName: '', password: '', maxRounds: 12 }
+  createError.value = ''
+  if (createFormRef.value) createFormRef.value.resetFields()
+}
+
+const resetJoinForm = () => {
+  joinForm.value = { roomNo: '', password: '', needPassword: false }
+  joinError.value = ''
+  if (joinFormRef.value) joinFormRef.value.resetFields()
 }
 
 const goToPersonal = () => router.push('/personal-home')
@@ -162,6 +255,11 @@ const fetchRooms = async () => {
 }
 
 const handleCreateRoom = async () => {
+  if (!createFormRef.value) return
+  const valid = await createFormRef.value.validate().catch(() => false)
+  if (!valid) return
+
+  createError.value = ''
   creating.value = true
   try {
     // TODO: 接入真实创建房间API
@@ -171,26 +269,38 @@ const handleCreateRoom = async () => {
     await fetchRooms()
   } catch (err) {
     console.error('创建房间失败:', err)
-    ElMessage.error('创建房间失败，请稍后重试')
+    createError.value = err.response?.data?.message || '创建房间失败，请稍后重试'
   } finally {
     creating.value = false
   }
 }
 
 const handleJoinRoom = async () => {
-  if (!joinForm.value.roomNo || joinForm.value.roomNo.length < 6) {
-    ElMessage.warning('请输入正确的6位房间号')
-    return
-  }
+  if (!joinFormRef.value) return
+  const valid = await joinFormRef.value.validate().catch(() => false)
+  if (!valid) return
+
+  joinError.value = ''
   joining.value = true
   try {
     // TODO: 接入真实加入房间API
+    if (joinForm.value.needPassword && !joinForm.value.password) {
+      joinError.value = '该房间需要密码，请输入'
+      joining.value = false
+      return
+    }
     ElMessage.success(`已加入房间 ${joinForm.value.roomNo}`)
     showJoinDialog.value = false
     joinForm.value.roomNo = ''
+    joinForm.value.password = ''
   } catch (err) {
     console.error('加入房间失败:', err)
-    ElMessage.error('加入房间失败，请检查房间号是否正确')
+    if (err.response?.status === 403) {
+      joinForm.value.needPassword = true
+      joinError.value = '该房间需要密码才能加入'
+    } else {
+      joinError.value = err.response?.data?.message || '加入房间失败，请检查房间号是否正确'
+    }
   } finally {
     joining.value = false
   }
@@ -292,6 +402,28 @@ onMounted(() => {
 }
 .error-state p {
   margin-bottom: 12px;
+}
+.form-error-item {
+  margin-bottom: 0 !important;
+}
+.form-error-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #e74c3c;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: #fef0f0;
+  border-radius: 4px;
+  width: 100%;
+}
+.form-error-message .el-icon {
+  font-size: 16px;
+}
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style>
 
