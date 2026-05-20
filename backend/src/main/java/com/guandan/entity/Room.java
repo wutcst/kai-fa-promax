@@ -127,7 +127,15 @@ public class Room {
 
     /** 切换到游戏中状态 */
     public boolean startGame() {
-        if (!isWaiting()) {
+        if (status == null || !isWaiting()) {
+            return false;
+        }
+        // 空状态保护：校验房间是否有足够玩家准备
+        if (players == null || players.isEmpty()) {
+            return false;
+        }
+        long readyCount = players.stream().filter(p -> p != null && !p.isEmptySeat() && p.isReady()).count();
+        if (readyCount < 2) {
             return false;
         }
         this.status = STATUS_PLAYING;
@@ -148,6 +156,9 @@ public class Room {
         if (status == null) {
             return false;
         }
+        if (status != STATUS_ENDED && status != STATUS_PLAYING) {
+            return false;
+        }
         this.status = STATUS_WAITING;
         this.levelTeamA = 2;
         this.levelTeamB = 2;
@@ -156,9 +167,51 @@ public class Room {
         return true;
     }
 
+    /** 状态转换校验：检查从 from 到 to 是否合法 */
+    public static boolean isStateTransitionValid(Integer from, Integer to) {
+        if (from == null || to == null) return false;
+        // WAITING -> PLAYING 或 PLAYING -> ENDED 或 ENDED -> WAITING
+        if (from == STATUS_WAITING && to == STATUS_PLAYING) return true;
+        if (from == STATUS_PLAYING && to == STATUS_ENDED) return true;
+        if (from == STATUS_ENDED && to == STATUS_WAITING) return true;
+        return false;
+    }
+
+    /** 校验房间所有必填字段 */
+    public List<String> validateRequiredFields() {
+        List<String> errors = new ArrayList<>();
+        if (roomNo == null || roomNo.trim().isEmpty()) {
+            errors.add("房间号不能为空");
+        }
+        if (status == null) {
+            errors.add("房间状态不能为空");
+        }
+        if (creatorId == null) {
+            errors.add("创建者ID不能为空");
+        }
+        return errors;
+    }
+
     /** 判断房间号是否被占用（重复校验） */
     public boolean isDuplicateRoomNo() {
         return roomNo != null && id == null;
+    }
+
+    /** 空安全：获取级别值 */
+    public int getLevelTeamASafe() {
+        return levelTeamA != null ? levelTeamA : 2;
+    }
+
+    /** 空安全：获取级别值 */
+    public int getLevelTeamBSafe() {
+        return levelTeamB != null ? levelTeamB : 2;
+    }
+
+    /** 比较两个房间的状态一致性 */
+    public boolean isStatusConsistentWith(Room other) {
+        if (other == null) return false;
+        if (this.status == null || other.status == null) return false;
+        return this.status.equals(other.status);
     }
 
     /** 获取指定用户在房间中的玩家记录 */
@@ -205,13 +258,51 @@ public class Room {
     /** A队玩家数量 */
     public int getTeamACount() {
         if (players == null) return 0;
-        return (int) players.stream().filter(p -> !p.isEmptySeat() && isTeamA(p.getSeatIndex())).count();
+        return (int) players.stream()
+                .filter(p -> p != null && !p.isEmptySeat() && p.getSeatIndex() != null && isTeamA(p.getSeatIndex()))
+                .count();
     }
 
     /** B队玩家数量 */
     public int getTeamBCount() {
         if (players == null) return 0;
-        return (int) players.stream().filter(p -> !p.isEmptySeat() && !isTeamA(p.getSeatIndex())).count();
+        return (int) players.stream()
+                .filter(p -> p != null && !p.isEmptySeat() && p.getSeatIndex() != null && !isTeamA(p.getSeatIndex()))
+                .count();
+    }
+
+    /** 获取队伍所有玩家ID */
+    public List<Long> getTeamAPlayerIds() {
+        if (players == null) return new ArrayList<>();
+        return players.stream()
+                .filter(p -> p != null && !p.isEmptySeat() && p.getSeatIndex() != null && isTeamA(p.getSeatIndex()))
+                .map(RoomPlayer::getUserId)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /** 获取队伍所有玩家ID */
+    public List<Long> getTeamBPlayerIds() {
+        if (players == null) return new ArrayList<>();
+        return players.stream()
+                .filter(p -> p != null && !p.isEmptySeat() && p.getSeatIndex() != null && !isTeamA(p.getSeatIndex()))
+                .map(RoomPlayer::getUserId)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /** 检查某用户是否在A队 */
+    public boolean isUserInTeamA(Long userId) {
+        if (userId == null || players == null) return false;
+        return players.stream()
+                .filter(p -> p != null && !p.isEmptySeat())
+                .anyMatch(p -> userId.equals(p.getUserId()) && p.getSeatIndex() != null && p.getSeatIndex() % 2 == 0);
+    }
+
+    /** 检查某用户是否在B队 */
+    public boolean isUserInTeamB(Long userId) {
+        if (userId == null || players == null) return false;
+        return players.stream()
+                .filter(p -> p != null && !p.isEmptySeat())
+                .anyMatch(p -> userId.equals(p.getUserId()) && p.getSeatIndex() != null && p.getSeatIndex() % 2 == 1);
     }
 
     /** 根据座位号判断所属队伍：座位0和2为A队，1和3为B队 */

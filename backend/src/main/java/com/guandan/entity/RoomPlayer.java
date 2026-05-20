@@ -7,6 +7,8 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 房间玩家关联实体
@@ -77,16 +79,23 @@ public class RoomPlayer {
     /** 标记为已准备 */
     public void markReady() {
         this.isReady = READY_YES;
+        this.updateTime = LocalDateTime.now();
     }
 
     /** 标记为未准备 */
     public void markUnready() {
         this.isReady = READY_NO;
+        this.cardCount = 0;
+        this.updateTime = LocalDateTime.now();
     }
 
     /** 切换准备状态 */
     public void toggleReady() {
-        this.isReady = (isReady != null && isReady == READY_YES) ? READY_NO : READY_YES;
+        if (isReady != null && isReady == READY_YES) {
+            markUnready();
+        } else {
+            markReady();
+        }
     }
 
     /** 校验roomId是否存在 */
@@ -124,24 +133,28 @@ public class RoomPlayer {
         return id == null && userId != null && roomId != null;
     }
 
-    /** 更新最近活跃时间 */
-    public void touchUpdateTime() {
-        this.updateTime = LocalDateTime.now();
+    /** 校验字段一致性：userId是否与预期匹配 */
+    public boolean isUserIdConsistentWith(Long expectedUserId) {
+        if (expectedUserId == null || this.userId == null) return false;
+        return this.userId.equals(expectedUserId);
     }
 
-    /** 设置初始状态：未准备、手牌数为0 */
-    public void initPlayerState() {
-        this.isReady = READY_NO;
-        this.cardCount = 0;
-        this.updateTime = LocalDateTime.now();
+    /** 校验准备状态值是否合法 */
+    public boolean isValidReadyState() {
+        return isReady != null && (isReady == READY_NO || isReady == READY_YES);
     }
 
-    /** 重置玩家为离开状态 */
-    public void clearForLeave() {
-        this.seatIndex = null;
-        this.isReady = READY_NO;
-        this.cardCount = 0;
-        this.updateTime = LocalDateTime.now();
+    /** 校验字段间依赖约束 */
+    public List<String> validateDataIntegrity() {
+        List<String> violations = new ArrayList<>();
+        if (roomId == null) violations.add("房间ID不能为空");
+        if (seatIndex == null) violations.add("座位号不能为空");
+        if (cardCount == null) violations.add("手牌数不能为空");
+        if (isReady == null) violations.add("准备状态不能为空");
+        if (!isValidSeatIndex()) violations.add("座位号无效：" + seatIndex);
+        if (cardCount != null && (cardCount < 0 || cardCount > 27))
+            violations.add("手牌数超范围：" + cardCount);
+        return violations;
     }
 
     /** 校验房间中座位号是否重复 */
