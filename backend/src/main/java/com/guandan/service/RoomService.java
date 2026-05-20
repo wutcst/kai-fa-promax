@@ -32,3 +32,4 @@ public class RoomService {
         rooms.get(roomNo).ready(userId, ready);
     }
 }
+// Service: room code generation with collision retry logic

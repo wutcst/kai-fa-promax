@@ -17,3 +17,4 @@ public class JoinRoomRequest {
     @Pattern(regexp = "^\\d{6}$", message = "房间号必须是6位数字")
     private String roomNo;
 }
+// DTO: validation annotations for join room request

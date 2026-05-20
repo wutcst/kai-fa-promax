@@ -30,3 +30,4 @@ public class RoomController {
         return Result.ok(roomService.waitingRooms());
     }
 }
+// Controller: POST /rooms and POST /rooms/join endpoints
