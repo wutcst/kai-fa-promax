@@ -61,9 +61,16 @@
       </div>
     </div>
 
-    <!-- 创建房间对话框 -->
-    <el-dialog v-model="showCreateDialog" title="创建房间" width="420px" :close-on-click-modal="false" @close="resetCreateForm">
-      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="80px" @submit.prevent>
+    <!-- 创建房间对话框（多步表单） -->
+    <el-dialog v-model="showCreateDialog" title="创建房间" width="460px" :close-on-click-modal="false" @close="resetCreateForm" @open="onCreateDialogOpen">
+      <el-steps :active="createStep" align-center finish-status="success" class="create-steps">
+        <el-step title="基本信息" />
+        <el-step title="房间设置" />
+        <el-step title="确认创建" />
+      </el-steps>
+
+      <!-- 步骤1：基本信息 -->
+      <el-form v-show="createStep === 0" ref="createFormRef" :model="createForm" :rules="createRules" label-width="90px" @submit.prevent>
         <el-form-item label="房间名称" prop="roomName">
           <el-input
               v-model="createForm.roomName"
@@ -71,37 +78,109 @@
               maxlength="20"
               show-word-limit
               :disabled="creating"
+              @input="onRoomNameInput"
           />
+          <div v-if="roomNameChecking" class="field-checking">
+            <el-icon class="is-loading"><Loading /></el-icon> 检查可用性...
+          </div>
+          <div v-else-if="roomNameCheckResult === 'ok'" class="field-valid">
+            <el-icon><CircleCheck /></el-icon> 名称可用
+          </div>
+          <div v-else-if="roomNameCheckResult === 'taken'" class="field-invalid">
+            <el-icon><WarningFilled /></el-icon> 名称已被占用
+          </div>
         </el-form-item>
-        <el-form-item label="房间密码" prop="password">
+        <el-form-item label="房间类型" prop="roomType">
+          <el-radio-group v-model="createForm.roomType">
+            <el-radio-button value="public">
+              <el-icon><User /></el-icon> 公开
+            </el-radio-button>
+            <el-radio-button value="private">
+              <el-icon><Lock /></el-icon> 私密
+            </el-radio-button>
+            <el-radio-button value="ai">
+              <el-icon><Cpu /></el-icon> 人机
+            </el-radio-button>
+          </el-radio-group>
+          <div class="room-type-desc">
+            {{ createForm.roomType === 'public' ? '所有玩家可见，可自由加入' : createForm.roomType === 'private' ? '仅受邀玩家可加入，需密码' : '与AI机器人对战，练习模式' }}
+          </div>
+        </el-form-item>
+      </el-form>
+
+      <!-- 步骤2：房间设置 -->
+      <el-form v-show="createStep === 1" :model="createForm" label-width="90px">
+        <el-form-item label="游戏局数">
+          <el-radio-group v-model="createForm.maxRounds" :disabled="creating">
+            <el-radio :value="8">
+              <span>8局</span>
+              <span class="radio-desc">快速</span>
+            </el-radio>
+            <el-radio :value="12">
+              <span>12局</span>
+              <span class="radio-desc">标准</span>
+            </el-radio>
+            <el-radio :value="16">
+              <span>16局</span>
+              <span class="radio-desc">完整</span>
+            </el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="房间密码" prop="password" v-if="createForm.roomType === 'private'">
           <el-input
               v-model="createForm.password"
-              placeholder="选填，设置后需密码加入"
+              placeholder="请输入4-8位数字密码"
               maxlength="8"
               show-password
               :disabled="creating"
           />
         </el-form-item>
-        <el-form-item label="游戏局数" prop="maxRounds">
-          <el-radio-group v-model="createForm.maxRounds" :disabled="creating">
-            <el-radio :value="8">8局</el-radio>
-            <el-radio :value="12">12局</el-radio>
-            <el-radio :value="16">16局</el-radio>
+        <el-form-item label="队伍分配">
+          <el-radio-group v-model="createForm.teamMode" :disabled="creating">
+            <el-radio value="random">随机分配</el-radio>
+            <el-radio value="manual">手动分配</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item v-if="createError" class="form-error-item">
-          <div class="form-error-message">
-            <el-icon><WarningFilled /></el-icon>
-            <span>{{ createError }}</span>
-          </div>
+        <el-form-item label="观战模式">
+          <el-switch v-model="createForm.allowSpectate" :disabled="creating" active-text="允许观战" />
         </el-form-item>
       </el-form>
+
+      <!-- 步骤3：确认 -->
+      <div v-show="createStep === 2" class="confirm-step">
+        <el-descriptions :column="1" border size="small">
+          <el-descriptions-item label="房间名称">{{ createForm.roomName }}</el-descriptions-item>
+          <el-descriptions-item label="房间类型">
+            <el-tag :type="createForm.roomType === 'public' ? 'success' : createForm.roomType === 'private' ? 'warning' : 'info'" size="small">
+              {{ createForm.roomType === 'public' ? '公开' : createForm.roomType === 'private' ? '私密' : '人机' }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="游戏局数">{{ createForm.maxRounds }}局</el-descriptions-item>
+          <el-descriptions-item v-if="createForm.roomType === 'private'" label="房间密码">{{ createForm.password }}</el-descriptions-item>
+          <el-descriptions-item label="队伍分配">{{ createForm.teamMode === 'random' ? '随机分配' : '手动分配' }}</el-descriptions-item>
+          <el-descriptions-item label="观战模式">{{ createForm.allowSpectate ? '允许' : '禁止' }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+
+      <el-form-item v-if="createError" class="form-error-item">
+        <div class="form-error-message">
+          <el-icon><WarningFilled /></el-icon>
+          <span>{{ createError }}</span>
+        </div>
+      </el-form-item>
+
       <template #footer>
         <div class="dialog-footer">
+          <el-button v-if="createStep > 0" @click="prevCreateStep" :disabled="creating" :loading="creating">
+            上一步
+          </el-button>
           <el-button @click="showCreateDialog = false" :disabled="creating" :loading="creating">
             取消
           </el-button>
-          <el-button type="primary" @click="handleCreateRoom" :loading="creating" :disabled="creating">
+          <el-button v-if="createStep < 2" type="primary" @click="nextCreateStep" :disabled="creating">
+            下一步
+          </el-button>
+          <el-button v-else type="primary" @click="handleCreateRoom" :loading="creating" :disabled="creating">
             {{ creating ? '创建中...' : '确认创建' }}
           </el-button>
         </div>
@@ -152,7 +231,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { WarningFilled } from '@element-plus/icons-vue'
+import { WarningFilled, CircleCheck, Loading, User, Lock, Cpu } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const nickname = ref(localStorage.getItem('nickname') || '玩家')
@@ -179,10 +258,13 @@ const creating = ref(false)
 const joining = ref(false)
 const createFormRef = ref(null)
 const joinFormRef = ref(null)
-const createForm = ref({ roomName: '', password: '', maxRounds: 12 })
+const createForm = ref({ roomName: '', password: '', maxRounds: 12, roomType: 'public', teamMode: 'random', allowSpectate: true })
 const joinForm = ref({ roomNo: '', password: '', needPassword: false })
 const createError = ref('')
 const joinError = ref('')
+const createStep = ref(0)
+const roomNameChecking = ref(false)
+const roomNameCheckResult = ref(null) // null | 'ok' | 'taken'
 const sortBy = ref('default')
 const sortAsc = ref(true)
 
@@ -212,8 +294,11 @@ const joinRules = {
 }
 
 const resetCreateForm = () => {
-  createForm.value = { roomName: '', password: '', maxRounds: 12 }
+  createForm.value = { roomName: '', password: '', maxRounds: 12, roomType: 'public', teamMode: 'random', allowSpectate: true }
   createError.value = ''
+  createStep.value = 0
+  roomNameCheckResult.value = null
+  roomNameChecking.value = false
   if (createFormRef.value) createFormRef.value.resetFields()
 }
 
@@ -221,6 +306,28 @@ const resetJoinForm = () => {
   joinForm.value = { roomNo: '', password: '', needPassword: false }
   joinError.value = ''
   if (joinFormRef.value) joinFormRef.value.resetFields()
+}
+
+const onCreateDialogOpen = () => {
+  createStep.value = 0
+  roomNameCheckResult.value = null
+}
+
+const onRoomNameInput = () => {
+  roomNameCheckResult.value = null
+}
+
+const nextCreateStep = async () => {
+  if (createStep.value === 0) {
+    if (!createFormRef.value) return
+    const valid = await createFormRef.value.validate().catch(() => false)
+    if (!valid) return
+  }
+  createStep.value++
+}
+
+const prevCreateStep = () => {
+  if (createStep.value > 0) createStep.value--
 }
 
 const goToPersonal = () => router.push('/personal-home')
@@ -425,6 +532,36 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 10px;
 }
+.create-steps {
+  margin-bottom: 25px;
+  padding: 10px 0;
+}
+.radio-desc {
+  font-size: 11px;
+  color: #999;
+  margin-left: 4px;
+}
+.room-type-desc {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+  padding-left: 4px;
+}
+.confirm-step {
+  padding: 10px 0;
+}
+.field-checking,
+.field-valid,
+.field-invalid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.field-checking { color: #909399; }
+.field-valid { color: #67c23a; }
+.field-invalid { color: #e74c3c; }
 </style>
 
 <!--
