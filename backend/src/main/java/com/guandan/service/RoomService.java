@@ -77,13 +77,31 @@ public class RoomService {
      * 加入房间（重复校验、满员校验、状态校验）
      */
     public RoomPlayer joinRoom(String roomNo, Long userId) {
+        // 参数空值校验
+        if (roomNo == null || roomNo.trim().isEmpty()) {
+            throw new IllegalArgumentException("房间号不能为空");
+        }
+        if (userId == null) {
+            throw new IllegalArgumentException("用户ID不能为空");
+        }
+
         Room room = getRoomByRoomNo(roomNo);
         if (room == null) {
             throw new IllegalArgumentException("房间不存在");
         }
 
-        if (room.getStatus() != 0) {
-            throw new IllegalArgumentException("房间当前不可加入（状态：" + room.getStatus() + "）");
+        // 房间号一致性校验
+        if (!roomNo.equals(room.getRoomNo())) {
+            throw new IllegalArgumentException("房间号不匹配");
+        }
+
+        // 房间状态校验
+        Integer status = room.getStatus();
+        if (status == null) {
+            throw new IllegalArgumentException("房间状态异常");
+        }
+        if (status != 0) {
+            throw new IllegalArgumentException("房间当前不可加入（状态：" + status + "）");
         }
 
         int currentCount = getPlayerCount(room.getId());

@@ -69,6 +69,10 @@ CREATE TABLE IF NOT EXISTS room (
     INDEX idx_room_no (room_no),
     INDEX idx_creator (creator_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='房间表';
+-- 房间状态 CHECK 约束：仅允许 0（等待）、1（游戏中）、2（结束）
+ALTER TABLE room ADD CONSTRAINT IF NOT EXISTS chk_room_status CHECK (status IN (0, 1, 2));
+-- 房间号格式 CHECK 约束：6位数字
+ALTER TABLE room ADD CONSTRAINT IF NOT EXISTS chk_room_no_format CHECK (room_no REGEXP '^[0-9]{6}$');
 
 -- 房间玩家关联表
 -- 每个房间最多4名玩家，座位号0-3，同一用户不可重复加入同房间
@@ -83,6 +87,13 @@ CREATE TABLE IF NOT EXISTS room_player (
     UNIQUE KEY uk_room_user (room_id, user_id),
     INDEX idx_room_id (room_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='房间玩家表';
+-- 座位号 CHECK：只能在 0-3 范围内
+ALTER TABLE room_player ADD CONSTRAINT IF NOT EXISTS chk_seat_index CHECK (seat_index >= 0 AND seat_index <= 3);
+-- 准备状态 CHECK：仅允许 0 或 1
+ALTER TABLE room_player ADD CONSTRAINT IF NOT EXISTS chk_is_ready CHECK (is_ready IN (0, 1));
+-- 手牌数 CHECK：0-27
+ALTER TABLE room_player ADD CONSTRAINT IF NOT EXISTS chk_card_count CHECK (card_count >= 0 AND card_count <= 27);
+-- room_id + user_id 唯一约束已在 DDL 中定义
 
 -- 游戏记录表
 -- 记录每局游戏的概要信息
