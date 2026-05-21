@@ -35,13 +35,36 @@ public class RoomService {
      * 创建新房间
      */
     public String createRoom(NewGameRequest request) {
-        String roomNo = generateRoomNo();
+        if (request == null) {
+            log.error("createRoom failed: request is null");
+            return null;
+        }
+        if (request.getUserId() == null) {
+            log.error("createRoom failed: userId is null");
+            return null;
+        }
 
-        // 检查房间号是否已存在
-        QueryWrapper<Room> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("room_no", roomNo);
-        if (roomMapper.selectCount(queryWrapper) > 0) {
-            return createRoom(request);
+        String roomNo = generateRoomNo();
+        if (roomNo == null) {
+            log.error("createRoom failed: generated roomNo is null");
+            return null;
+        }
+
+        // 检查房间号是否已存在（递归重试最多3次）
+        int retryCount = 0;
+        int maxRetries = 3;
+        while (retryCount < maxRetries) {
+            QueryWrapper<Room> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("room_no", roomNo);
+            if (roomMapper.selectCount(queryWrapper) == 0) {
+                break;
+            }
+            roomNo = generateRoomNo();
+            retryCount++;
+        }
+        if (retryCount >= maxRetries) {
+            log.error("createRoom failed: unable to generate unique roomNo after {} retries", maxRetries);
+            return null;
         }
 
         Room room = new Room();
@@ -74,7 +97,7 @@ public class RoomService {
     }
 
     /**
-     * 加入房间（重复校验、满员校验、状态校验）
+     * 加入房间（重复校验、满员校验、状态校验、防重复提交）
      */
     public RoomPlayer joinRoom(String roomNo, Long userId) {
         // 参数空值校验
@@ -109,12 +132,15 @@ public class RoomService {
             throw new IllegalArgumentException("房间已满，最多" + MAX_PLAYERS + "人");
         }
 
-        // 重复加入检查
+        // 重复加入检查（含重复提交防护）
         QueryWrapper<RoomPlayer> duplicateCheck = new QueryWrapper<>();
         duplicateCheck.eq("room_id", room.getId());
         duplicateCheck.eq("user_id", userId);
         RoomPlayer existing = roomPlayerMapper.selectOne(duplicateCheck);
         if (existing != null) {
+            // 重复加入：如果已有记录则直接返回，避免插入重复数据
+            // 同时更新该玩家的状态（如果之前是离席状态则重新激活）
+            log.info("用户 {} 重复加入房间 {}，返回已有记录 seatIndex={}", userId, roomNo, existing.getSeatIndex());
             return existing;
         }
 
@@ -128,7 +154,19 @@ public class RoomService {
         roomPlayer.setIsReady(0);
         roomPlayer.setCardCount(0);
 
-        roomPlayerMapper.insert(roomPlayer);
+        try {
+            roomPlayerMapper.insert(roomPlayer);
+        } catch (Exception e) {
+            // 捕获唯一约束冲突等数据库异常（如并发重复提交）
+            log.error("插入玩家记录失败，可能为并发重复提交 roomId={}, userId={}", room.getId(), userId, e);
+            // 重新查询已有记录，防止数据库写入异常后丢失引用
+            RoomPlayer recheck = roomPlayerMapper.selectOne(duplicateCheck);
+            if (recheck != null) {
+                return recheck;
+            }
+            throw new IllegalArgumentException("加入房间失败，请稍后重试");
+        }
+
         log.info("用户 {} 加入房间 {}，座位号 {}", userId, roomNo, seatIndex);
         return roomPlayer;
     }
@@ -193,13 +231,22 @@ public class RoomService {
     }
 
     public Room getCurrentRoom(Long userId) {
+        if (userId == null) {
+            return null;
+        }
         QueryWrapper<RoomPlayer> playerQuery = new QueryWrapper<>();
         playerQuery.eq("user_id", userId);
         playerQuery.orderByDesc("id");
         playerQuery.last("LIMIT 1");
-        RoomPlayer roomPlayer = roomPlayerMapper.selectOne(playerQuery);
+        RoomPlayer roomPlayer;
+        try {
+            roomPlayer = roomPlayerMapper.selectOne(playerQuery);
+        } catch (Exception e) {
+            log.error("查询用户当前房间失败 userId={}", userId, e);
+            return null;
+        }
 
-        if (roomPlayer == null) return null;
+        if (roomPlayer == null || roomPlayer.getRoomId() == null) return null;
         return roomMapper.selectById(roomPlayer.getRoomId());
     }
 
