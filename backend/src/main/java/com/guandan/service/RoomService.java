@@ -236,6 +236,16 @@ public class RoomService {
     }
 
     /**
+     * 更新玩家准备状态
+     */
+    public void updatePlayerReadyStatus(Long playerId, Integer isReady) {
+        RoomPlayer roomPlayer = new RoomPlayer();
+        roomPlayer.setId(playerId);
+        roomPlayer.setIsReady(isReady);
+        roomPlayerMapper.updateById(roomPlayer);
+    }
+
+    /**
      * 获取房间详情（含玩家列表）
      */
     public Room getRoomDetail(Long roomId) {
