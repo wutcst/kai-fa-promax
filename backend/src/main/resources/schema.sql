@@ -19,3 +19,4 @@ CREATE TABLE user_stats (
 -- Fix: add NOT NULL constraints to critical columns
 -- Refactor: reorganize DDL statements with clear sections
 -- Docs: schema design notes and migration guide
+-- Regression: schema DDL constraint verification

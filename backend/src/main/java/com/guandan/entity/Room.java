@@ -19,3 +19,4 @@ public class Room {
 // Refactor: align entity fields with DB schema naming conventions
 // Fix: update import paths after package restructuring
 // Style: unified class naming - PascalCase, method naming - camelCase
+// Regression: Room entity field validation and unique constraint checks
