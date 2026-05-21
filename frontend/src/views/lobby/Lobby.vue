@@ -10,9 +10,9 @@
     </header>
 
     <div class="room-actions">
-      <el-button type="primary" @click="showCreateDialog = true">创建房间</el-button>
-      <el-button @click="showJoinDialog = true">加入房间</el-button>
-      <el-button type="success" @click="quickMatch">快速匹配</el-button>
+      <el-button type="primary" @click="showCreateDialog = true" :disabled="creating">创建房间</el-button>
+      <el-button @click="showJoinDialog = true" :disabled="joining">加入房间</el-button>
+      <el-button type="success" @click="quickMatch" :disabled="matching">快速匹配</el-button>
     </div>
 
     <div class="room-list">
@@ -256,6 +256,7 @@ const showCreateDialog = ref(false)
 const showJoinDialog = ref(false)
 const creating = ref(false)
 const joining = ref(false)
+const matching = ref(false)
 const createFormRef = ref(null)
 const joinFormRef = ref(null)
 const createForm = ref({ roomName: '', password: '', maxRounds: 12, roomType: 'public', teamMode: 'random', allowSpectate: true })
@@ -341,12 +342,67 @@ const handleLogout = () => {
   router.push('/login')
 }
 
-const quickMatch = () => {
-  ElMessage.info('正在匹配中...')
+const quickMatch = async () => {
+  if (matching.value) return // 防重复提交
+  matching.value = true
+  try {
+    ElMessage.info('正在匹配中...')
+    // 模拟匹配请求耗时
+    await new Promise(resolve => setTimeout(resolve, 1000))
+  } catch (err) {
+    console.error('快速匹配失败:', err)
+    ElMessage.error('匹配失败，请重试')
+  } finally {
+    matching.value = false
+  }
 }
 
 const joinRoom = (roomNo) => {
+  if (joining.value) return // 防重复提交
   ElMessage.info(`加入房间 ${roomNo}`)
+}
+
+/** 创建房间提交流程（防重复提交） */
+const handleCreateRoom = async () => {
+  if (creating.value) return
+  // 表单校验在 nextCreateStep 中已经完成，确认创建时直接提交
+  creating.value = true
+  createError.value = ''
+  try {
+    // 模拟创建房间API调用
+    await new Promise(resolve => setTimeout(resolve, 800))
+    const roomNo = String(100000 + Math.floor(Math.random() * 900000))
+    ElMessage.success(`房间创建成功，房间号：${roomNo}`)
+    showCreateDialog.value = false
+    await fetchRooms()
+  } catch (err) {
+    console.error('创建房间失败:', err)
+    createError.value = '创建房间失败，请稍后重试'
+  } finally {
+    creating.value = false
+  }
+}
+
+/** 加入房间提交流程（防重复提交） */
+const handleJoinRoom = async () => {
+  if (joining.value) return
+  const joinFormRefVal = joinFormRef.value
+  if (!joinFormRefVal) return
+  const valid = await joinFormRefVal.validate().catch(() => false)
+  if (!valid) return
+  joining.value = true
+  joinError.value = ''
+  try {
+    // 模拟加入房间API调用
+    await new Promise(resolve => setTimeout(resolve, 600))
+    ElMessage.success(`成功加入房间 ${joinForm.value.roomNo}`)
+    showJoinDialog.value = false
+  } catch (err) {
+    console.error('加入房间失败:', err)
+    joinError.value = '加入房间失败，请检查房间号'
+  } finally {
+    joining.value = false
+  }
 }
 
 const fetchRooms = async () => {
