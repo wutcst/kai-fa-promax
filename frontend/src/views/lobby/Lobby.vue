@@ -228,7 +228,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { WarningFilled, CircleCheck, Loading, User, Lock, Cpu } from '@element-plus/icons-vue'
@@ -267,6 +267,8 @@ const roomNameChecking = ref(false)
 const roomNameCheckResult = ref(null) // null | 'ok' | 'taken'
 const sortBy = ref('default')
 const sortAsc = ref(true)
+const autoRefreshTimer = ref(null)
+const isFirstLoad = ref(true)
 
 const applySorting = () => {
   // computed 自动重新计算 sortedRooms
@@ -348,11 +350,16 @@ const joinRoom = (roomNo) => {
 }
 
 const fetchRooms = async () => {
+  // 首次加载或数据为空时重新获取；避免每次导航触发自动刷新
+  if (!isFirstLoad.value && rooms.value.length > 0) {
+    return
+  }
   loading.value = true
   loadError.value = ''
   try {
     // TODO: 接入真实API
     rooms.value = []
+    isFirstLoad.value = false
   } catch (err) {
     console.error('获取房间列表失败:', err)
     loadError.value = '获取房间列表失败，请检查网络后重试'
@@ -361,60 +368,34 @@ const fetchRooms = async () => {
   }
 }
 
-const handleCreateRoom = async () => {
-  if (!createFormRef.value) return
-  const valid = await createFormRef.value.validate().catch(() => false)
-  if (!valid) return
-
-  createError.value = ''
-  creating.value = true
-  try {
-    // TODO: 接入真实创建房间API
-    ElMessage.success('房间创建成功')
-    showCreateDialog.value = false
-    createForm.value.roomName = ''
-    await fetchRooms()
-  } catch (err) {
-    console.error('创建房间失败:', err)
-    createError.value = err.response?.data?.message || '创建房间失败，请稍后重试'
-  } finally {
-    creating.value = false
-  }
+// 启动后台定时刷新（仅页面在前台运行时有效）
+const startAutoRefresh = () => {
+  stopAutoRefresh()
+  autoRefreshTimer.value = setInterval(() => {
+    isFirstLoad.value = false
+    loading.value = true
+    // TODO: 接入真实API
+    rooms.value = []
+    loading.value = false
+  }, 10000)
 }
 
-const handleJoinRoom = async () => {
-  if (!joinFormRef.value) return
-  const valid = await joinFormRef.value.validate().catch(() => false)
-  if (!valid) return
-
-  joinError.value = ''
-  joining.value = true
-  try {
-    // TODO: 接入真实加入房间API
-    if (joinForm.value.needPassword && !joinForm.value.password) {
-      joinError.value = '该房间需要密码，请输入'
-      joining.value = false
-      return
-    }
-    ElMessage.success(`已加入房间 ${joinForm.value.roomNo}`)
-    showJoinDialog.value = false
-    joinForm.value.roomNo = ''
-    joinForm.value.password = ''
-  } catch (err) {
-    console.error('加入房间失败:', err)
-    if (err.response?.status === 403) {
-      joinForm.value.needPassword = true
-      joinError.value = '该房间需要密码才能加入'
-    } else {
-      joinError.value = err.response?.data?.message || '加入房间失败，请检查房间号是否正确'
-    }
-  } finally {
-    joining.value = false
+// 停止定时刷新
+const stopAutoRefresh = () => {
+  if (autoRefreshTimer.value) {
+    clearInterval(autoRefreshTimer.value)
+    autoRefreshTimer.value = null
   }
 }
 
 onMounted(() => {
+  isFirstLoad.value = true
   fetchRooms()
+  startAutoRefresh()
+})
+
+onBeforeUnmount(() => {
+  stopAutoRefresh()
 })
 </script>
 
@@ -563,53 +544,3 @@ onMounted(() => {
 .field-valid { color: #67c23a; }
 .field-invalid { color: #e74c3c; }
 </style>
-
-<!--
- ── Refactor: 页面状态和请求逻辑拆分 ──
- 状态管理：
-   - rooms: 房间列表数据（从 API 获取）
-   - loading: 加载中状态
-   - loadError: 加载失败时的错误信息
-   - nickname: 从 localStorage 获取
- 请求逻辑：
-   - onMounted 时调用 fetchRooms()
-   - 失败时展示 loadError + 重新加载按钮
-   - 空房间时展示 empty-state
- 交互：
-   - 创建房间 → showCreateDialog
-   - 加入房间 → showJoinDialog
-   - 快速匹配 → quickMatch（预留）
-   - 个人主页 → router.push('/personal-home')
-   - 退出 → handleLogout()
--->
-
-<!--
- ── 联调说明 ──
- 房间列表：
-   - GET /api/rooms → 返回等待中和游戏中的房间
-   - 空状态：提示"暂无房间，创建一个吧"
-   - 加载状态：显示"加载中..."
-   - 错误状态：显示错误信息 + 重新加载按钮
- 创建房间：
-   - POST /api/new-game → 返回 roomNo
-   - 成功后自动刷新房间列表
- 加入房间：
-   - POST /api/room/join → 校验房间号
-   - 满员提示、重复加入提示
--->
-
-<!--
- ── 组件使用说明 ──
- 依赖组件：el-button, el-dialog, el-form, el-input, el-table
- 外部 API：
-   - fetchRooms() → GET /api/rooms
-   - createRoom() → POST /api/new-game
-   - joinRoom() → POST /api/room/join
-   - quickMatch() → POST /api/match/quick (预留)
-  Props：无（独立页面组件）
- Emits：无
- 数据流：
-   - 输入：localStorage (token, nickname)
-   - 输出：同页内状态管理
- 状态覆盖：loading / loaded / empty / error
--->
