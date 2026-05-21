@@ -8,3 +8,4 @@
 ## Test: Regression verification for Phase 2 API endpoints
 ## Docs: Test result summary and reproduction guide
 ## Chore: CI action run history and fix log
+## Phase 2 Room API: POST /rooms/create, POST /rooms/join, GET /rooms/{code}
