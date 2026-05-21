@@ -403,3 +403,374 @@ ws://localhost:8081/ws/game/{playerId}
 |------|------|----------|
 | v1.1.0 | 2026-05-17 | 文档与阶段提升版本对齐，补充健康检查说明，增加 Release Notes 和演示说明 |
 | v1.0.0 | 2026-01-16 | 初始 API 文档 |
+
+---
+
+## Phase 2 补充内容
+
+### 7. 房间管理增强（Phase 2）
+
+#### 7.1 创建房间（Phase 2 增强版）
+
+```
+POST /api/new-game
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**请求参数（JSON Body）：**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| isPrivate | Boolean | 否 | 是否私人房间（默认 false） |
+| config | String | 否 | 房间配置 JSON 字符串 |
+
+**响应数据：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| roomNo | String | 6 位房间号 |
+| message | String | 操作提示信息 |
+
+**异常场景：**
+- 400: 用户已在其他房间中（status=0）
+- 401: Token 过期或无效
+- 500: 房间号生成冲突（自动重试）
+
+#### 7.2 获取可用房间列表（Phase 2 增强版）
+
+```
+GET /api/rooms
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**响应数据（List）：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 房间ID |
+| roomNo | String | 6 位房间号 |
+| status | Integer | 房间状态（0=等待中，1=游戏中） |
+| creatorId | Long | 房主用户ID |
+| isPrivate | Boolean | 是否私人房间 |
+| levelTeamA | Integer | A 队当前级数 |
+| levelTeamB | Integer | B 队当前级数 |
+| userCount | Integer | 当前玩家数量 |
+| playerCount | Integer | 当前玩家数量（同 userCount） |
+| createTime | LocalDateTime | 创建时间 |
+
+**异常场景：**
+- 401: Token 过期或无效
+
+#### 7.3 获取用户当前房间
+
+```
+GET /api/room/current
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**响应数据：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 房间ID |
+| roomNo | String | 6 位房间号 |
+| status | Integer | 房间状态（0=等待中，1=游戏中，2=已结束） |
+| creatorId | Long | 房主用户ID |
+| playerCount | Integer | 当前玩家数量 |
+
+**异常场景：**
+- 401: Token 过期或无效
+- 无房间时返回 data=null（非异常）
+
+#### 7.4 获取房间详情（Phase 2）
+
+```
+GET /api/room/detail/{roomNo}
+```
+
+**响应数据（Room）：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | Long | 房间ID |
+| roomNo | String | 6 位房间号 |
+| status | Integer | 房间状态 |
+| creatorId | Long | 房主用户ID |
+| players | List | 玩家列表（RoomPlayer） |
+| playerCount | Integer | 玩家数量 |
+| userCount | Integer | 用户数量（同 playerCount） |
+| levelTeamA | Integer | A 队级数 |
+| levelTeamB | Integer | B 队级数 |
+
+**异常场景：**
+- 404: 房间不存在
+
+#### 7.5 离开房间（Phase 2）
+
+```
+POST /api/room/leave
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**请求参数（JSON Body）：**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| roomNo | String | 是 | 6 位房间号 |
+
+**响应数据：** String（操作结果消息）
+
+**异常场景：**
+- 400: 房间号为空
+- 401: Token 过期或无效
+- 404: 房间不存在
+
+#### 7.6 踢出玩家（Phase 2）
+
+```
+POST /api/room/kick
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**请求参数（JSON Body）：**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| roomNo | String | 是 | 6 位房间号 |
+| targetUserId | Long | 是 | 被踢玩家ID |
+
+**异常场景：**
+- 400: 房间号或目标用户ID为空
+- 403: 非房主操作
+- 403: 房主不能踢自己
+
+#### 7.7 转移房主（Phase 2）
+
+```
+POST /api/room/transfer
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**请求参数（JSON Body）：**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| roomNo | String | 是 | 6 位房间号 |
+| newCreatorId | Long | 是 | 新房主用户ID |
+
+**异常场景：**
+- 400: 参数不完整
+- 403: 非房主操作
+- 404: 新房主不在房间中
+
+### 8. 游戏控制增强（Phase 2）
+
+#### 8.1 准备/取消准备
+
+```
+POST /api/game/ready
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**请求参数（JSON Body）：**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| roomNo | String | 是 | 6 位房间号 |
+
+**响应数据：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| success | Boolean | 操作是否成功 |
+| ready | Boolean | 准备状态（true=已准备，false=已取消） |
+| roomNo | String | 房间号 |
+| message | String | 提示消息 |
+
+**异常场景：**
+- 400: 房间号为空
+- 401: Token 过期或无效
+- 404: 房间不存在
+- 400: 房间不在等待状态
+- 400: 玩家不在该房间中
+
+#### 8.2 开始游戏
+
+```
+POST /api/game/start
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**请求参数（JSON Body）：**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| roomNo | String | 是 | 6 位房间号 |
+
+**响应数据：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| success | Boolean | 操作是否成功 |
+| message | String | 提示消息 |
+| roomNo | String | 房间号 |
+
+**异常场景：**
+- 400: 房间号为空
+- 401: Token 过期或无效
+- 404: 房间不存在
+- 403: 非房主操作
+- 400: 房间不在等待状态
+- 400: 人数不足（至少需要 2 人）
+- 400: 还有玩家未准备
+
+#### 8.3 获取房间状态
+
+```
+GET /api/game/{roomNo}/status
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**响应数据：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| roomId | String | 房间ID（格式：room_{roomNo}） |
+| status | String | 房间状态（WAITING/FULL/PLAYING/FINISHED） |
+| playerCount | Integer | 当前玩家数量 |
+| maxPlayers | Integer | 最大玩家数量（4） |
+| message | String | 状态提示消息 |
+| seatIndex | Integer | 自己的座位号 |
+| isCreator | Boolean | 是否为房主 |
+| allReady | Boolean | 是否全部准备就绪 |
+
+**异常场景：**
+- 401: Token 过期或无效
+- 404: 房间不存在
+
+#### 8.4 获取房主提示
+
+```
+GET /api/game/{roomNo}/host-tip
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**响应数据：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| isCreator | Boolean | 是否为房主 |
+| playerCount | Integer | 当前玩家数量 |
+| allReady | Boolean | 是否全部准备 |
+| showTip | Boolean | 是否显示提示 |
+| tipMessage | String | 提示文案 |
+| canStart | Boolean | 是否可以开始游戏 |
+
+**异常场景：**
+- 401: Token 过期或无效
+- 404: 房间不存在
+
+#### 8.5 获取等待页状态
+
+```
+GET /api/game/{roomNo}/waiting-status
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**响应数据：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| roomNo | String | 房间号 |
+| status | String | 房间状态（WAITING/PLAYING/FINISHED） |
+| players | List | 玩家列表（含 userId、username、seatIndex、isReady、isCreator） |
+| playerCount | Integer | 当前玩家数量 |
+| maxPlayers | Integer | 最大玩家数量（4） |
+| isCreator | Boolean | 是否为房主 |
+| allReady | Boolean | 是否全部准备 |
+| hostTip | String | 房主操作提示文案 |
+
+**异常场景：**
+- 401: Token 过期或无效
+- 404: 房间不存在
+
+### 9. 匹配服务（Phase 2）
+
+#### 9.1 加入匹配队列
+
+```
+POST /api/match/join
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**请求参数（JSON Body）：**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| mode | String | 否 | 匹配模式（默认 RANKED，可选：CASUAL） |
+
+**响应数据：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| success | Boolean | 是否加入成功 |
+| estimatedWait | Integer | 预计等待时间（秒） |
+| queueSize | Integer | 当前队列人数 |
+
+**异常场景：**
+- 400: 用户已在匹配队列中
+- 400: 用户已在房间中（不可重复加入匹配）
+
+#### 9.2 取消匹配
+
+```
+POST /api/match/cancel
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**响应数据：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| success | Boolean | 是否取消成功 |
+| message | String | 操作提示 |
+
+**异常场景：**
+- 400: 用户不在匹配队列中
+
+#### 9.3 查询匹配状态
+
+```
+GET /api/match/status
+```
+
+**请求头：** `Authorization: Bearer {token}`
+
+**响应数据：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| inQueue | Boolean | 是否在匹配队列中 |
+| estimatedWait | Integer | 预计等待时间（秒） |
+| elapsed | Integer | 已等待时间（秒） |
+| queueSize | Integer | 当前队列人数 |
+| matched | Boolean | 是否匹配成功 |
+| roomNo | String | 匹配成功后的房间号（仅 matched=true 时） |
+
+**异常场景：**
+- 401: Token 过期或无效
+- 无异常状态：用户不在队列中时返回 inQueue=false
+
