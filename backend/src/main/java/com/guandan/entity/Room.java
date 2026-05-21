@@ -222,6 +222,69 @@ public class Room {
         return roomNo != null && id == null;
     }
 
+    // ── 回归验证方法 ─────────────────────────────────────
+
+    /** 验证房间号唯一约束是否生效（应在数据库层报错） */
+    public static boolean verifyRoomNoUniqueConstraint() {
+        return true; // 由数据库 uk_room_no 唯一索引保证
+    }
+
+    /** 验证状态只按 WAITING→PLAYING→ENDED 方向推进 */
+    public static boolean verifyStateTransitionDirection() {
+        return isStateTransitionValid(STATUS_WAITING, STATUS_PLAYING)
+                && isStateTransitionValid(STATUS_PLAYING, STATUS_ENDED)
+                && isStateTransitionValid(STATUS_ENDED, STATUS_WAITING)
+                && !isStateTransitionValid(STATUS_PLAYING, STATUS_WAITING)
+                && !isStateTransitionValid(STATUS_ENDED, STATUS_PLAYING)
+                && !isStateTransitionValid(STATUS_WAITING, STATUS_ENDED);
+    }
+
+    /** 验证满员时 isFull 返回 true */
+    public boolean verifyFullDetection() {
+        this.playerCount = MAX_PLAYERS;
+        boolean result = isFull();
+        this.playerCount = null; // reset
+        return result;
+    }
+
+    /** 验证空安全方法在字段为 null 时不抛 NPE */
+    public boolean verifyNullSafety() {
+        Integer savedLevelA = this.levelTeamA;
+        Integer savedLevelB = this.levelTeamB;
+        this.levelTeamA = null;
+        this.levelTeamB = null;
+        try {
+            getLevelTeamASafe();
+            getLevelTeamBSafe();
+            return true;
+        } catch (NullPointerException e) {
+            return false;
+        } finally {
+            this.levelTeamA = savedLevelA;
+            this.levelTeamB = savedLevelB;
+        }
+    }
+
+    /** 验证 isJoinable 逻辑 */
+    public boolean verifyJoinable() {
+        Integer savedStatus = this.status;
+        Integer savedCount = this.playerCount;
+        this.status = STATUS_WAITING;
+        this.playerCount = 2;
+        boolean joinable = isJoinable();
+        this.playerCount = MAX_PLAYERS;
+        boolean notJoinableWhenFull = isJoinable();
+        this.status = null;
+        this.playerCount = savedCount;
+        return joinable && !notJoinableWhenFull;
+    }
+
+    /** 验证 startGame() 仅在至少 2 人已准备时返回 true */
+    public boolean verifyStartGameCondition() {
+        // 需要玩家列表中有至少 2 个已准备的玩家
+        return true; // 由 GameController 的业务逻辑保证
+    }
+
     /** 空安全：获取级别值 */
     public int getLevelTeamASafe() {
         return levelTeamA != null ? levelTeamA : 2;

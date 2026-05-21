@@ -206,3 +206,49 @@ CREATE TABLE IF NOT EXISTS tb_operation_log (
     INDEX idx_operation_type (operation_type),
     INDEX idx_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='操作日志表';
+
+-- ============================================================================
+-- 回归验证 SQL（Phase 2 数据一致性）
+-- ============================================================================
+--
+-- 验证点 1：room_no 唯一约束
+-- 预期：INSERT 重复 room_no 应报错 Duplicate entry
+-- SELECT COUNT(*) FROM room WHERE room_no = '重复房间号';
+--
+-- 验证点 2：状态只允许 0/1/2
+-- 预期：INSERT status=3 应报错 CHECK constraint failed
+-- INSERT INTO room (room_no, status, creator_id) VALUES ('999999', 3, 1);
+--
+-- 验证点 3：房间号格式校验
+-- 预期：INSERT room_no='abc' 应报错 CHECK constraint failed
+-- INSERT INTO room (room_no, status, creator_id) VALUES ('abcde', 0, 1);
+--
+-- 验证点 4：uk_room_user 唯一约束
+-- 预期：同一 room_id + user_id 重复插入应报错
+-- INSERT INTO room_player (room_id, user_id, seat_index) VALUES (1, 1, 0);
+-- INSERT INTO room_player (room_id, user_id, seat_index) VALUES (1, 1, 1);
+--
+-- 验证点 5：chk_seat_index 约束
+-- 预期：seat_index=5 应报错
+-- INSERT INTO room_player (room_id, user_id, seat_index) VALUES (1, 2, 5);
+--
+-- 验证点 6：chk_is_ready 约束
+-- 预期：is_ready=2 应报错
+-- INSERT INTO room_player (room_id, user_id, seat_index, is_ready) VALUES (1, 2, 1, 2);
+--
+-- 验证点 7：chk_card_count 约束
+-- 预期：card_count=99 应报错
+-- INSERT INTO room_player (room_id, user_id, seat_index, card_count) VALUES (1, 2, 1, 99);
+--
+-- 验证点 8：房间满员查询
+-- 预期：返回 count=4，判定为满员
+-- SELECT COUNT(*) FROM room_player WHERE room_id = 1;
+--
+-- 验证点 9：房间可用座位查询
+-- 预期：返回未被占用的最小座位号
+-- SELECT seat_index FROM room_player WHERE room_id = 1 ORDER BY seat_index;
+--
+-- 验证点 10：级联清理验证
+-- 预期：删除房间后对应 room_player 记录应被清理
+-- DELETE FROM room WHERE id = 1;
+-- SELECT COUNT(*) FROM room_player WHERE room_id = 1;

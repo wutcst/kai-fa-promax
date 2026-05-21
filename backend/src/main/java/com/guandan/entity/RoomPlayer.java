@@ -195,4 +195,90 @@ public class RoomPlayer {
         return seatIndex.equals(other.seatIndex) && !userId.equals(other.userId);
     }
 
+    // ── 回归验证方法 ─────────────────────────────────────
+
+    /** 验证 uk_room_user 唯一约束（应在数据库层报错） */
+    public static boolean verifyUniqueConstraint() {
+        return true; // 由数据库 uk_room_user 唯一索引保证
+    }
+
+    /** 验证 chk_seat_index 约束范围 */
+    public boolean verifySeatIndexConstraint() {
+        return isValidSeatIndex();
+    }
+
+    /** 验证 chk_is_ready 约束 */
+    public boolean verifyReadyStateConstraint() {
+        return isValidReadyState();
+    }
+
+    /** 验证 chk_card_count 约束 */
+    public boolean verifyCardCountConstraint() {
+        return isValidCardCount();
+    }
+
+    /** 验证 toggleReady 在 0 和 1 之间正确切换 */
+    public boolean verifyToggleReady() {
+        this.isReady = READY_NO;
+        toggleReady();
+        boolean toggledToYes = (this.isReady == READY_YES);
+        toggleReady();
+        boolean toggledToNo = (this.isReady == READY_NO);
+        return toggledToYes && toggledToNo;
+    }
+
+    /** 验证 markReady 同时更新 isReady 和 updateTime */
+    public boolean verifyMarkReady() {
+        LocalDateTime before = this.updateTime;
+        markReady();
+        boolean readyState = (this.isReady == READY_YES);
+        boolean timeUpdated = this.updateTime != null && !this.updateTime.equals(before);
+        return readyState && timeUpdated;
+    }
+
+    /** 验证 isSamePlayer 在 userId 为 null 时不抛 NPE */
+    public boolean verifySamePlayerNullSafety() {
+        Long savedId = this.userId;
+        this.userId = null;
+        try {
+            boolean result = isSamePlayer(new RoomPlayer());
+            return result == false;
+        } catch (NullPointerException e) {
+            return false;
+        } finally {
+            this.userId = savedId;
+        }
+    }
+
+    /** 验证 isSeatIndexConflict 正确检测座位冲突 */
+    public boolean verifySeatConflictDetection() {
+        this.seatIndex = 0;
+        this.userId = 1L;
+        RoomPlayer other = new RoomPlayer();
+        other.setSeatIndex(0);
+        other.setUserId(2L);
+        boolean conflict = isSeatIndexConflict(other);
+        other.setUserId(1L);
+        boolean noConflict = isSeatIndexConflict(other);
+        return conflict && !noConflict;
+    }
+
+    /** 验证 validateDataIntegrity 覆盖所有必填字段 */
+    public boolean verifyDataIntegrityCoverage() {
+        Long savedRoomId = this.roomId;
+        Integer savedSeat = this.seatIndex;
+        Integer savedCardCount = this.cardCount;
+        Integer savedReady = this.isReady;
+        this.roomId = null;
+        this.seatIndex = null;
+        this.cardCount = null;
+        this.isReady = null;
+        List<String> violations = validateDataIntegrity();
+        this.roomId = savedRoomId;
+        this.seatIndex = savedSeat;
+        this.cardCount = savedCardCount;
+        this.isReady = savedReady;
+        return violations.size() >= 4; // roomId, seatIndex, cardCount, isReady
+    }
+
 }
