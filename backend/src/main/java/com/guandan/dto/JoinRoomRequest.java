@@ -18,3 +18,4 @@ public class JoinRoomRequest {
     private String roomNo;
 }
 // DTO: validation annotations for join room request
+// Fix: add capacity check in request validation

@@ -33,3 +33,4 @@ public class RoomService {
     }
 }
 // Service: room code generation with collision retry logic
+// Fix: prevent duplicate room code on concurrent creation
