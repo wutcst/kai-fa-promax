@@ -42,3 +42,4 @@ onMounted(refresh)
 // Perf: optimize lobby room list rendering with virtual scroll for 100+ rooms
 // Perf: optimize lobby initial load with room list caching strategy
 // Feat: room list sort by player count and status
+// Fix: room create button disabled state during API request
