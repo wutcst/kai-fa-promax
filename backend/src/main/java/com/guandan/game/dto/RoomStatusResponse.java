@@ -14,3 +14,4 @@ public class RoomStatusResponse {
         private int seatNumber;
     }
 }
+// DTO: detailed ready status for each player slot

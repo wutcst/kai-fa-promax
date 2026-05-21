@@ -512,3 +512,4 @@ public class GameController {
         return authService.validateToken(token);
     }
 }
+// Controller: GET /game/room/{code}/status endpoint
