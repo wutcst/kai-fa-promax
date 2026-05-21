@@ -53,6 +53,77 @@
 
 import apiClient from './axiosInstance'
 
+/**
+ * 获取当前存储的 Token
+ * 优先从 sessionStorage 读取，降级到 localStorage
+ */
+export function getStoredToken() {
+  return sessionStorage.getItem('token') || localStorage.getItem('token')
+}
+
+/**
+ * 保存 Token 到两个存储层
+ * @param {string} token - JWT Token
+ * @param {boolean} rememberMe - 是否持久化保存
+ */
+export function saveToken(token, rememberMe = false) {
+  if (!token) return
+  if (rememberMe) {
+    localStorage.setItem('token', token)
+  }
+  sessionStorage.setItem('token', token)
+}
+
+/**
+ * 清除所有存储的 Token 和用户信息
+ */
+export function clearAuth() {
+  const keys = ['token', 'username', 'nickname', 'userId', 'isLogin']
+  keys.forEach(key => {
+    localStorage.removeItem(key)
+    sessionStorage.removeItem(key)
+  })
+}
+
+/**
+ * 检查 Token 是否存在
+ * @returns {boolean}
+ */
+export function hasToken() {
+  return !!getStoredToken()
+}
+
+/**
+ * 刷新 Token：调用刷新接口并用新 Token 更新存储
+ * @returns {Promise<boolean>} 刷新是否成功
+ */
+export async function refreshTokenAndStore() {
+  try {
+    const response = await apiClient.post('/user/refresh')
+    if (response.data && response.data.code === 200 && response.data.data) {
+      const newToken = response.data.data.token
+      if (newToken) {
+        saveToken(newToken, !!localStorage.getItem('token'))
+        return true
+      }
+    }
+    return false
+  } catch (error) {
+    console.error('Token 刷新失败:', error)
+    clearAuth()
+    return false
+  }
+}
+
+/**
+ * 获取认证请求头
+ * @returns {object} Authorization 头对象
+ */
+export function getAuthHeader() {
+  const token = getStoredToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export const login = (params) => {
   return apiClient.post('/login', params)
 }
@@ -62,6 +133,7 @@ export const register = (params) => {
 }
 
 export const logout = () => {
+  clearAuth()
   return apiClient.post('/user/logout')
 }
 
