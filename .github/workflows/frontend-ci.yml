@@ -17,3 +17,4 @@ jobs:
         working-directory: frontend
         run: |
           if [ -f package.json ]; then npm install && npm run build --if-present; else echo "frontend not ready"; fi
+# CI path filter: frontend/** and frontend-ci.yml
