@@ -14,3 +14,4 @@ public class Room {
 // Room entity: seat uniqueness validation and room status tracking
 // Fix: null check on room capacity and duplicate room code
 // Refactor: rename room status constants for clarity
+// Docs: API field descriptions and exception scenarios for room entity

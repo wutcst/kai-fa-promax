@@ -9,3 +9,4 @@ public class RoomPlayer {
 // RoomPlayer: player-seat association and ready state
 // Fix: validate player count before seat assignment
 // Refactor: restructure RoomPlayer fields and method names
+// Docs: RoomPlayer status lifecycle documentation
