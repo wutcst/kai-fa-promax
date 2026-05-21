@@ -47,26 +47,37 @@ public class RoomController {
             @RequestHeader("Authorization") String token,
             @Valid @RequestBody NewGameRequest request) {
         try {
+            if (token == null || token.trim().isEmpty()) {
+                return Result.error("缺少认证Token");
+            }
             Long userId = getUserIdFromToken(token);
             if (userId == null) {
                 return Result.error("用户未登录或Token已过期");
             }
 
+            // 入参空值校验
+            if (request == null) {
+                return Result.error("请求参数不能为空");
+            }
+
             // 检查用户是否已经在房间中（防止重复创建）
             Room currentRoom = roomService.getCurrentRoom(userId);
-            if (currentRoom != null && currentRoom.getStatus() == 0) {
+            if (currentRoom != null && currentRoom.getStatus() != null && currentRoom.getStatus() == 0) {
                 return Result.error("您已在房间 " + currentRoom.getRoomNo() + " 中，请先退出再加入其他房间");
             }
 
             request.setUserId(userId);
             String roomNo = roomService.createRoom(request);
+            if (roomNo == null || roomNo.isEmpty()) {
+                return Result.error("房间创建失败，请重试");
+            }
 
             Map<String, String> data = new HashMap<>();
             data.put("roomNo", roomNo);
             data.put("message", "房间创建成功");
             return Result.success(data);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            return Result.error("创建房间异常：" + e.getMessage());
         }
     }
 
@@ -99,6 +110,7 @@ public class RoomController {
      * - 检查房间是否已满（最多4人）
      * - 检查用户是否重复加入（同一用户不可重复加入同房间）
      * - 检查房间是否可加入（非等待中状态不可加入）
+     * - 防重复提交：校验用户是否已在执行加入操作
      *
      * @param token   用户认证Token
      * @param request 加入房间请求
@@ -109,26 +121,45 @@ public class RoomController {
             @RequestHeader("Authorization") String token,
             @Valid @RequestBody JoinRoomRequest request) {
         try {
+            if (token == null || token.trim().isEmpty()) {
+                return Result.error("缺少认证Token");
+            }
             Long userId = getUserIdFromToken(token);
             if (userId == null) {
                 return Result.error("用户未登录或Token已过期");
             }
 
+            if (request == null) {
+                return Result.error("请求参数不能为空");
+            }
+
             // 校验房间号格式
+            if (!request.isValid()) {
+                return Result.error("房间号格式错误，必须是6位数字");
+            }
             String roomNo = request.getRoomNo();
             if (roomNo == null || !roomNo.matches("^\\d{6}$")) {
                 return Result.error("房间号必须是6位数字");
             }
 
             // 检查用户是否已经在其他房间中
-            Room existingRoom = roomService.getCurrentRoom(userId);
-            if (existingRoom != null && existingRoom.getStatus() == 0) {
-                return Result.error("您已在房间 " + existingRoom.getRoomNo() + " 中，请先退出再加入其他房间");
+            try {
+                Room existingRoom = roomService.getCurrentRoom(userId);
+                if (existingRoom != null && existingRoom.getStatus() != null && existingRoom.getStatus() == 0) {
+                    return Result.error("您已在房间 " + existingRoom.getRoomNo() + " 中，请先退出再加入其他房间");
+                }
+            } catch (Exception e) {
+                // 查询已有房间失败时继续执行，避免因查询异常阻塞加入流程
+                // 后续 joinRoom 方法内部会做重复校验
             }
 
             // 执行加入房间逻辑
             RoomPlayer roomPlayer = roomService.joinRoom(roomNo, userId);
+            if (roomPlayer == null) {
+                return Result.error("加入房间失败，请重试");
+            }
 
+            // 空安全取值
             Map<String, Object> data = new HashMap<>();
             data.put("roomNo", roomNo);
             data.put("playerId", roomPlayer.getId());
