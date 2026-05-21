@@ -13,9 +13,8 @@ import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 游戏控制器
@@ -44,6 +43,11 @@ public class GameController {
      * 玩家准备/取消准备
      * POST /api/game/ready
      *
+     * 功能：
+     * - 切换玩家准备状态（准备→取消准备↔准备→取消准备）
+     * - 更新成功后返回当前准备状态及房间内其他玩家的准备情况
+     * - 房主无需准备，调用会自动跳过
+     *
      * 请求参数：
      * {
      *   "roomNo": "123456"
@@ -56,6 +60,9 @@ public class GameController {
      *   "data": {
      *     "success": true,
      *     "ready": true,
+     *     "readyCount": 3,
+     *     "totalPlayers": 4,
+     *     "allReady": false,
      *     "message": "准备就绪",
      *     "roomNo": "123456"
      *   }
@@ -64,6 +71,7 @@ public class GameController {
      * 异常场景：
      * - 房间不存在：返回 error 提示房间不存在
      * - 玩家不在房间中：返回 error 提示玩家不在该房间中
+     * - Token无效：返回 error 提示用户未登录
      */
     @PostMapping("/game/ready")
     public Result<Map<String, Object>> ready(
@@ -85,7 +93,7 @@ public class GameController {
                 return Result.error("房间不存在：" + roomNo);
             }
 
-            if (room.getStatus() != 0) {
+            if (room.getStatus() != null && room.getStatus() != 0) {
                 return Result.error("房间不在等待状态，无法准备");
             }
 
@@ -95,14 +103,43 @@ public class GameController {
                 return Result.error("玩家不在该房间中");
             }
 
+            // 房主无需准备
+            if (room.getCreatorId() != null && room.getCreatorId().equals(userId)) {
+                // 仍返回当前准备状态汇总
+                List<RoomPlayer> allPlayers = roomService.getRoomPlayers(room.getId());
+                long readyCount = countReadyPlayers(allPlayers, room.getCreatorId());
+                int total = allPlayers != null ? allPlayers.size() : 0;
+                boolean allReady = total >= 2 && readyCount == total;
+
+                Map<String, Object> data = new HashMap<>();
+                data.put("success", true);
+                data.put("ready", true);
+                data.put("readyCount", readyCount);
+                data.put("totalPlayers", total);
+                data.put("allReady", allReady);
+                data.put("message", "房主无需准备");
+                data.put("roomNo", roomNo);
+                return Result.success(data);
+            }
+
             // 切换准备状态
             Integer currentReady = roomPlayer.getIsReady();
             int nextReady = (currentReady != null && currentReady == 1) ? 0 : 1;
+            roomPlayer.setIsReady(nextReady);
             roomService.updatePlayerReadyStatus(roomPlayer.getId(), nextReady);
+
+            // 计算当前准备状态汇总
+            List<RoomPlayer> allPlayers = roomService.getRoomPlayers(room.getId());
+            long readyCount = countReadyPlayers(allPlayers, room.getCreatorId());
+            int total = allPlayers != null ? allPlayers.size() : 0;
+            boolean allReady = total >= 2 && readyCount == total;
 
             Map<String, Object> data = new HashMap<>();
             data.put("success", true);
             data.put("ready", nextReady == 1);
+            data.put("readyCount", readyCount);
+            data.put("totalPlayers", total);
+            data.put("allReady", allReady);
             data.put("roomNo", roomNo);
             data.put("message", nextReady == 1 ? "准备就绪" : "已取消准备");
 
@@ -113,8 +150,24 @@ public class GameController {
     }
 
     /**
+     * 统计已准备玩家数量（排除房主）
+     */
+    private long countReadyPlayers(List<RoomPlayer> players, Long creatorId) {
+        if (players == null || players.isEmpty()) return 0;
+        return players.stream()
+                .filter(p -> p != null && (creatorId == null || !creatorId.equals(p.getUserId())))
+                .filter(p -> p.getIsReady() != null && p.getIsReady() == 1)
+                .count();
+    }
+
+    /**
      * 开始游戏
      * POST /api/game/start
+     *
+     * 功能：房主开始游戏
+     * - 检查房主身份
+     * - 检查玩家数量和准备状态
+     * - 更新房间状态为游戏中
      *
      * 请求参数：
      * {
@@ -124,7 +177,6 @@ public class GameController {
      * 返回结构：
      * {
      *   "code": 200,
-     *   "message": "success",
      *   "data": {
      *     "success": true,
      *     "message": "游戏开始",
@@ -136,6 +188,7 @@ public class GameController {
      * - 非房主操作：返回 error 提示只有房主可以开始游戏
      * - 玩家未全部准备：返回 error 提示还有玩家未准备
      * - 人数不足：返回 error 提示人数不足
+     * - 房间不在等待中：返回 error 提示房间状态异常
      */
     @PostMapping("/game/start")
     public Result<Map<String, Object>> startGame(
@@ -162,25 +215,36 @@ public class GameController {
                 return Result.error("只有房主可以开始游戏");
             }
 
-            if (room.getStatus() != 0) {
+            if (room.getStatus() != null && room.getStatus() != 0) {
                 return Result.error("房间不在等待状态，无法开始游戏");
             }
 
             // 检查玩家数量和准备状态
             List<RoomPlayer> players = roomService.getRoomPlayers(room.getId());
             if (players == null || players.size() < 2) {
-                return Result.error("人数不足，至少需要2名玩家");
+                return Result.error("人数不足，至少需要2名玩家，当前 " +
+                        (players != null ? players.size() : 0) + " 人");
             }
 
-            boolean allReady = players.stream().allMatch(p -> {
+            // 检查所有非房主玩家是否已准备
+            boolean allReady = true;
+            List<String> unreadyPlayers = new ArrayList<>();
+            for (RoomPlayer p : players) {
                 if (room.getCreatorId().equals(p.getUserId())) {
-                    return true;
+                    continue; // 房主自动视为已准备
                 }
-                return p.getIsReady() != null && p.getIsReady() == 1;
-            });
+                if (p.getIsReady() == null || p.getIsReady() != 1) {
+                    allReady = false;
+                    // 尝试获取玩家名称
+                    User u = userMapper.selectById(p.getUserId());
+                    unreadyPlayers.add(u != null ? u.getNickname() : "玩家" + p.getUserId());
+                }
+            }
 
             if (!allReady) {
-                return Result.error("还有玩家未准备");
+                String detail = unreadyPlayers.isEmpty() ? "" :
+                        "（未准备：" + String.join("、", unreadyPlayers) + "）";
+                return Result.error("还有玩家未准备" + detail);
             }
 
             // 更新房间状态为游戏中
@@ -190,6 +254,7 @@ public class GameController {
             data.put("success", true);
             data.put("message", "游戏开始");
             data.put("roomNo", roomNo);
+            data.put("playerCount", players.size());
 
             return Result.success(data);
         } catch (Exception e) {
@@ -295,7 +360,10 @@ public class GameController {
      * 获取房主提示信息
      * GET /api/game/{roomNo}/host-tip
      *
-     * 返回房主在当前状态下的操作提示
+     * 返回房主在当前状态下的操作提示，包括：
+     * - 是否可开始游戏
+     * - 提示消息
+     * - 玩家准备状态汇总
      *
      * 返回结构：
      * {
@@ -303,12 +371,15 @@ public class GameController {
      *   "data": {
      *     "showTip": true,
      *     "tipMessage": "所有玩家已准备，点击开始游戏",
-     *     "canStart": true
+     *     "canStart": true,
+     *     "readyCount": 3,
+     *     "totalPlayers": 4,
+     *     "unreadyPlayers": []
      *   }
      * }
      *
      * 异常场景：
-     * - 非房主访问：提示非房主
+     * - 非房主访问：返回 showTip=false 的提示
      * - 房间不存在：返回 error
      */
     @GetMapping("/game/{roomNo}/host-tip")
@@ -326,24 +397,49 @@ public class GameController {
                 return Result.error("房间不存在：" + roomNo);
             }
 
-            boolean isCreator = room.getCreatorId().equals(userId);
+            boolean isCreator = room.getCreatorId() != null && room.getCreatorId().equals(userId);
             Integer playerCount = roomService.getPlayerCount(room.getId());
             List<RoomPlayer> players = roomService.getRoomPlayers(room.getId());
-            boolean allReady = players != null && players.stream().allMatch(p -> {
-                if (room.getCreatorId().equals(p.getUserId())) {
-                    return true;
+
+            // 计算准备状态
+            List<String> unreadyPlayers = new ArrayList<>();
+            int readyCount = 0;
+            int totalCount = players != null ? players.size() : 0;
+
+            if (players != null) {
+                for (RoomPlayer p : players) {
+                    if (room.getCreatorId() != null && room.getCreatorId().equals(p.getUserId())) {
+                        readyCount++; // 房主自动视为已准备
+                        continue;
+                    }
+                    if (p.getIsReady() != null && p.getIsReady() == 1) {
+                        readyCount++;
+                    } else {
+                        User u = userMapper.selectById(p.getUserId());
+                        unreadyPlayers.add(u != null ? u.getNickname() : "玩家" + p.getUserId());
+                    }
                 }
-                return p.getIsReady() != null && p.getIsReady() == 1;
-            });
+            }
+
+            boolean allReady = totalCount >= 2 && readyCount == totalCount;
 
             Map<String, Object> data = new HashMap<>();
             data.put("isCreator", isCreator);
-            data.put("playerCount", playerCount);
+            data.put("playerCount", playerCount != null ? playerCount : 0);
+            data.put("totalPlayers", totalCount);
+            data.put("readyCount", readyCount);
             data.put("allReady", allReady);
+            data.put("unreadyPlayers", unreadyPlayers);
 
             if (!isCreator) {
                 data.put("showTip", false);
-                data.put("tipMessage", "等待房主开始游戏");
+                String waitMsg = "等待房主开始游戏";
+                if (totalCount < 2) {
+                    waitMsg = "等待更多玩家加入...";
+                } else if (!allReady) {
+                    waitMsg = "等待其他玩家准备...";
+                }
+                data.put("tipMessage", waitMsg);
                 data.put("canStart", false);
             } else if (playerCount == null || playerCount < 2) {
                 data.put("showTip", true);
@@ -351,13 +447,93 @@ public class GameController {
                 data.put("canStart", false);
             } else if (!allReady) {
                 data.put("showTip", true);
-                data.put("tipMessage", "还有玩家未准备，请提醒其他玩家准备");
+                String unreadyStr = unreadyPlayers.isEmpty() ? "" :
+                        "（" + String.join("、", unreadyPlayers) + "）";
+                data.put("tipMessage", "还有玩家未准备，请提醒其他玩家准备" + unreadyStr);
                 data.put("canStart", false);
             } else {
                 data.put("showTip", true);
                 data.put("tipMessage", "所有玩家已准备，点击开始游戏");
                 data.put("canStart", true);
             }
+
+            return Result.success(data);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取房间内所有玩家的准备状态
+     * GET /api/game/{roomNo}/player-status
+     *
+     * 返回每个玩家的准备状态详情，用于前端等待页展示。
+     * 非房主也可调用，了解整体准备进度。
+     *
+     * 返回结构：
+     * {
+     *   "code": 200,
+     *   "data": {
+     *     "players": [
+     *       {
+     *         "userId": 1,
+     *         "nickname": "玩家A",
+     *         "seatIndex": 0,
+     *         "isReady": true,
+     *         "isCreator": true
+     *       }
+     *     ],
+     *     "readyCount": 2,
+     *     "totalPlayers": 4
+     *   }
+     * }
+     */
+    @GetMapping("/game/{roomNo}/player-status")
+    public Result<Map<String, Object>> getRoomPlayersStatus(
+            @RequestHeader("Authorization") String token,
+            @PathVariable String roomNo) {
+        try {
+            Long userId = getUserIdFromToken(token);
+            if (userId == null) {
+                return Result.error("用户未登录或Token已过期");
+            }
+
+            Room room = roomService.getRoomByRoomNo(roomNo);
+            if (room == null) {
+                return Result.error("房间不存在：" + roomNo);
+            }
+
+            List<RoomPlayer> roomPlayers = roomService.getRoomPlayers(room.getId());
+            List<Map<String, Object>> playerList = new ArrayList<>();
+
+            int readyCount = 0;
+            if (roomPlayers != null) {
+                for (RoomPlayer rp : roomPlayers) {
+                    Map<String, Object> info = new HashMap<>();
+                    info.put("userId", rp.getUserId());
+                    info.put("seatIndex", rp.getSeatIndex());
+
+                    boolean isReady = (room.getCreatorId() != null && room.getCreatorId().equals(rp.getUserId()))
+                            || (rp.getIsReady() != null && rp.getIsReady() == 1);
+                    info.put("isReady", isReady);
+
+                    boolean isCreator = room.getCreatorId() != null && room.getCreatorId().equals(rp.getUserId());
+                    info.put("isCreator", isCreator);
+
+                    User u = userMapper.selectById(rp.getUserId());
+                    info.put("nickname", u != null ? u.getNickname() : "unknown");
+                    info.put("avatar", u != null ? u.getAvatar() : null);
+
+                    playerList.add(info);
+                    if (isReady) readyCount++;
+                }
+            }
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("players", playerList);
+            data.put("readyCount", readyCount);
+            data.put("totalPlayers", roomPlayers != null ? roomPlayers.size() : 0);
+            data.put("roomNo", roomNo);
 
             return Result.success(data);
         } catch (Exception e) {
