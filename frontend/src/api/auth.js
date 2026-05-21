@@ -6,3 +6,4 @@ export const getUserInfo = () => request.get('/user/info')
 export const checkUsername = (username) => request.get('/user/check-username', { params: { username } })
 // Docs: auth API integration notes for login/register endpoints
 // Test: manual test case - API error response handling
+// Refactor: extract auth token refresh logic to separate util
