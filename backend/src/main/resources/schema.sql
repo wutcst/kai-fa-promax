@@ -17,6 +17,56 @@
 --    关联一致性由应用层保证
 -- 6. 分表场景前缀：user_stats_2026（按年月后缀）
 -- ─────────────────────────────────────────────────────────
+--
+-- ── Phase 2 数据一致性加固 ────────────────────────────────
+--
+-- [房间表 room]
+-- 1. room_no 唯一索引（UNIQUE）保证房间号不重复，
+--    配合应用层递归生成逻辑（RoomService.generateRoomNo）。
+-- 2. chk_room_status CHECK 约束限制 status 仅允许 0/1/2。
+-- 3. chk_room_no_format CHECK 约束确保 room_no 为 6 位纯数字。
+-- 4. creator_id 在创建时一次性写入，生命周期内不变更。
+-- 5. level_team_a / level_team_b 默认 2（掼蛋起始级）。
+--
+-- [房间玩家关联表 room_player]
+-- 1. uk_room_user 联合唯一索引防止同一用户重复加入同房间。
+-- 2. chk_seat_index CHECK 约束限制 seat_index 为 0-3。
+-- 3. chk_is_ready CHECK 约束限制 is_ready 为 0 或 1。
+-- 4. chk_card_count CHECK 约束限制 card_count 为 0-27。
+-- 5. update_time 使用 ON UPDATE CURRENT_TIMESTAMP 自动更新。
+--
+-- [游戏记录表 game_record]
+-- 1. room_id 索引支持按房间查询历史记录。
+--
+-- [游戏回合表 game_round]
+-- 1. round_number + room_id 唯一性由应用层保证。
+-- 2. tribute_record 存储 JSON 格式的进贡记录。
+--
+-- [回合玩家表 game_round_player]
+-- 1. rank_order 范围 1-4 由应用层保证。
+-- 2. score_change 记录单回合分数变化。
+--
+-- [操作日志表 tb_operation_log]
+-- 1. 所有关键业务操作均记录操作日志。
+-- 2. user_id + operation_type 复合索引支持审计查询。
+-- 3. is_success 区分成功/失败操作。
+--
+-- ── 完整的数据库约束清单 ──────────────────────────────────
+-- 表名             约束名                   约束类型    说明
+-- ─────────────────────────────────────────────────────────
+-- room             PRIMARY                  主键        id
+-- room             uk_room_no               唯一索引    room_no 6位数字
+-- room             chk_room_status          CHECK       status IN (0,1,2)
+-- room             chk_room_no_format       CHECK       room_no REGEXP '^[0-9]{6}$'
+-- room_player      PRIMARY                  主键        id
+-- room_player      uk_room_user             唯一索引    room_id + user_id
+-- room_player      chk_seat_index           CHECK       seat_index [0,3]
+-- room_player      chk_is_ready             CHECK       is_ready IN (0,1)
+-- room_player      chk_card_count           CHECK       card_count [0,27]
+-- user             PRIMARY                  主键        id
+-- user             uk_username              UNIQUE      username
+-- user_stats       PRIMARY                  主键        user_id
+-- ─────────────────────────────────────────────────────────
 
 CREATE DATABASE IF NOT EXISTS guandan CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 

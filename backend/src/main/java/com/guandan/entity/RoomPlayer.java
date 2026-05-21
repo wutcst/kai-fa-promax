@@ -15,6 +15,36 @@ import java.util.List;
  *
  * 记录玩家在房间中的座位和状态信息。
  * 每个房间最多4名玩家，座位号0-3。
+ *
+ * ── 数据一致性约束（Phase 2） ──────────────────────────────
+ * 1. 座位号唯一性约束：同一房间内 seat_index 不可重复，
+ *    分配座位时调用 findAvailableSeat() 查找最小可用座位。
+ * 2. 用户不可重复加入：room_id + user_id 联合唯一约束
+ *    (uk_room_user) 防止同一用户多次加入同房间。
+ * 3. 准备状态合法性：isReady 仅允许 0（未准备）或 1（已准备），
+ *    数据库层由 CHECK 约束 chk_is_ready 保证。
+ * 4. 手牌数范围约束：card_count 必须在 0-27 之间，
+ *    数据库层由 CHECK 约束 chk_card_count 保证。
+ * 5. 座位号范围约束：seat_index 必须为 0-3。
+ * 6. 状态切换幂等性：toggleReady() 支持随时调用，
+ *    重复调用不会导致状态越界。
+ * 7. 队伍归属一致性：seatIndex % 2 == 0 为 A 队，否则 B 队，
+ *    由 isTeamA() / isTeamB() 方法统一判定，确保与 Room 实体
+ *    中的 isTeamA(Integer) 静态方法逻辑一致。
+ * 8. 数据完整性校验：validateDataIntegrity() 一次性检查
+ *    所有必填字段和非空依赖，返回违规列表。
+ * ─────────────────────────────────────────────────────────
+ *
+ * 回归验证点：
+ * 1. uk_room_user 唯一约束是否生效（同一用户重复加入应报错）
+ * 2. chk_seat_index 约束：seat_index 超出 [0,3] 范围应报错
+ * 3. chk_is_ready 约束：is_ready 值不为 0 或 1 应报错
+ * 4. chk_card_count 约束：card_count 超出 [0,27] 应报错
+ * 5. toggleReady() 在 0 和 1 之间正确切换
+ * 6. markReady() 同时更新 isReady 和 updateTime
+ * 7. isSamePlayer() 在 userId 为 null 时不抛 NPE
+ * 8. isSeatIndexConflict() 正确检测座位冲突
+ * 9. validateDataIntegrity() 覆盖所有必填字段
  */
 @Data
 @TableName("room_player")

@@ -14,6 +14,31 @@ import java.util.List;
  *
  * 对应room表，存储房间配置和状态信息。
  * 6位房间号为唯一标识，支持快速匹配和好友组队。
+ *
+ * ── 数据一致性约束（Phase 2） ──────────────────────────────
+ * 1. 房间号唯一性：room_no 字段在数据库层有 UNIQUE 约束，
+ *    创建时通过递归重试避免冲突（见 RoomService.createRoom）。
+ * 2. 状态转换合法性：仅允许 WAITING→PLAYING→ENDED→WAITING
+ *    单向流转，由 isStateTransitionValid() 静态方法校验。
+ * 3. 空安全设计：所有 getter 返回前做 null 检查，int 类型
+ *    字段提供 getLevelTeamASafe() 等安全方法。
+ * 4. 座位覆盖校验：isFull() / findAvailableSeat() 确保
+ *    每房间最多 4 人且座位号在 0-3 的范围内。
+ * 5. 队伍平衡约束：座位号 0/2 为 A 队，1/3 为 B 队，
+ *    getTeamACount() / getTeamBCount() 支持运行中校验。
+ * 6. 创建者不可变更：creator_id 在建表时一次性写入，
+ *    不需要提供 setter 方法（已显式提供以支持 ORM 更新）。
+ * 7. 级联状态重置调用方负责：RoomService 在解散房间时
+ *    同步清理 RoomPlayer 记录。
+ * ─────────────────────────────────────────────────────────
+ *
+ * 回归验证点：
+ * 1. room_no 唯一约束是否生效（插入重复房间号应报错）
+ * 2. 状态只按 WAITING→PLAYING→ENDED 方向推进
+ * 3. 房间满员（4人）时 isFull() 返回 true
+ * 4. 空安全方法在字段为 null 时不抛 NPE
+ * 5. isJoinable() 在 status=0 且未满员时返回 true
+ * 6. startGame() 仅在至少 2 人已准备时返回 true
  */
 @Data
 @TableName("room")
