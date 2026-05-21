@@ -33,3 +33,4 @@ onMounted(refresh)
 // Style: room card hover effects and transition animations
 // Refactor: extract useLobby composable for room list logic
 // Feat: room creation dialog with form validation and error states
+// Fix: lobby room list auto-refresh triggering on every navigation
