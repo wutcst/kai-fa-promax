@@ -1,0 +1,57 @@
+name: Frontend CI Build
+
+on:
+  push:
+    branches:
+      - master
+      - frontend
+    paths:
+      - 'frontend/**'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'frontend/**'
+
+jobs:
+  frontend-build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Lint Check
+        run: npx eslint --ext .vue,.js src/ || echo "Lint warnings found (non-blocking)"
+        working-directory: frontend
+        continue-on-error: true
+
+      - name: Build Frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Verify Build Output
+        run: |
+          if [ -d "dist" ]; then
+            echo "Build output exists at dist/"
+            ls -la dist/
+          else
+            echo "No dist/ directory found"
+            exit 1
+          fi
+        working-directory: frontend
