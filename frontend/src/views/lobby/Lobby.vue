@@ -228,6 +228,31 @@
 </template>
 
 <script setup>
+/**
+ * Lobby 组件 — 游戏大厅
+ *
+ * ── 属性 (Props) ───────────────────────────
+ * 无外部属性（全部内部状态管理）
+ *
+ * ── 事件 (Events) ──────────────────────────
+ * 无自定义事件（全部通过 Vue Router 导航）
+ *
+ * ── 暴露的方法 (Expose) ────────────────────
+ * - fetchRooms()      : 手动刷新房间列表
+ * - resetCreateForm() : 重置创建房间表单
+ *
+ * ── 内部状态 ───────────────────────────────
+ * - rooms / sortedRooms : 房间列表及排序
+ * - showCreateDialog / showJoinDialog : 弹窗可见性
+ * - creating / joining / matching : 加载状态
+ * - createForm / joinForm : 表单数据
+ * - sortBy / sortAsc : 排序控制
+ * - autoRefreshTimer : 后台定时刷新
+ *
+ * ── 定时器 ─────────────────────────────────
+ * - 每 10 秒自动轮询房间列表（仅页面在前台）
+ * - onBeforeUnmount 时清除定时器
+ */
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
