@@ -20,3 +20,4 @@ CREATE TABLE user_stats (
 -- Refactor: reorganize DDL statements with clear sections
 -- Docs: schema design notes and migration guide
 -- Regression: schema DDL constraint verification
+-- Chore: schema migration notes for Phase 2 delivery
