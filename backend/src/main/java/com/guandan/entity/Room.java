@@ -16,3 +16,4 @@ public class Room {
 // Refactor: rename room status constants for clarity
 // Docs: API field descriptions and exception scenarios for room entity
 // Refactor: standardized package naming com.guandan.{entity,controller,service}
+// Refactor: align entity fields with DB schema naming conventions

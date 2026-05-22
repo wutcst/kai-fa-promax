@@ -35,3 +35,4 @@ public class RoomController {
 // Refactor: rename endpoints for RESTful consistency
 // Docs: API endpoint documentation with request/response examples
 // Refactor: consistent class naming with Service/Controller suffixes
+// Refactor: align controller method names with REST API paths
