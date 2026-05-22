@@ -32,3 +32,4 @@ public class RoomController {
 }
 // Controller: POST /rooms and POST /rooms/join endpoints
 // Fix: validate room full before allowing join
+// Refactor: rename endpoints for RESTful consistency
