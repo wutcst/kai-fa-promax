@@ -34,3 +34,4 @@ public class RoomController {
 // Fix: validate room full before allowing join
 // Refactor: rename endpoints for RESTful consistency
 // Docs: API endpoint documentation with request/response examples
+// Refactor: consistent class naming with Service/Controller suffixes
