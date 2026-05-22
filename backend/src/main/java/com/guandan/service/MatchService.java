@@ -15,6 +15,14 @@ import java.util.Set;
  *
  * 职责：管理匹配队列，当收集到4名玩家时自动创建房间并完成匹配。
  * 提供加入/取消队列、查询匹配状态和结果的接口。
+ *
+ * 核心流程：
+ * 1. joinMatchQueue → 加入匹配队列 → checkAndMatch 检查是否满4人
+ * 2. cancelMatch → 从队列移除
+ * 3. checkAndMatch → 取前4人创建房间 → 全部加入 → 设置匹配结果
+ * 4. getMatchResult → 返回匹配到的房间号
+ *
+ * 线程安全：checkAndMatch 使用 synchronized 确保并发安全
  */
 @Slf4j
 @Service
@@ -39,10 +47,17 @@ public class MatchService {
         if (userId == null) {
             return false;
         }
+
+        // 校验用户是否存在
+        if (userMapper.selectById(userId) == null) {
+            log.warn("用户 {} 不存在，无法加入匹配队列", userId);
+            return false;
+        }
+
         roomCache.addToMatchQueue(userId);
         log.info("玩家 {} 加入匹配队列，当前队列人数: {}", userId, roomCache.getMatchQueueSize());
 
-        // 检查是否达到4人，满足则触发匹配
+        // 检查是否达到4人，满足则触发匹配（核心判断逻辑）
         checkAndMatch();
 
         return true;
@@ -82,6 +97,14 @@ public class MatchService {
 
     /**
      * 检查匹配队列，如果达到4人则创建房间并匹配
+     *
+     * 核心判断逻辑：
+     * 1. 获取当前队列快照
+     * 2. 判断是否满4人
+     * 3. 取前4人作为匹配组
+     * 4. 创建房间并依次加入
+     * 5. 设置匹配结果
+     *
      * 使用 synchronized 确保线程安全
      */
     public synchronized void checkAndMatch() {

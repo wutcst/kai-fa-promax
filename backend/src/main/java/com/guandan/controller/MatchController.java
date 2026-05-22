@@ -17,6 +17,13 @@ import java.util.Map;
  *
  * 职责：提供快速匹配功能的 RESTful API 入口。
  * 包括加入匹配队列、取消匹配、查询匹配状态和匹配结果。
+ *
+ * 核心流程：
+ * 1. 玩家调用 /api/match/join 加入匹配队列
+ * 2. 系统在队列中等待收集满 4 名玩家
+ * 3. 收集完成后自动创建房间并将玩家加入
+ * 4. 玩家通过 /api/match/result 轮询获取匹配结果
+ * 5. 玩家可随时调用 /api/match/cancel 取消匹配
  */
 @Slf4j
 @RestController
@@ -30,6 +37,11 @@ public class MatchController {
      * 加入匹配队列
      *
      * POST /api/match/join
+     *
+     * 流程说明：
+     * - 校验用户登录状态
+     * - 调用 MatchService 加入队列
+     * - 若队列达到 4 人则自动触发匹配
      *
      * @return 是否成功加入
      */
@@ -55,6 +67,11 @@ public class MatchController {
      *
      * POST /api/match/cancel
      *
+     * 流程说明：
+     * - 校验用户登录状态
+     * - 从匹配队列中移除用户
+     * - 清理匹配结果缓存
+     *
      * @return 是否成功取消
      */
     @PostMapping("/match/cancel")
@@ -75,6 +92,8 @@ public class MatchController {
      *
      * POST /api/match/status
      *
+     * 返回用户是否在匹配队列中，前端据此控制轮询逻辑。
+     *
      * @return 用户是否在匹配队列中
      */
     @PostMapping("/match/status")
@@ -88,6 +107,9 @@ public class MatchController {
      * 查询匹配结果
      *
      * POST /api/match/result
+     *
+     * 轮询此接口获取匹配结果，匹配成功时返回房间号。
+     * 建议轮询间隔：2-3 秒。
      *
      * @return 匹配到的房间号
      */
