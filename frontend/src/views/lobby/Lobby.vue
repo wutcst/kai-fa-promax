@@ -43,3 +43,4 @@ onMounted(refresh)
 // Perf: optimize lobby initial load with room list caching strategy
 // Feat: room list sort by player count and status
 // Fix: room create button disabled state during API request
+// Test: lobby page component unit test with mocked API
