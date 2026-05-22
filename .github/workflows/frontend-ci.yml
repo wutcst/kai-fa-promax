@@ -1,4 +1,4 @@
-name: Frontend CI Build
+name: Frontend CI Pipeline
 
 on:
   push:
@@ -45,6 +45,7 @@ env:
   NODE_OPTIONS: '--max-old-space-size=4096'
 
 jobs:
+  # Job 1: 代码规范检查
   lint:
     name: Lint Check
     runs-on: ubuntu-latest
@@ -69,11 +70,12 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Lint Check
+      - name: Run ESLint
         run: npx eslint --ext .vue,.js src/ || echo "Lint warnings found (non-blocking)"
         working-directory: frontend
         continue-on-error: true
 
+  # Job 2: 项目构建
   build:
     name: Build Frontend
     runs-on: ubuntu-latest
@@ -122,6 +124,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  # Job 3: TypeScript 类型检查
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
@@ -142,7 +145,7 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Vue Type Check
+      - name: Run Vue Type Check
         run: npx vue-tsc --noEmit || echo "Type check warnings found (non-blocking)"
         working-directory: frontend
         continue-on-error: true
