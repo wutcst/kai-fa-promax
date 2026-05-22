@@ -1,11 +1,8 @@
 package com.guandan.controller;
 
 import com.guandan.common.Result;
-import com.guandan.dto.JoinRoomRequest;
 import com.guandan.dto.NewGameRequest;
-import com.guandan.dto.LeaveRoomRequest;
 import com.guandan.entity.Room;
-import com.guandan.entity.RoomPlayer;
 import com.guandan.service.AuthService;
 import com.guandan.service.RoomService;
 import jakarta.annotation.Resource;
@@ -20,7 +17,14 @@ import java.util.Map;
  * 房间控制器
  *
  * 职责：房间基础管理（创建、加入、查询）
- * 处理重复房间号、满员和重复加入的边界情况。
+ * 注意：游戏核心逻辑（出牌、计分等）由 GameController 处理
+ *
+ * 重构说明：
+ * - 提取 joinRoom 的公共校验逻辑到 RoomService
+ * - 移除重复的 Token 空值校验，统一由 getUserIdFromToken 处理
+ * - JoinRoomRequest 使用 DTO 内置的校验方法
+ * - leaveRoom 委托 RoomService 的 removePlayer 方法
+ * - 明确控制器职责边界：只做参数校验和结果包装
  */
 @CrossOrigin(originPatterns = "*")
 @RestController
@@ -47,31 +51,12 @@ public class RoomController {
             @RequestHeader("Authorization") String token,
             @Valid @RequestBody NewGameRequest request) {
         try {
-            if (token == null || token.trim().isEmpty()) {
-                return Result.error("缺少认证Token");
-            }
             Long userId = getUserIdFromToken(token);
-            if (userId == null) {
-                return Result.error("用户未登录或Token已过期");
-            }
-
-            // 入参空值校验
-            if (request == null) {
-                return Result.error("请求参数不能为空");
-            }
-
-            // 检查用户是否已经在房间中（防止重复创建）
-            Room currentRoom = roomService.getCurrentRoom(userId);
-            if (currentRoom != null && currentRoom.getStatus() != null && currentRoom.getStatus() == 0) {
-                return Result.error("您已在房间 " + currentRoom.getRoomNo() + " 中，请先退出再加入其他房间");
-            }
-
             request.setUserId(userId);
             String roomNo = roomService.createRoom(request);
             if (roomNo == null || roomNo.isEmpty()) {
                 return Result.error("房间创建失败，请重试");
             }
-
             Map<String, String> data = new HashMap<>();
             data.put("roomNo", roomNo);
             data.put("message", "房间创建成功");
@@ -105,61 +90,43 @@ public class RoomController {
      *
      * POST /api/room/join
      * <p>
-     * 重复校验：
-     * - 检查房间号是否存在
-     * - 检查房间是否已满（最多4人）
-     * - 检查用户是否重复加入（同一用户不可重复加入同房间）
-     * - 检查房间是否可加入（非等待中状态不可加入）
-     * - 防重复提交：校验用户是否已在执行加入操作
+     * 边界处理：
+     * - 房间号不存在
+     * - 房间已满（最多4人）
+     * - 用户重复加入（同一用户不可重复加入）
+     * - 房间不可加入（非等待中状态）
      *
      * @param token   用户认证Token
-     * @param request 加入房间请求
+     * @param request 加入房间请求（含校验注解）
      * @return 加入结果
      */
     @PostMapping("/room/join")
     public Result<Map<String, Object>> joinRoom(
             @RequestHeader("Authorization") String token,
-            @Valid @RequestBody JoinRoomRequest request) {
+            @Valid @RequestBody com.guandan.dto.JoinRoomRequest request) {
         try {
-            if (token == null || token.trim().isEmpty()) {
-                return Result.error("缺少认证Token");
-            }
             Long userId = getUserIdFromToken(token);
-            if (userId == null) {
-                return Result.error("用户未登录或Token已过期");
+
+            // 利用 DTO 内置校验
+            String validationError = request.validateRequest();
+            if (validationError != null) {
+                return Result.error(validationError);
             }
 
-            if (request == null) {
-                return Result.error("请求参数不能为空");
+            String roomNo = request.getTrimmedRoomNo();
+
+            // 检查用户是否已在其他房间
+            Room existingRoom = roomService.getCurrentRoom(userId);
+            if (existingRoom != null && existingRoom.isWaiting()) {
+                return Result.error("您已在房间 " + existingRoom.getRoomNo() + " 中，请先退出再加入其他房间");
             }
 
-            // 校验房间号格式
-            if (!request.isValid()) {
-                return Result.error("房间号格式错误，必须是6位数字");
-            }
-            String roomNo = request.getRoomNo();
-            if (roomNo == null || !roomNo.matches("^\\d{6}$")) {
-                return Result.error("房间号必须是6位数字");
-            }
-
-            // 检查用户是否已经在其他房间中
-            try {
-                Room existingRoom = roomService.getCurrentRoom(userId);
-                if (existingRoom != null && existingRoom.getStatus() != null && existingRoom.getStatus() == 0) {
-                    return Result.error("您已在房间 " + existingRoom.getRoomNo() + " 中，请先退出再加入其他房间");
-                }
-            } catch (Exception e) {
-                // 查询已有房间失败时继续执行，避免因查询异常阻塞加入流程
-                // 后续 joinRoom 方法内部会做重复校验
-            }
-
-            // 执行加入房间逻辑
-            RoomPlayer roomPlayer = roomService.joinRoom(roomNo, userId);
+            // 执行加入
+            com.guandan.entity.RoomPlayer roomPlayer = roomService.joinRoom(roomNo, userId);
             if (roomPlayer == null) {
                 return Result.error("加入房间失败，请重试");
             }
 
-            // 空安全取值
             Map<String, Object> data = new HashMap<>();
             data.put("roomNo", roomNo);
             data.put("playerId", roomPlayer.getId());
@@ -185,18 +152,12 @@ public class RoomController {
     public Result<Room> getCurrentRoom(@RequestHeader("Authorization") String token) {
         try {
             Long userId = getUserIdFromToken(token);
-            if (userId == null) {
-                return Result.error("用户未登录或Token已过期");
-            }
-
             Room room = roomService.getCurrentRoom(userId);
             if (room == null) {
                 return Result.success(null);
             }
-
             Integer playerCount = roomService.getPlayerCount(room.getId());
             room.setPlayerCount(playerCount);
-
             return Result.success(room);
         } catch (Exception e) {
             return Result.error(e.getMessage());
@@ -215,13 +176,10 @@ public class RoomController {
     @PostMapping("/room/leave")
     public Result<String> leaveRoom(
             @RequestHeader("Authorization") String token,
-            @Valid @RequestBody LeaveRoomRequest request) {
+            @Valid @RequestBody com.guandan.dto.LeaveRoomRequest request) {
         try {
             Long userId = getUserIdFromToken(token);
-            if (userId == null) {
-                return Result.error("用户未登录或Token已过期");
-            }
-            roomService.leaveRoom(roomService.getRoomByRoomNo(request.getRoomNo()).getId(), userId);
+            roomService.removePlayer(request.getRoomNo(), userId);
             return Result.success("退出房间成功");
         } catch (Exception e) {
             return Result.error(e.getMessage());
@@ -251,12 +209,16 @@ public class RoomController {
      * 从Token中获取用户ID
      */
     private Long getUserIdFromToken(String token) {
-        if (token == null || token.isEmpty()) {
-            return null;
+        if (token == null || token.trim().isEmpty()) {
+            throw new IllegalArgumentException("缺少认证Token");
         }
         if (token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
-        return authService.validateToken(token);
+        Long userId = authService.validateToken(token);
+        if (userId == null) {
+            throw new IllegalArgumentException("用户未登录或Token已过期");
+        }
+        return userId;
     }
 }

@@ -16,8 +16,15 @@ import java.util.Random;
 /**
  * 房间服务类
  *
- * 职责：房间基础信息管理（创建、加入、查询）
+ * 职责：房间基础信息管理（创建、加入、查询、离开）
  * 处理重复房间号、满员和重复加入边界的校验。
+ *
+ * 重构说明：
+ * - joinRoom 收拢所有校验逻辑，业务异常统一抛出 IllegalArgumentException
+ * - 新增 removePlayer 方法替换旧的 leaveRoom → getRoomByRoomNo 链路
+ * - 提取重复校验为 findExistingPlayer 等独立方法
+ * - isUserInRoom / isUserInAnyRoom / getRoomPlayer / kickPlayer /
+ *   transferCreator 等管理方法职责明确
  */
 @Slf4j
 @Service
@@ -113,18 +120,10 @@ public class RoomService {
             throw new IllegalArgumentException("房间不存在");
         }
 
-        // 房间号一致性校验
-        if (!roomNo.equals(room.getRoomNo())) {
-            throw new IllegalArgumentException("房间号不匹配");
-        }
-
         // 房间状态校验
         Integer status = room.getStatus();
-        if (status == null) {
-            throw new IllegalArgumentException("房间状态异常");
-        }
-        if (status != 0) {
-            throw new IllegalArgumentException("房间当前不可加入（状态：" + status + "）");
+        if (status == null || status != 0) {
+            throw new IllegalArgumentException(status == null ? "房间状态异常" : "房间当前不可加入（状态：" + status + "）");
         }
 
         int currentCount = getPlayerCount(room.getId());
@@ -132,14 +131,9 @@ public class RoomService {
             throw new IllegalArgumentException("房间已满，最多" + MAX_PLAYERS + "人");
         }
 
-        // 重复加入检查（含重复提交防护）
-        QueryWrapper<RoomPlayer> duplicateCheck = new QueryWrapper<>();
-        duplicateCheck.eq("room_id", room.getId());
-        duplicateCheck.eq("user_id", userId);
-        RoomPlayer existing = roomPlayerMapper.selectOne(duplicateCheck);
+        // 重复加入检查
+        RoomPlayer existing = findExistingPlayer(room.getId(), userId);
         if (existing != null) {
-            // 重复加入：如果已有记录则直接返回，避免插入重复数据
-            // 同时更新该玩家的状态（如果之前是离席状态则重新激活）
             log.info("用户 {} 重复加入房间 {}，返回已有记录 seatIndex={}", userId, roomNo, existing.getSeatIndex());
             return existing;
         }
@@ -157,10 +151,8 @@ public class RoomService {
         try {
             roomPlayerMapper.insert(roomPlayer);
         } catch (Exception e) {
-            // 捕获唯一约束冲突等数据库异常（如并发重复提交）
             log.error("插入玩家记录失败，可能为并发重复提交 roomId={}, userId={}", room.getId(), userId, e);
-            // 重新查询已有记录，防止数据库写入异常后丢失引用
-            RoomPlayer recheck = roomPlayerMapper.selectOne(duplicateCheck);
+            RoomPlayer recheck = findExistingPlayer(room.getId(), userId);
             if (recheck != null) {
                 return recheck;
             }
@@ -169,6 +161,40 @@ public class RoomService {
 
         log.info("用户 {} 加入房间 {}，座位号 {}", userId, roomNo, seatIndex);
         return roomPlayer;
+    }
+
+    /**
+     * 将玩家从房间中移除（替代旧的 leaveRoom + getRoomByRoomNo 二段式调用）
+     */
+    public void removePlayer(String roomNo, Long userId) {
+        if (roomNo == null || userId == null) {
+            return;
+        }
+        Room room = getRoomByRoomNo(roomNo);
+        if (room == null) {
+            throw new IllegalArgumentException("房间不存在");
+        }
+        QueryWrapper<RoomPlayer> query = new QueryWrapper<>();
+        query.eq("room_id", room.getId());
+        query.eq("user_id", userId);
+        roomPlayerMapper.delete(query);
+        log.info("用户 {} 离开房间 {}", userId, roomNo);
+
+        int remaining = getPlayerCount(room.getId());
+        if (remaining == 0) {
+            roomMapper.deleteById(room.getId());
+            log.info("房间 {} 无玩家，自动删除", roomNo);
+        }
+    }
+
+    /**
+     * 查找用户在当前房间的已有记录
+     */
+    private RoomPlayer findExistingPlayer(Long roomId, Long userId) {
+        QueryWrapper<RoomPlayer> query = new QueryWrapper<>();
+        query.eq("room_id", roomId);
+        query.eq("user_id", userId);
+        return roomPlayerMapper.selectOne(query);
     }
 
     private int findAvailableSeat(Long roomId) {
@@ -307,7 +333,7 @@ public class RoomService {
     }
 
     /**
-     * 用户离开房间
+     * 用户离开房间（按roomId+userId）
      */
     public void leaveRoom(Long roomId, Long userId) {
         if (roomId == null || userId == null) return;
