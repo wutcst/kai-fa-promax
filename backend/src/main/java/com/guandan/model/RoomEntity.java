@@ -113,7 +113,10 @@ public class RoomEntity {
     @TableField(exist = false)
     private List<RoomPlayer> players = new ArrayList<>();
 
-    /** 房间号正则：6位数字 */
+    /**
+     * 房间号正则：6位数字
+     * @apiNote 用于 validateRequiredFields() 中校验
+     */
     public static final String ROOM_NO_REGEX = "^\\d{6}$";
 
     /** 最大玩家数 */
