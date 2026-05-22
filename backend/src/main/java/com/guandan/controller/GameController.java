@@ -159,9 +159,16 @@ public class GameController {
     private long countReadyPlayers(List<RoomPlayer> players, Long creatorId) {
         if (players == null || players.isEmpty()) return 0;
         return players.stream()
-                .filter(p -> p != null && (creatorId == null || !creatorId.equals(p.getUserId())))
+                .filter(p -> p != null && !isCreatorRoom(p, creatorId))
                 .filter(p -> p.getIsReady() != null && p.getIsReady() == 1)
                 .count();
+    }
+
+    /**
+     * 判断玩家是否为房主
+     */
+    private boolean isCreatorRoom(RoomPlayer player, Long creatorId) {
+        return creatorId != null && creatorId.equals(player.getUserId());
     }
 
     /**

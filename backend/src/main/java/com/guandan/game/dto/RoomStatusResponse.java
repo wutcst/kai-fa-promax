@@ -64,7 +64,7 @@ public class RoomStatusResponse {
     private Boolean canStart;
 
     /**
-     * 构建标准状态响应
+     * 构建标准状态响应 —— 统一工厂方法入口
      */
     public static RoomStatusResponse buildWaitingResponse(String roomNo, Integer status,
                                                           int playerCount, int maxPlayers,
