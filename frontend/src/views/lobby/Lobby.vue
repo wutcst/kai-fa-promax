@@ -44,3 +44,4 @@ onMounted(refresh)
 // Feat: room list sort by player count and status
 // Fix: room create button disabled state during API request
 // Test: lobby page component unit test with mocked API
+// Docs: lobby component props and event documentation
