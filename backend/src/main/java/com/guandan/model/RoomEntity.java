@@ -1,4 +1,4 @@
-package com.guandan.entity;
+package com.guandan.model;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -62,7 +62,7 @@ import java.util.List;
  */
 @Data
 @TableName("room")
-public class Room {
+public class RoomEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
