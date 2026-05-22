@@ -124,6 +124,13 @@ ALTER TABLE room ADD CONSTRAINT IF NOT EXISTS chk_room_status CHECK (status IN (
 -- 房间号格式 CHECK 约束：6位数字
 ALTER TABLE room ADD CONSTRAINT IF NOT EXISTS chk_room_no_format CHECK (room_no REGEXP '^[0-9]{6}$');
 
+-- 房间表配置说明：
+-- - room_no: 6位数字，UNIQUE约束，应用层递归生成
+-- - status: 0=等待, 1=游戏中, 2=结束，CHECK约束
+-- - creator_id: 创建时写入，生命周期不变更
+-- - level_team_a/b: 默认2（掼蛋起始级别）
+-- - is_private: 0=公开, 1=私密
+
 -- 房间玩家关联表
 -- 每个房间最多4名玩家，座位号0-3，同一用户不可重复加入同房间
 CREATE TABLE IF NOT EXISTS room_player (
@@ -252,3 +259,53 @@ CREATE TABLE IF NOT EXISTS tb_operation_log (
 -- 预期：删除房间后对应 room_player 记录应被清理
 -- DELETE FROM room WHERE id = 1;
 -- SELECT COUNT(*) FROM room_player WHERE room_id = 1;
+
+--
+-- ── Phase 2 提交配置说明 ──────────────────────────────────
+--
+-- [房间表配置清单]
+-- 字段名            类型              约束                      说明
+-- ─────────────────────────────────────────────────────────────────
+-- id                BIGINT UNSIGNED   PRIMARY KEY AUTO_INCREMENT  主键
+-- room_no           VARCHAR(6)        NOT NULL UNIQUE             6位房间号
+--                   CHECK(chk_room_no_format)                     REGEXP ^[0-9]{6}$
+-- status            TINYINT           NOT NULL DEFAULT 0          0=等待,1=游戏,2=结束
+--                   CHECK(chk_room_status)                       IN (0,1,2)
+-- creator_id        BIGINT UNSIGNED   NOT NULL                    创建者ID（不可变）
+-- level_team_a      INT               DEFAULT 2                   A队级别
+-- level_team_b      INT               DEFAULT 2                   B队级别
+-- current_trump_suit VARCHAR(20)       DEFAULT NULL               当前主牌花色
+-- next_tribute_state VARCHAR(20)       DEFAULT NULL               下局进贡状态
+-- is_private        TINYINT(1)        DEFAULT 0                   私密房间标记
+-- config            VARCHAR(500)      DEFAULT NULL                房间配置JSON
+-- create_time       DATETIME(3)       DEFAULT CURRENT_TIMESTAMP(3) 创建时间
+-- 索引: idx_room_no, idx_creator
+--
+-- [房间玩家表配置清单]
+-- 字段名            类型              约束                      说明
+-- ─────────────────────────────────────────────────────────────────
+-- id                BIGINT UNSIGNED   PRIMARY KEY AUTO_INCREMENT  主键
+-- room_id           BIGINT UNSIGNED   NOT NULL                    房间ID
+-- user_id           BIGINT UNSIGNED   NOT NULL                    用户ID
+-- seat_index        INT               NOT NULL                    座位号(0-3)
+--                   CHECK(chk_seat_index)                         >=0 AND <=3
+-- is_ready          TINYINT           DEFAULT 0                   准备状态
+--                   CHECK(chk_is_ready)                           IN (0,1)
+-- card_count        INT               DEFAULT 0                   手牌数
+--                   CHECK(chk_card_count)                         >=0 AND <=27
+-- update_time       DATETIME(3)       DEFAULT CURRENT_TIMESTAMP(3) 更新时间
+--                   ON UPDATE CURRENT_TIMESTAMP(3)
+-- 唯一约束: uk_room_user (room_id, user_id)
+-- 索引: idx_room_id
+--
+-- [约束汇总]
+-- 表名             约束名                   类型       说明
+-- ─────────────────────────────────────────────────────
+-- room             uk_room_no               UNIQUE    房间号不重复
+-- room             chk_room_status          CHECK     status IN (0,1,2)
+-- room             chk_room_no_format       CHECK     room_no正则
+-- room_player      uk_room_user             UNIQUE    用户不重复加入
+-- room_player      chk_seat_index           CHECK     座位号0-3
+-- room_player      chk_is_ready             CHECK     准备状态0/1
+-- room_player      chk_card_count           CHECK     手牌数0-27
+-- ─────────────────────────────────────────────────────
