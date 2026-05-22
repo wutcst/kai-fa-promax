@@ -32,6 +32,26 @@ import java.util.List;
  *    同步清理 RoomPlayer 记录。
  * ─────────────────────────────────────────────────────────
  *
+ * ── 数据库配置（schema.sql） ──────────────────────────────
+ * - room_no VARCHAR(6) NOT NULL UNIQUE
+ * - status TINYINT NOT NULL DEFAULT 0 CHECK IN (0,1,2)
+ * - creator_id BIGINT UNSIGNED NOT NULL
+ * - level_team_a/level_team_b INT DEFAULT 2
+ * - current_trump_suit VARCHAR(20)
+ * - next_tribute_state VARCHAR(20)
+ * - is_private TINYINT(1) DEFAULT 0
+ * - config VARCHAR(500)
+ * - create_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3)
+ * - INDEX idx_room_no (room_no)
+ * - INDEX idx_creator (creator_id)
+ * ─────────────────────────────────────────────────────────
+ *
+ * ── 房间状态定义 ─────────────────────────────────────────
+ * - 0: WAITING  - 等待中，可加入
+ * - 1: PLAYING  - 游戏中，不可加入
+ * - 2: ENDED    - 已结束，可重置为等待
+ * ─────────────────────────────────────────────────────────
+ *
  * 回归验证点：
  * 1. room_no 唯一约束是否生效（插入重复房间号应报错）
  * 2. 状态只按 WAITING→PLAYING→ENDED 方向推进

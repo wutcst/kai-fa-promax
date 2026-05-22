@@ -35,6 +35,24 @@ import java.util.List;
  *    所有必填字段和非空依赖，返回违规列表。
  * ─────────────────────────────────────────────────────────
  *
+ * ── 数据库配置（schema.sql） ──────────────────────────────
+ * - id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
+ * - room_id BIGINT UNSIGNED NOT NULL
+ * - user_id BIGINT UNSIGNED NOT NULL
+ * - seat_index INT NOT NULL CHECK (0-3)
+ * - is_ready TINYINT DEFAULT 0 CHECK (0或1)
+ * - card_count INT DEFAULT 0 CHECK (0-27)
+ * - update_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
+ * - UNIQUE KEY uk_room_user (room_id, user_id)
+ * - INDEX idx_room_id (room_id)
+ * ─────────────────────────────────────────────────────────
+ *
+ * ── 状态定义 ─────────────────────────────────────────────
+ * - is_ready: 0=未准备, 1=已准备
+ * - seat_index: 0-3, 偶数=A队, 奇数=B队
+ * - card_count: 0-27（掼蛋每人27张牌）
+ * ─────────────────────────────────────────────────────────
+ *
  * 回归验证点：
  * 1. uk_room_user 唯一约束是否生效（同一用户重复加入应报错）
  * 2. chk_seat_index 约束：seat_index 超出 [0,3] 范围应报错
