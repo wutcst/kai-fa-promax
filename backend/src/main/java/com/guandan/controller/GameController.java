@@ -514,3 +514,4 @@ public class GameController {
 }
 // Controller: GET /game/room/{code}/status endpoint
 // Fix: handle empty player list gracefully
+// Refactor: extract ready status calculation logic
