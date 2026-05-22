@@ -20,3 +20,4 @@ public class JoinRoomRequest {
 // DTO: validation annotations for join room request
 // Fix: add capacity check in request validation
 // Refactor: builder pattern for JoinRoomRequest
+// Docs: field-level validation rules documentation
