@@ -17,7 +17,24 @@ import java.util.Random;
  * 房间服务类
  *
  * 职责：房间基础信息管理（创建、加入、查询、离开）
- * 处理重复房间号、满员和重复加入边界的校验。
+ *
+ * 边界处理：
+ *
+ * 1. 重复房间号处理：
+ *    - createRoom 使用 Random 生成 6 位数字房间号（100000-999999）
+ *    - 生成后检查数据库是否已存在该房间号，若存在则重新生成
+ *    - 最多重试 3 次，超过则返回 null 表示创建失败
+ *    - 实际碰撞概率极低（100万空间中不足100个活跃房间），重试机制为防御性编程
+ *
+ * 2. 满员处理：
+ *    - joinRoom 检查 getPlayerCount(roomId) >= MAX_PLAYERS（4）
+ *    - 满员时抛出 IllegalArgumentException("房间已满，最多4人")
+ *    - 先检查状态再查人数，避免状态异常时误判
+ *
+ * 3. 重复加入边界：
+ *    - joinRoom 通过 findExistingPlayer(roomId, userId) 检测用户是否已在房间中
+ *    - 若已存在则直接返回现有 RoomPlayer 记录（幂等设计）
+ *    - 并发场景下 insert 可能抛出异常，捕获后重新查一次确认
  *
  * 重构说明：
  * - joinRoom 收拢所有校验逻辑，业务异常统一抛出 IllegalArgumentException
