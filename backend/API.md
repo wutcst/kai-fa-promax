@@ -9,3 +9,5 @@
 ## Docs: Test result summary and reproduction guide
 ## Chore: CI action run history and fix log
 ## Phase 2 Room API: POST /rooms/create, POST /rooms/join, GET /rooms/{code}
+## Phase 2 Match API: POST /match/join, POST /match/cancel, GET /match/status
+### Request parameters: roomCode, playerId; Response: status, matchedRoom
