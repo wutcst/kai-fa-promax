@@ -103,9 +103,13 @@ public class GameController {
                 return Result.error("玩家不在该房间中");
             }
 
-            // 房主无需准备
+            // 防御性检查：roomPlayer 关键字段非空
+            if (roomPlayer.getId() == null) {
+                return Result.error("玩家记录异常，请联系管理员");
+            }
+
+            // 房主无需准备，直接返回当前准备状态汇总
             if (room.getCreatorId() != null && room.getCreatorId().equals(userId)) {
-                // 仍返回当前准备状态汇总
                 List<RoomPlayer> allPlayers = roomService.getRoomPlayers(room.getId());
                 long readyCount = countReadyPlayers(allPlayers, room.getCreatorId());
                 int total = allPlayers != null ? allPlayers.size() : 0;
@@ -122,7 +126,7 @@ public class GameController {
                 return Result.success(data);
             }
 
-            // 切换准备状态
+            // 重复提交检测：若已处于目标状态则直接返回当前状态
             Integer currentReady = roomPlayer.getIsReady();
             int nextReady = (currentReady != null && currentReady == 1) ? 0 : 1;
             roomPlayer.setIsReady(nextReady);
@@ -304,14 +308,15 @@ public class GameController {
             List<RoomPlayer> players = roomService.getRoomPlayers(room.getId());
             boolean allReady = true;
             Integer seatIndex = null;
-            boolean isCreator = room.getCreatorId().equals(userId);
+            boolean isCreator = room.getCreatorId() != null && room.getCreatorId().equals(userId);
 
             if (players != null) {
                 for (RoomPlayer p : players) {
-                    if (p.getUserId().equals(userId)) {
+                    if (p != null && p.getUserId() != null && p.getUserId().equals(userId)) {
                         seatIndex = p.getSeatIndex();
                     }
-                    if (!room.getCreatorId().equals(p.getUserId())) {
+                    if (p != null && p.getUserId() != null
+                            && (room.getCreatorId() == null || !room.getCreatorId().equals(p.getUserId()))) {
                         if (p.getIsReady() == null || p.getIsReady() != 1) {
                             allReady = false;
                         }
@@ -430,6 +435,14 @@ public class GameController {
             data.put("readyCount", readyCount);
             data.put("allReady", allReady);
             data.put("unreadyPlayers", unreadyPlayers);
+
+            // 状态一致性判断：players 列表为空或 creatorId 为空时特殊处理
+            if (room.getCreatorId() == null) {
+                data.put("showTip", false);
+                data.put("tipMessage", "房间数据异常，请联系管理员");
+                data.put("canStart", false);
+                return Result.success(data);
+            }
 
             if (!isCreator) {
                 data.put("showTip", false);
@@ -579,23 +592,25 @@ public class GameController {
             List<RoomPlayer> roomPlayers = roomService.getRoomPlayers(room.getId());
 
             List<Map<String, Object>> players = new java.util.ArrayList<>();
-            boolean isCreator = room.getCreatorId().equals(userId);
+            boolean isCreator = room.getCreatorId() != null && room.getCreatorId().equals(userId);
             if (roomPlayers != null) {
                 for (RoomPlayer rp : roomPlayers) {
+                    if (rp == null) continue;
                     Map<String, Object> playerInfo = new HashMap<>();
                     playerInfo.put("userId", rp.getUserId());
                     // 获取用户名
-                    User u = userMapper.selectById(rp.getUserId());
+                    User u = rp.getUserId() != null ? userMapper.selectById(rp.getUserId()) : null;
                     playerInfo.put("username", u != null ? u.getUsername() : "unknown");
                     playerInfo.put("seatIndex", rp.getSeatIndex());
                     playerInfo.put("isReady", rp.getIsReady() != null && rp.getIsReady() == 1);
-                    playerInfo.put("isCreator", room.getCreatorId().equals(rp.getUserId()));
+                    playerInfo.put("isCreator", room.getCreatorId() != null && room.getCreatorId().equals(rp.getUserId()));
                     players.add(playerInfo);
                 }
             }
 
             boolean allReady = roomPlayers != null && roomPlayers.stream().allMatch(p -> {
-                if (room.getCreatorId().equals(p.getUserId())) {
+                if (p == null) return false;
+                if (room.getCreatorId() != null && room.getCreatorId().equals(p.getUserId())) {
                     return true;
                 }
                 return p.getIsReady() != null && p.getIsReady() == 1;

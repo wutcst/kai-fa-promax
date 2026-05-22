@@ -54,6 +54,9 @@ public class RoomStatusResponse {
     /** 玩家列表及状态 */
     private List<Map<String, Object>> players;
 
+    /** 准备状态玩家数量 */
+    private Integer readyCount;
+
     /** 房主提示信息 */
     private String hostTip;
 
@@ -70,10 +73,10 @@ public class RoomStatusResponse {
         RoomStatusResponse response = new RoomStatusResponse();
         response.setRoomId("room_" + roomNo);
         response.setRoomNo(roomNo);
-        response.setStatus(status == 0 ? "WAITING" : status == 1 ? "PLAYING" : "FINISHED");
+        response.setStatus(status == null ? "WAITING" : status == 0 ? "WAITING" : status == 1 ? "PLAYING" : "FINISHED");
         response.setPlayerCount(playerCount);
         response.setMaxPlayers(maxPlayers);
-        response.setMessage(message);
+        response.setMessage(message != null ? message : "");
         response.setSeatIndex(seatIndex);
         response.setIsCreator(isCreator);
         response.setAllReady(allReady);
