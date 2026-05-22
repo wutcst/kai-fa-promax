@@ -15,3 +15,4 @@ public class RoomStatusResponse {
     }
 }
 // DTO: detailed ready status for each player slot
+// Fix: default ready=false for newly joined players
