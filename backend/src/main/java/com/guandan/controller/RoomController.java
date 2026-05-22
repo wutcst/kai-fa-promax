@@ -19,6 +19,12 @@ import java.util.Map;
  * 职责：房间基础管理（创建、加入、查询）
  * 注意：游戏核心逻辑（出牌、计分等）由 GameController 处理
  *
+ * 边界处理：
+ * - 重复房间号：createRoom 使用随机 6 位数字生成房间号，加唯一性检查最多重试 3 次
+ * - 满员处理：joinRoom 检查当前玩家数量 >= MAX_PLAYERS（4人）时返回"房间已满"错误
+ * - 重复加入：joinRoom 通过 findExistingPlayer 检测用户是否已在房间中，若已存在直接返回现有记录
+ * - 状态校验：仅 status=0（等待中）的房间可加入，游戏中/已结束状态不可加入
+ *
  * 重构说明：
  * - 提取 joinRoom 的公共校验逻辑到 RoomService
  * - 移除重复的 Token 空值校验，统一由 getUserIdFromToken 处理
