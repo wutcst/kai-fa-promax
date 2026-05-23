@@ -17,3 +17,4 @@ public class RoomStatusResponse {
 // DTO: detailed ready status for each player slot
 // Fix: default ready=false for newly joined players
 // Refactor: rename PlayerReadyInfo to ReadySlot for clarity
+// Docs: ready status response field descriptions
