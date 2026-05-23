@@ -36,6 +36,22 @@
         </el-button>
       </div>
 
+      <div class="search-bar">
+        <el-input
+            v-model="roomSearchQuery"
+            placeholder="搜索房间号..."
+            size="small"
+            clearable
+            class="room-search-input"
+            @input="onSearchInput"
+            @clear="onSearchInput"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+      </div>
+
       <div v-if="loading" class="loading-state">加载中...</div>
       <div v-else-if="loadError" class="error-state">
         <p>{{ loadError }}</p>
@@ -276,15 +292,16 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { WarningFilled, CircleCheck, Loading, User, Lock, Cpu } from '@element-plus/icons-vue'
+import { WarningFilled, CircleCheck, Loading, User, Lock, Cpu, Search } from '@element-plus/icons-vue'
 import { getRooms, joinRoom as joinRoomApi, createRoom as createRoomApi, joinMatch, cancelMatch, getMatchResult } from '@/api/game'
 
 const router = useRouter()
 const nickname = ref(localStorage.getItem('nickname') || '玩家')
 const rooms = ref([])
 const sortedRooms = computed(() => {
-  if (sortBy.value === 'default') return rooms.value
-  const sorted = [...rooms.value]
+  const source = filteredRooms.value.length > 0 ? filteredRooms.value : rooms.value
+  if (sortBy.value === 'default') return source
+  const sorted = [...source]
   sorted.sort((a, b) => {
     let cmp = 0
     if (sortBy.value === 'playerCount') {
@@ -316,6 +333,35 @@ const sortBy = ref('default')
 const sortAsc = ref(true)
 const autoRefreshTimer = ref(null)
 const isFirstLoad = ref(true)
+
+// ── 房间搜索防抖 ─────────────────────────────────
+const roomSearchQuery = ref('')
+const debouncedSearchQuery = ref('')
+let searchDebounceTimer = null
+
+const onSearchInput = (value) => {
+  roomSearchQuery.value = value
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+  searchDebounceTimer = setTimeout(() => {
+    debouncedSearchQuery.value = value
+    applyRoomFilter()
+  }, 300)
+}
+
+const filteredRooms = ref([])
+
+const applyRoomFilter = () => {
+  const query = debouncedSearchQuery.value.trim()
+  if (!query) {
+    filteredRooms.value = []
+    return
+  }
+  filteredRooms.value = rooms.value.filter(room => {
+    return String(room.roomNo).includes(query)
+  })
+}
 
 const applySorting = () => {
   // computed 自动重新计算 sortedRooms
@@ -536,6 +582,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopAutoRefresh()
+  // 清理搜索防抖定时器
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = null
+  }
 })
 </script>
 
@@ -555,6 +606,12 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 12px;
   margin-bottom: 25px;
+}
+.search-bar {
+  margin-bottom: 15px;
+}
+.room-search-input {
+  max-width: 320px;
 }
 .room-list {
   background: #f9f9f9;
