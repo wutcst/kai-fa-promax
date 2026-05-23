@@ -84,3 +84,41 @@ export const getPlayerStatistics = () => {
 export const getPlayerRecords = (params) => {
   return axiosInstance.get('/player/records', { params })
 }
+
+// ========== 大厅交互模块 ==========
+
+/**
+ * 获取大厅完整数据（房间列表 + 用户状态）
+ * 用于优化大厅交互体验，减少前端多次调用的开销
+ */
+export const getLobbyData = () => {
+  return axiosInstance.get('/lobby/data')
+}
+
+/**
+ * 创建房间并保存状态
+ * 封装创建房间逻辑，创建成功后自动保存房间号到本地存储
+ */
+export const createRoomAndSave = async (request) => {
+  const response = await axiosInstance.post('/new-game', request)
+  if (response.data && response.data.roomNo) {
+    // 创建成功后保存房间状态到本地存储
+    localStorage.setItem('currentRoomNo', response.data.roomNo)
+    localStorage.setItem('roomCreatedAt', Date.now().toString())
+  }
+  return response
+}
+
+/**
+ * 加入房间并保存状态
+ * 封装加入房间逻辑，加入成功后自动保存房间状态
+ */
+export const joinRoomAndSave = async (roomNo) => {
+  const username = sessionStorage.getItem('username') || localStorage.getItem('username')
+  const response = await axiosInstance.post('/room/join', { roomNo, username })
+  if (response.data && response.data.roomNo) {
+    localStorage.setItem('currentRoomNo', response.data.roomNo)
+    localStorage.setItem('roomJoinedAt', Date.now().toString())
+  }
+  return response
+}
