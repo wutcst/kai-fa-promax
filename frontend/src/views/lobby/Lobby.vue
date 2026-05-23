@@ -45,3 +45,4 @@ onMounted(refresh)
 // Fix: room create button disabled state during API request
 // Test: lobby page component unit test with mocked API
 // Docs: lobby component props and event documentation
+// Perf: debounce room search input to reduce API calls
