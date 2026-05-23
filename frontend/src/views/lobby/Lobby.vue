@@ -293,7 +293,17 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { WarningFilled, CircleCheck, Loading, User, Lock, Cpu, Search } from '@element-plus/icons-vue'
-import { getRooms, joinRoom as joinRoomApi, createRoom as createRoomApi, joinMatch, cancelMatch, getMatchResult } from '@/api/game'
+import {
+  getRooms,
+  joinRoom as joinRoomApi,
+  createRoom as createRoomApi,
+  joinMatch,
+  cancelMatch,
+  getMatchResult,
+  getCurrentRoom,
+  createRoomAndSave,
+  joinRoomAndSave
+} from '@/api/game'
 
 const router = useRouter()
 const nickname = ref(localStorage.getItem('nickname') || '玩家')
@@ -440,6 +450,7 @@ const quickMatch = async () => {
   try {
     ElMessage.info('正在匹配中...')
     await joinMatch()
+    localStorage.setItem('matchingState', 'true')
     ElMessage.info('已加入匹配队列，正在寻找对手...')
     // 轮询匹配结果
     const pollResult = await new Promise((resolve) => {
@@ -461,12 +472,18 @@ const quickMatch = async () => {
       }, 60000)
     })
     if (pollResult) {
+      localStorage.setItem('currentRoomNo', pollResult)
+      localStorage.setItem('isCreator', 'false')
+      localStorage.removeItem('matchingState')
       ElMessage.success(`匹配成功！房间号：${pollResult}`)
+      router.push({ path: '/battle', query: { roomId: pollResult } })
     } else {
+      localStorage.removeItem('matchingState')
       ElMessage.warning('匹配超时，请重试')
     }
   } catch (err) {
     console.error('快速匹配失败:', err)
+    localStorage.removeItem('matchingState')
     ElMessage.error('匹配失败，请重试')
   } finally {
     matching.value = false
@@ -478,17 +495,32 @@ const joinRoom = (roomNo) => {
   ElMessage.info(`加入房间 ${roomNo}`)
 }
 
-/** 创建房间提交流程（防重复提交，集成真实API） */
+/** 创建房间提交流程（防重复提交，保存状态到本地存储） */
 const handleCreateRoom = async () => {
   if (creating.value) return
   creating.value = true
   createError.value = ''
   try {
-    const response = await createRoomApi({ roomName: createForm.value.roomName })
-    const roomNo = response.data.roomNo || String(100000 + Math.floor(Math.random() * 900000))
+    const request = {
+      roomName: createForm.value.roomName,
+      roomType: createForm.value.roomType,
+      maxRounds: createForm.value.maxRounds,
+      isPrivate: createForm.value.roomType === 'private',
+      teamMode: createForm.value.teamMode,
+      allowSpectate: createForm.value.allowSpectate
+    }
+    if (createForm.value.roomType === 'private') {
+      request.password = createForm.value.password
+    }
+    const response = await createRoomAndSave(request)
+    const roomNo = response.data?.roomNo || String(100000 + Math.floor(Math.random() * 900000))
     ElMessage.success(`房间创建成功，房间号：${roomNo}`)
     showCreateDialog.value = false
+    // 保存当前房间状态后跳转
+    localStorage.setItem('currentRoomNo', roomNo)
+    localStorage.setItem('isCreator', 'true')
     await fetchRooms()
+    router.push({ path: '/battle', query: { roomId: roomNo } })
   } catch (err) {
     console.error('创建房间失败:', err)
     createError.value = '创建房间失败，请稍后重试'
@@ -497,7 +529,7 @@ const handleCreateRoom = async () => {
   }
 }
 
-/** 加入房间提交流程（集成真实API，防重复提交） */
+/** 加入房间提交流程（集成真实API，保存状态到本地存储） */
 const handleJoinRoom = async () => {
   if (joining.value) return
   const joinFormRefVal = joinFormRef.value
@@ -507,11 +539,14 @@ const handleJoinRoom = async () => {
   joining.value = true
   joinError.value = ''
   try {
-    const response = await joinRoomApi(joinForm.value.roomNo)
-    ElMessage.success(`成功加入房间 ${joinForm.value.roomNo}`)
+    const response = await joinRoomAndSave(joinForm.value.roomNo)
+    const roomNo = joinForm.value.roomNo
+    ElMessage.success(`成功加入房间 ${roomNo}`)
     showJoinDialog.value = false
-    // 加入成功后跳转到游戏页面
-    router.push({ path: '/battle', query: { roomId: joinForm.value.roomNo } })
+    // 保存加入状态后跳转到游戏页面
+    localStorage.setItem('currentRoomNo', roomNo)
+    localStorage.setItem('isCreator', 'false')
+    router.push({ path: '/battle', query: { roomId: roomNo } })
   } catch (err) {
     console.error('加入房间失败:', err)
     joinError.value = '加入房间失败，请检查房间号或房间状态'
@@ -533,6 +568,10 @@ const fetchRooms = async () => {
       status: room.status !== undefined ? room.status : 0,
       creatorId: room.creatorId
     }))
+    // 处理空状态：当房间列表为空时，清除筛选条件显示默认引导
+    if (rooms.value.length === 0 && debouncedSearchQuery.value) {
+      ElMessage.info('未找到匹配的房间，请尝试其他房间号')
+    }
     isFirstLoad.value = false
   } catch (err) {
     console.error('获取房间列表失败:', err)
