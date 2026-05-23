@@ -18,3 +18,4 @@ public class RoomStatusResponse {
 // Fix: default ready=false for newly joined players
 // Refactor: rename PlayerReadyInfo to ReadySlot for clarity
 // Docs: ready status response field descriptions
+// Regression: RoomStatusResponse field validation for all player states

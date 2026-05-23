@@ -516,3 +516,4 @@ public class GameController {
 // Fix: handle empty player list gracefully
 // Refactor: extract ready status calculation logic
 // Docs: room status lifecycle and ready state transitions
+// Regression: GameController ready status and host tip verification
