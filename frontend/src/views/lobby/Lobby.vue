@@ -46,18 +46,38 @@
         <el-button type="primary" size="small" @click="showCreateDialog = true">立即创建</el-button>
       </div>
       <div v-for="room in sortedRooms" :key="room.id" class="room-card">
-        <div class="room-card-info">
+        <div class="room-card-header">
           <span class="room-no">房间 {{ room.roomNo }}</span>
-          <span class="room-players">
-            <el-tag :type="room.playerCount >= 4 ? 'danger' : 'success'" size="small">
-              {{ room.playerCount }}/4人
-            </el-tag>
-          </span>
-          <span :class="['room-status-tag', room.status === 0 ? 'waiting' : 'playing']">
-            {{ room.status === 0 ? '等待中' : '游戏中' }}
-          </span>
         </div>
-        <el-button size="small" type="primary" @click="joinRoom(room.roomNo)" :disabled="room.status !== 0">加入</el-button>
+        <div class="room-card-body">
+          <div class="room-card-meta">
+            <span class="room-players">
+              <el-tag :type="room.playerCount >= 4 ? 'danger' : 'success'" size="small" class="player-count-tag">
+                <span class="player-count-icon">&#x1F465;</span>
+                {{ room.playerCount }}/4人
+              </el-tag>
+            </span>
+            <span :class="['room-status-badge', room.status === 0 ? 'badge-waiting' : 'badge-playing']">
+              <span class="status-dot"></span>
+              {{ room.status === 0 ? '等待中' : '游戏中' }}
+            </span>
+          </div>
+          <div class="room-card-progress">
+            <div class="progress-bar">
+              <div
+                  class="progress-fill"
+                  :class="room.playerCount >= 4 ? 'fill-full' : 'fill-partial'"
+                  :style="{ width: (room.playerCount / 4 * 100) + '%' }"
+              ></div>
+            </div>
+            <span class="progress-text">{{ room.playerCount }}/4 已就位</span>
+          </div>
+        </div>
+        <div class="room-card-footer">
+          <el-button size="small" type="primary" @click="joinRoom(room.roomNo)" :disabled="room.status !== 0" class="join-room-btn">
+            {{ room.status !== 0 ? '已开始' : (room.playerCount >= 4 ? '已满' : '加入') }}
+          </el-button>
+        </div>
       </div>
     </div>
 
@@ -526,8 +546,32 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding: 12px;
+  padding: 16px;
   border-bottom: 1px solid #eee;
+  transition: all 0.25s ease;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.room-card:hover {
+  background: #f5f7fa;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transform: translateX(4px);
+}
+.room-card-header {
+  min-width: 120px;
+}
+.room-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.room-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .room-card-info {
   display: flex;
@@ -537,9 +581,101 @@ onBeforeUnmount(() => {
 .room-no {
   font-weight: bold;
   min-width: 100px;
+  font-size: 15px;
+  color: #303133;
 }
 .room-players {
   min-width: 70px;
+}
+.player-count-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 12px !important;
+  padding: 2px 10px !important;
+  font-weight: 500;
+}
+.player-count-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+.room-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 12px;
+  border-radius: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+.room-status-badge.badge-waiting {
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+.room-status-badge.badge-playing {
+  background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+  color: #e65100;
+  border: 1px solid #ffcc80;
+}
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: statusPulse 2s ease-in-out infinite;
+}
+.badge-playing .status-dot {
+  animation: none;
+  opacity: 0.6;
+}
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.room-card-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.progress-bar {
+  flex: 1;
+  max-width: 200px;
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.progress-fill.fill-partial {
+  background: linear-gradient(90deg, #81c784, #4caf50);
+}
+.progress-fill.fill-full {
+  background: linear-gradient(90deg, #ef5350, #f44336);
+}
+.progress-text {
+  font-size: 11px;
+  color: #999;
+  white-space: nowrap;
+}
+.join-room-btn {
+  min-width: 70px;
+  border-radius: 6px !important;
+  transition: all 0.2s ease;
+}
+.join-room-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+}
+.room-card-footer {
+  display: flex;
+  align-items: center;
 }
 .room-status-tag {
   font-size: 12px;
