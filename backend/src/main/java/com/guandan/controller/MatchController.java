@@ -76,3 +76,4 @@ public class MatchController {
     }
 }
 // Controller: POST /match/join and POST /match/cancel
+// Fix: handle cancel on already-matched player

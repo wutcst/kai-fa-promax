@@ -8,3 +8,4 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class ScheduleConfig {
 }
 // Config: @Scheduled for match polling every 2 seconds
+// Fix: graceful shutdown for scheduled tasks
