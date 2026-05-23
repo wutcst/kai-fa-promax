@@ -40,6 +40,7 @@ public class MatchController {
      *
      * 流程说明：
      * - 校验用户登录状态
+     * - 重复提交检测：已在队列中时幂等返回成功
      * - 调用 MatchService 加入队列
      * - 若队列达到 4 人则自动触发匹配
      *
@@ -52,6 +53,12 @@ public class MatchController {
 
         if (userId == null) {
             return Result.error("用户未登录");
+        }
+
+        // 状态一致性判断：已在队列中则幂等返回
+        if (matchService.isInMatchQueue(userId)) {
+            log.info("用户 {} 已在匹配队列中，幂等返回", userId);
+            return Result.success(true);
         }
 
         boolean success = matchService.joinMatchQueue(userId);
@@ -111,11 +118,21 @@ public class MatchController {
      * 轮询此接口获取匹配结果，匹配成功时返回房间号。
      * 建议轮询间隔：2-3 秒。
      *
+     * 空值保护：
+     * - userId 为 null 时返回用户未登录错误
+     * - matchService.getMatchResult 返回 null 时正常返回空结果
+     *
      * @return 匹配到的房间号
      */
     @PostMapping("/match/result")
     public Result<Map<String, Object>> getMatchResult() {
         Long userId = UserContext.getUserId();
+
+        // 空值保护：未登录用户无法查询匹配结果
+        if (userId == null) {
+            return Result.error("用户未登录");
+        }
+
         String roomNo = matchService.getMatchResult(userId);
         if (roomNo != null) {
             log.info("玩家 {} 匹配成功，房间号: {}", userId, roomNo);

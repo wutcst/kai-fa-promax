@@ -40,6 +40,10 @@ public class MatchService {
     /**
      * 加入匹配队列
      *
+     * 状态一致性判断：
+     * - 重复提交检测：用户已在队列中时直接返回 true（幂等）
+     * - 已匹配用户检测：用户有未消费的匹配结果时优先返回 false
+     *
      * @param userId 用户ID
      * @return 是否成功加入
      */
@@ -51,6 +55,19 @@ public class MatchService {
         // 校验用户是否存在
         if (userMapper.selectById(userId) == null) {
             log.warn("用户 {} 不存在，无法加入匹配队列", userId);
+            return false;
+        }
+
+        // 状态一致性判断：重复提交检测
+        if (roomCache.isInMatchQueue(userId)) {
+            log.info("用户 {} 已在匹配队列中，幂等忽略", userId);
+            return true;
+        }
+
+        // 状态一致性判断：已有匹配结果但未消费
+        String existingResult = roomCache.getMatchResult(userId);
+        if (existingResult != null) {
+            log.warn("用户 {} 已有未消费的匹配结果，不能重复加入匹配队列", userId);
             return false;
         }
 
@@ -70,7 +87,19 @@ public class MatchService {
      * @return 是否成功取消
      */
     public boolean cancelMatch(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+
+        // 空值保护：校验用户是否在队列中
+        if (!roomCache.isInMatchQueue(userId)) {
+            log.warn("玩家 {} 不在匹配队列中，无需取消", userId);
+            return false;
+        }
+
         roomCache.removeFromMatchQueue(userId);
+        // 同时清理匹配结果缓存，避免状态不一致
+        roomCache.removeMatchResult(userId);
         log.info("玩家 {} 取消匹配，当前队列人数: {}", userId, roomCache.getMatchQueueSize());
         return true;
     }
@@ -82,6 +111,9 @@ public class MatchService {
      * @return 是否在队列中
      */
     public boolean isInMatchQueue(Long userId) {
+        if (userId == null) {
+            return false;
+        }
         return roomCache.isInMatchQueue(userId);
     }
 
@@ -92,6 +124,9 @@ public class MatchService {
      * @return 匹配到的房间号，null表示尚未匹配成功
      */
     public String getMatchResult(Long userId) {
+        if (userId == null) {
+            return null;
+        }
         return roomCache.getMatchResult(userId);
     }
 
@@ -138,6 +173,10 @@ public class MatchService {
                 request.setConfig(null);
 
                 String roomNo = roomService.createRoom(request);
+                if (roomNo == null || roomNo.isEmpty()) {
+                    log.error("匹配失败: 创建房间返回null，无法继续匹配流程");
+                    throw new RuntimeException("创建房间失败");
+                }
                 log.info("匹配房间创建成功! roomNo={}", roomNo);
 
                 // 将4个玩家都加入数据库房间
