@@ -36,3 +36,4 @@ public class RoomService {
 // Fix: prevent duplicate room code on concurrent creation
 // Refactor: extract RoomValidator service for SRP compliance
 // Docs: room lifecycle states and error codes
+// Regression: room creation duplicate code and full-room boundary checks

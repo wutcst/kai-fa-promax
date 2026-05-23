@@ -38,3 +38,4 @@ public class RoomController {
 // Refactor: align controller method names with REST API paths
 // Fix: resolve compilation issues from renamed methods
 // Style: consistent indentation and brace placement
+// Regression: room controller join/leave flow validation

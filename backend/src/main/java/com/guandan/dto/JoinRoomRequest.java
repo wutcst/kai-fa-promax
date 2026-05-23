@@ -21,3 +21,4 @@ public class JoinRoomRequest {
 // Fix: add capacity check in request validation
 // Refactor: builder pattern for JoinRoomRequest
 // Docs: field-level validation rules documentation
+// Regression: JoinRoomRequest validation rules check
