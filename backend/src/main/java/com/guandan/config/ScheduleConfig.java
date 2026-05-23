@@ -13,7 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled;
  * 启用 Spring 定时任务支持，用于匹配队列轮询等后台任务。
  *
  * 定时任务说明：
- * - checkMatchQueue：每 3 秒轮询匹配队列，检查是否达到 4 人匹配条件
+ * - pollMatchQueue：每 3 秒轮询匹配队列，检查是否达到 4 人匹配条件
  *   空值保护：MatchService.checkAndMatch() 内部已处理空队列和不足 4 人的情况
  */
 @Slf4j
@@ -25,14 +25,16 @@ public class ScheduleConfig {
     private MatchService matchService;
 
     /**
-     * 定时检查匹配队列
+     * 定时轮询匹配队列，检查是否达到匹配条件
      *
-     * 每 3 秒执行一次，检查匹配队列是否达到 4 人。
+     * 每 3 秒执行一次，检查匹配队列是否已达到 4 人。
      * checkAndMatch() 内部有 synchronized 保证并发安全，
      * 空队列或不足 4 人时直接返回，无额外开销。
+     *
+     * 职责边界：仅负责触发匹配检测，不参与匹配业务逻辑。
      */
     @Scheduled(fixedRate = 3000)
-    public void checkMatchQueue() {
+    public void pollMatchQueue() {
         try {
             matchService.checkAndMatch();
         } catch (Exception e) {
