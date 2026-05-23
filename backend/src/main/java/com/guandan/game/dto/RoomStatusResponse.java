@@ -12,13 +12,20 @@ import java.util.Map;
  * 房间状态响应
  *
  * 用于返回房间当前的状态信息，包括：
- * - 房间ID
- * - 房间状态（等待中、游戏中、已结束）
- * - 当前玩家数量
- * - 最大玩家数量
- * - 提示信息
- * - 玩家列表及准备状态
- * - 房主操作提示
+ * - 房间基本信息（ID、房间号、状态）
+ * - 玩家数量及最大容量
+ * - 座位号与房主标识
+ * - 准备状态汇总
+ * - 玩家列表及准备详情
+ * - 房主操作提示与可开始标识
+ *
+ * 通过 builder 方法（buildWaitingResponse / buildFullResponse / buildPlayingResponse / buildFinishedResponse）
+ * 统一构造不同状态的响应对象，保证响应结构一致性。
+ *
+ * 异常场景覆盖：
+ * - 房间不存在：由 Controller 层统一返回 404 error
+ * - Token 无效：由拦截器统一返回 401
+ * - 玩家记录异常：返回空 players 列表，提示信息反映等待状态
  */
 @Data
 @NoArgsConstructor
