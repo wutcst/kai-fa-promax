@@ -3,21 +3,33 @@ import axiosInstance from './axiosInstance'
 // 加入房间
 export const joinRoom = (roomNo) => {
   const username = sessionStorage.getItem('username') || localStorage.getItem('username')
+  if (!username) {
+    return Promise.reject(new Error('用户未登录，请先登录'))
+  }
   return axiosInstance.post('/room/join', { roomNo, username })
 }
 
 // 退出房间
 export const exitRoom = (roomId) => {
+  if (!roomId) {
+    return Promise.reject(new Error('房间ID不能为空'))
+  }
   return axiosInstance.post('/room/exit', { roomId })
 }
 
 // 获取房间详细信息
 export const getRoomDetail = (roomNo) => {
+  if (!roomNo) {
+    return Promise.reject(new Error('房间号不能为空'))
+  }
   return axiosInstance.get(`/room/${roomNo}/detail`)
 }
 
 // 解散房间
 export const dissolveRoom = (roomNo) => {
+  if (!roomNo) {
+    return Promise.reject(new Error('房间号不能为空'))
+  }
   return axiosInstance.post(`/room/${roomNo}/dissolve`)
 }
 
@@ -43,7 +55,11 @@ export const createRoom = (request) => {
 
 // 获取房间列表
 export const getRooms = () => {
-  return axiosInstance.get('/rooms')
+  return axiosInstance.get('/rooms').catch(error => {
+    console.error('获取房间列表失败:', error)
+    // 网络错误时返回空列表，便于调用方统一处理空状态
+    return { data: [] }
+  })
 }
 
 // 获取用户当前所在房间
@@ -98,27 +114,48 @@ export const getLobbyData = () => {
 /**
  * 创建房间并保存状态
  * 封装创建房间逻辑，创建成功后自动保存房间号到本地存储
+ * 异常处理：创建失败时不清除本地状态，保留之前有效记录
  */
 export const createRoomAndSave = async (request) => {
-  const response = await axiosInstance.post('/new-game', request)
-  if (response.data && response.data.roomNo) {
-    // 创建成功后保存房间状态到本地存储
-    localStorage.setItem('currentRoomNo', response.data.roomNo)
-    localStorage.setItem('roomCreatedAt', Date.now().toString())
+  try {
+    const response = await axiosInstance.post('/new-game', request)
+    if (response.data && response.data.roomNo) {
+      // 创建成功后保存房间状态到本地存储
+      localStorage.setItem('currentRoomNo', response.data.roomNo)
+      localStorage.setItem('roomCreatedAt', Date.now().toString())
+    }
+    return response
+  } catch (error) {
+    // 创建失败时不清除已有房间状态，保留之前有效记录
+    console.error('创建房间失败:', error)
+    throw error
   }
-  return response
 }
 
 /**
  * 加入房间并保存状态
  * 封装加入房间逻辑，加入成功后自动保存房间状态
+ * 异常处理：加入失败时清除临时存储的加入状态
  */
 export const joinRoomAndSave = async (roomNo) => {
-  const username = sessionStorage.getItem('username') || localStorage.getItem('username')
-  const response = await axiosInstance.post('/room/join', { roomNo, username })
-  if (response.data && response.data.roomNo) {
-    localStorage.setItem('currentRoomNo', response.data.roomNo)
-    localStorage.setItem('roomJoinedAt', Date.now().toString())
+  if (!roomNo) {
+    return Promise.reject(new Error('房间号不能为空'))
   }
-  return response
+  try {
+    const username = sessionStorage.getItem('username') || localStorage.getItem('username')
+    if (!username) {
+      return Promise.reject(new Error('用户未登录，请先登录'))
+    }
+    const response = await axiosInstance.post('/room/join', { roomNo, username })
+    if (response.data && response.data.roomNo) {
+      localStorage.setItem('currentRoomNo', response.data.roomNo)
+      localStorage.setItem('roomJoinedAt', Date.now().toString())
+    }
+    return response
+  } catch (error) {
+    // 加入失败时清除可能残留的加入状态
+    localStorage.removeItem('currentRoomNo')
+    localStorage.removeItem('roomJoinedAt')
+    throw error
+  }
 }
