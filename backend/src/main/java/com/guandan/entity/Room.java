@@ -18,3 +18,4 @@ public class Room {
 // Refactor: standardized package naming com.guandan.{entity,controller,service}
 // Refactor: align entity fields with DB schema naming conventions
 // Fix: update import paths after package restructuring
+// Style: unified class naming - PascalCase, method naming - camelCase
