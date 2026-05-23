@@ -565,7 +565,14 @@ public class GameController {
      * 获取等待页完整状态
      * GET /api/game/{roomNo}/waiting-status
      *
-     * 返回等待页所需的所有状态信息
+     * 返回等待页所需的所有状态信息，包括玩家列表、准备状态、房主提示等。
+     * 用于前端等待页在游戏开始前的状态展示和轮询刷新。
+     *
+     * 功能：
+     * - 获取房间内所有玩家及其准备状态
+     * - 判断是否全部准备就绪
+     * - 获取房主操作提示文案
+     * - 提供当前玩家是否为房主的标识
      *
      * 返回结构：
      * {
@@ -573,12 +580,27 @@ public class GameController {
      *   "data": {
      *     "roomNo": "123456",
      *     "status": "WAITING",
-     *     "players": [...],
+     *     "players": [
+     *       {
+     *         "userId": 1,
+     *         "username": "player1",
+     *         "seatIndex": 0,
+     *         "isReady": true,
+     *         "isCreator": true
+     *       }
+     *     ],
      *     "playerCount": 2,
      *     "maxPlayers": 4,
-     *     "hostTip": "等待其他玩家加入..."
+     *     "isCreator": true,
+     *     "allReady": false,
+     *     "hostTip": "至少需要2名玩家才能开始游戏，当前 2 人"
      *   }
      * }
+     *
+     * 异常场景：
+     * - 401: Token 过期或无效
+     * - 404: 房间不存在：指定 roomNo 的房间未找到
+     * - 房间存在但玩家记录异常：返回空 players 列表，hostTip 提示等待加入
      */
     @GetMapping("/game/{roomNo}/waiting-status")
     public Result<Map<String, Object>> getWaitingStatus(
