@@ -1,21 +1,30 @@
 <template>
-  <div class="lobby-container">
-    <h2>游戏大厅</h2>
-    <p v-if="!username">请先登录</p>
-    <p v-else>欢迎，{{ username }}</p>
-  </div>
+  <main class="lobby">
+    <h1>游戏大厅</h1>
+    <button @click="create">创建房间</button>
+    <input v-model="roomNo" placeholder="房间号" />
+    <button @click="join">加入房间</button>
+    <button @click="match">快速匹配</button>
+
+    <section>
+      <article v-for="room in rooms" :key="room.roomNo">
+        {{ room.roomNo }} / {{ room.players?.length || 0 }}/4
+      </article>
+    </section>
+  </main>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
+import { createRoom, joinRoom, listRooms, joinMatch } from '../../api/game'
 
-const username = ref('')
+const roomNo = ref('')
+const rooms = ref([])
 
-onMounted(() => {
-  username.value = localStorage.getItem('username') || ''
-})
+async function refresh() { rooms.value = (await listRooms()).data.data }
+async function create() { await createRoom(); refresh() }
+async function join() { await joinRoom(roomNo.value); refresh() }
+async function match() { await joinMatch(); alert('已进入匹配队列') }
+
+onMounted(refresh)
 </script>
-// Refactor: split lobby page state into loading/empty/error/list states
-// Docs: frontend integration notes for lobby empty state handling
-// Docs: component usage guide for Lobby page room list and state
-// Test: manual checklist - lobby page empty/loading/list states
