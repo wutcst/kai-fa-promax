@@ -2,7 +2,8 @@ package com.guandan.controller;
 
 import com.guandan.common.ApiResult;
 import com.guandan.dto.NewGameRequest;
-import com.guandan.model.RoomEntity;
+import com.guandan.entity.Room;
+import com.guandan.entity.RoomPlayer;
 import com.guandan.service.AuthService;
 import com.guandan.service.RoomService;
 import jakarta.annotation.Resource;
@@ -81,10 +82,10 @@ public class RoomController {
      * @return 等待中的房间列表
      */
     @GetMapping("/rooms")
-    public ApiResult<List<RoomEntity>> getAvailableRooms(@RequestHeader("Authorization") String token) {
+    public ApiResult<List<Room>> getAvailableRooms(@RequestHeader("Authorization") String token) {
         try {
             getUserIdFromToken(token);
-            List<RoomEntity> rooms = roomService.getAvailableRooms();
+            List<Room> rooms = roomService.getAvailableRooms();
             return ApiResult.success(rooms);
         } catch (Exception e) {
             return ApiResult.error(e.getMessage());
@@ -122,13 +123,13 @@ public class RoomController {
             String roomNo = request.getTrimmedRoomNo();
 
             // 检查用户是否已在其他房间
-            RoomEntity existingRoom = roomService.getCurrentRoom(userId);
+            Room existingRoom = roomService.getCurrentRoom(userId);
             if (existingRoom != null && existingRoom.isWaiting()) {
                 return ApiResult.error("您已在房间 " + existingRoom.getRoomNo() + " 中，请先退出再加入其他房间");
             }
 
             // 执行加入
-            com.guandan.model.RoomPlayerEntity roomPlayer = roomService.joinRoom(roomNo, userId);
+            com.guandan.entity.RoomPlayer roomPlayer = roomService.joinRoom(roomNo, userId);
             if (roomPlayer == null) {
                 return ApiResult.error("加入房间失败，请重试");
             }
@@ -155,10 +156,10 @@ public class RoomController {
      * @return 用户当前所在房间信息
      */
     @GetMapping("/room/current")
-    public ApiResult<RoomEntity> getCurrentRoom(@RequestHeader("Authorization") String token) {
+    public ApiResult<Room> getCurrentRoom(@RequestHeader("Authorization") String token) {
         try {
             Long userId = getUserIdFromToken(token);
-            RoomEntity room = roomService.getCurrentRoom(userId);
+            Room room = roomService.getCurrentRoom(userId);
             if (room == null) {
                 return ApiResult.success(null);
             }
@@ -198,13 +199,13 @@ public class RoomController {
      * GET /api/room/detail/{roomNo}
      */
     @GetMapping("/room/detail/{roomNo}")
-    public ApiResult<RoomEntity> getRoomDetail(@PathVariable String roomNo) {
+    public ApiResult<Room> getRoomDetail(@PathVariable String roomNo) {
         try {
-            RoomEntity room = roomService.getRoomByRoomNo(roomNo);
+            Room room = roomService.getRoomByRoomNo(roomNo);
             if (room == null) {
                 return ApiResult.error("房间不存在");
             }
-            RoomEntity detail = roomService.getRoomDetail(room.getId());
+            Room detail = roomService.getRoomDetail(room.getId());
             return ApiResult.success(detail);
         } catch (Exception e) {
             return ApiResult.error(e.getMessage());

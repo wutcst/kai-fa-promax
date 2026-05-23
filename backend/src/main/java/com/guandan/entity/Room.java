@@ -1,4 +1,4 @@
-package com.guandan.model;
+package com.guandan.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
