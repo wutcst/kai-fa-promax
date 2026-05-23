@@ -52,14 +52,18 @@
         </el-input>
       </div>
 
-      <div v-if="loading" class="loading-state">加载中...</div>
+      <div v-if="loading && isFirstLoad" class="loading-state">加载中...</div>
       <div v-else-if="loadError" class="error-state">
         <p>{{ loadError }}</p>
-        <el-button size="small" @click="fetchRooms">重新加载</el-button>
+        <el-button size="small" @click="retryFetchRooms">重新加载</el-button>
       </div>
-      <div v-else-if="sortedRooms.length === 0" class="empty-state">
+      <div v-else-if="sortedRooms.length === 0 && !debouncedSearchQuery" class="empty-state">
         <p>暂无房间，创建一个吧</p>
         <el-button type="primary" size="small" @click="showCreateDialog = true">立即创建</el-button>
+      </div>
+      <div v-else-if="sortedRooms.length === 0 && debouncedSearchQuery" class="empty-state">
+        <p>未找到匹配 "{{ debouncedSearchQuery }}" 的房间</p>
+        <el-button size="small" @click="clearSearchAndRefresh">清除搜索并刷新</el-button>
       </div>
       <div v-for="room in sortedRooms" :key="room.id" class="room-card">
         <div class="room-card-header">
@@ -90,8 +94,8 @@
           </div>
         </div>
         <div class="room-card-footer">
-          <el-button size="small" type="primary" @click="joinRoom(room.roomNo)" :disabled="room.status !== 0" class="join-room-btn">
-            {{ room.status !== 0 ? '已开始' : (room.playerCount >= 4 ? '已满' : '加入') }}
+          <el-button size="small" type="primary" @click="joinRoom(room.roomNo)" :disabled="room.status !== 0 || room.playerCount >= 4" class="join-room-btn">
+            {{ room.status === 0 ? (room.playerCount >= 4 ? '已满' : '加入') : (room.status === 1 ? '游戏中' : '已结束') }}
           </el-button>
         </div>
       </div>
@@ -568,9 +572,11 @@ const fetchRooms = async () => {
       status: room.status !== undefined ? room.status : 0,
       creatorId: room.creatorId
     }))
-    // 处理空状态：当房间列表为空时，清除筛选条件显示默认引导
+    // 处理空状态：当房间列表为空且存在搜索条件时，提示用户
     if (rooms.value.length === 0 && debouncedSearchQuery.value) {
       ElMessage.info('未找到匹配的房间，请尝试其他房间号')
+    } else if (rooms.value.length === 0) {
+      // 空列表正常状态，等待房主创建
     }
     isFirstLoad.value = false
   } catch (err) {
@@ -579,6 +585,25 @@ const fetchRooms = async () => {
   } finally {
     loading.value = false
   }
+}
+
+/** 出错时重试获取房间列表，增加短暂延迟 */
+const retryFetchRooms = () => {
+  setTimeout(() => {
+    fetchRooms()
+  }, 300)
+}
+
+/** 清除搜索条件并刷新列表 */
+const clearSearchAndRefresh = () => {
+  roomSearchQuery.value = ''
+  debouncedSearchQuery.value = ''
+  filteredRooms.value = []
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = null
+  }
+  fetchRooms()
 }
 
 // 启动后台定时刷新（仅页面在前台运行时有效）
