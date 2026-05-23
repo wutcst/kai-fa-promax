@@ -277,6 +277,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { WarningFilled, CircleCheck, Loading, User, Lock, Cpu } from '@element-plus/icons-vue'
+import { getRooms, joinRoom as joinRoomApi, createRoom as createRoomApi, joinMatch, cancelMatch, getMatchResult } from '@/api/game'
 
 const router = useRouter()
 const nickname = ref(localStorage.getItem('nickname') || '玩家')
@@ -392,8 +393,32 @@ const quickMatch = async () => {
   matching.value = true
   try {
     ElMessage.info('正在匹配中...')
-    // 模拟匹配请求耗时
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await joinMatch()
+    ElMessage.info('已加入匹配队列，正在寻找对手...')
+    // 轮询匹配结果
+    const pollResult = await new Promise((resolve) => {
+      const interval = setInterval(async () => {
+        try {
+          const result = await getMatchResult()
+          if (result.roomNo) {
+            clearInterval(interval)
+            resolve(result.roomNo)
+          }
+        } catch (e) {
+          // 继续轮询
+        }
+      }, 2000)
+      // 60秒超时
+      setTimeout(() => {
+        clearInterval(interval)
+        resolve(null)
+      }, 60000)
+    })
+    if (pollResult) {
+      ElMessage.success(`匹配成功！房间号：${pollResult}`)
+    } else {
+      ElMessage.warning('匹配超时，请重试')
+    }
   } catch (err) {
     console.error('快速匹配失败:', err)
     ElMessage.error('匹配失败，请重试')
@@ -407,16 +432,14 @@ const joinRoom = (roomNo) => {
   ElMessage.info(`加入房间 ${roomNo}`)
 }
 
-/** 创建房间提交流程（防重复提交） */
+/** 创建房间提交流程（防重复提交，集成真实API） */
 const handleCreateRoom = async () => {
   if (creating.value) return
-  // 表单校验在 nextCreateStep 中已经完成，确认创建时直接提交
   creating.value = true
   createError.value = ''
   try {
-    // 模拟创建房间API调用
-    await new Promise(resolve => setTimeout(resolve, 800))
-    const roomNo = String(100000 + Math.floor(Math.random() * 900000))
+    const response = await createRoomApi({ roomName: createForm.value.roomName })
+    const roomNo = response.data.roomNo || String(100000 + Math.floor(Math.random() * 900000))
     ElMessage.success(`房间创建成功，房间号：${roomNo}`)
     showCreateDialog.value = false
     await fetchRooms()
@@ -428,7 +451,7 @@ const handleCreateRoom = async () => {
   }
 }
 
-/** 加入房间提交流程（防重复提交） */
+/** 加入房间提交流程（集成真实API，防重复提交） */
 const handleJoinRoom = async () => {
   if (joining.value) return
   const joinFormRefVal = joinFormRef.value
@@ -438,28 +461,32 @@ const handleJoinRoom = async () => {
   joining.value = true
   joinError.value = ''
   try {
-    // 模拟加入房间API调用
-    await new Promise(resolve => setTimeout(resolve, 600))
+    const response = await joinRoomApi(joinForm.value.roomNo)
     ElMessage.success(`成功加入房间 ${joinForm.value.roomNo}`)
     showJoinDialog.value = false
+    // 加入成功后跳转到游戏页面
+    router.push({ path: '/battle', query: { roomId: joinForm.value.roomNo } })
   } catch (err) {
     console.error('加入房间失败:', err)
-    joinError.value = '加入房间失败，请检查房间号'
+    joinError.value = '加入房间失败，请检查房间号或房间状态'
   } finally {
     joining.value = false
   }
 }
 
 const fetchRooms = async () => {
-  // 首次加载或数据为空时重新获取；避免每次导航触发自动刷新
-  if (!isFirstLoad.value && rooms.value.length > 0) {
-    return
-  }
   loading.value = true
   loadError.value = ''
   try {
-    // TODO: 接入真实API
-    rooms.value = []
+    const response = await getRooms()
+    const roomList = response.data || response || []
+    rooms.value = roomList.map(room => ({
+      id: room.id || room.roomNo,
+      roomNo: room.roomNo || room.id,
+      playerCount: room.playerCount || room.userCount || 0,
+      status: room.status !== undefined ? room.status : 0,
+      creatorId: room.creatorId
+    }))
     isFirstLoad.value = false
   } catch (err) {
     console.error('获取房间列表失败:', err)
@@ -472,12 +499,24 @@ const fetchRooms = async () => {
 // 启动后台定时刷新（仅页面在前台运行时有效）
 const startAutoRefresh = () => {
   stopAutoRefresh()
-  autoRefreshTimer.value = setInterval(() => {
+  autoRefreshTimer.value = setInterval(async () => {
     isFirstLoad.value = false
     loading.value = true
-    // TODO: 接入真实API
-    rooms.value = []
-    loading.value = false
+    try {
+      const response = await getRooms()
+      const roomList = response.data || response || []
+      rooms.value = roomList.map(room => ({
+        id: room.id || room.roomNo,
+        roomNo: room.roomNo || room.id,
+        playerCount: room.playerCount || room.userCount || 0,
+        status: room.status !== undefined ? room.status : 0,
+        creatorId: room.creatorId
+      }))
+    } catch (e) {
+      console.error('刷新房间列表失败:', e)
+    } finally {
+      loading.value = false
+    }
   }, 10000)
 }
 
