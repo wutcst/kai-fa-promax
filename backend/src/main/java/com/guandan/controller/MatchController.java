@@ -16,14 +16,27 @@ import java.util.Map;
  * 快速匹配控制器
  *
  * 职责：提供快速匹配功能的 RESTful API 入口。
- * 包括加入匹配队列、取消匹配、查询匹配状态和匹配结果。
+ * 包括加入匹配队列、取消匹配、查询匹配状态和匹配结果轮询。
+ *
+ * ── 职责边界 ────────────────────────────────────
+ * 1. 参数校验和用户认证：通过 UserContext 获取当前用户
+ * 2. 结果包装：统一使用 Result<T> 包装响应
+ * 3. 不做业务决策：所有匹配逻辑委托给 MatchService
+ * ────────────────────────────────────────────────
  *
  * 核心流程：
- * 1. 玩家调用 /api/match/join 加入匹配队列
- * 2. 系统在队列中等待收集满 4 名玩家
- * 3. 收集完成后自动创建房间并将玩家加入
- * 4. 玩家通过 /api/match/result 轮询获取匹配结果
- * 5. 玩家可随时调用 /api/match/cancel 取消匹配
+ * 1. 玩家调用 /api/match/join 加入匹配队列（由 MatchService.joinMatchQueue 处理）
+ * 2. 系统在队列中等待收集满 4 名玩家（由 ScheduleConfig.pollMatchQueue 定时触发）
+ * 3. 收集完成后自动创建房间并将玩家加入（由 MatchService.checkAndMatch 执行）
+ * 4. 玩家通过 /api/match/result 轮询获取匹配结果（由 MatchService.getMatchResult 返回）
+ * 5. 玩家可随时调用 /api/match/cancel 取消匹配（由 MatchService.cancelMatch 处理）
+ *
+
+ * 匹配队列管理职责链：
+ * - MatchController：API 入口，负责请求/响应
+ * - MatchService：匹配业务逻辑，负责队列维护和匹配执行
+ * - ScheduleConfig：定时触发匹配检测
+ * - RoomCache：队列数据存储，线程安全
  */
 @Slf4j
 @RestController

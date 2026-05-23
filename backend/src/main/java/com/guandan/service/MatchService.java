@@ -14,13 +14,22 @@ import java.util.Set;
  * 快速匹配服务
  *
  * 职责：管理匹配队列，当收集到4名玩家时自动创建房间并完成匹配。
- * 提供加入/取消队列、查询匹配状态和结果的接口。
+ * 提供加入/取消队列、查询匹配状态和获取匹配结果的接口。
+ *
+ * ── 方法职责边界 ────────────────────────────────────────
+ * - joinMatchQueue()     : 加入匹配队列（入口），含重复提交和已匹配检测
+ * - cancelMatch()        : 取消匹配，清理队列和结果缓存
+ * - isInMatchQueue()     : 查询是否在队列中
+ * - getMatchResult()     : 获取匹配结果（房间号），供前端轮询
+ * - checkAndMatch()      : 核心匹配逻辑，被 ScheduleConfig.pollMatchQueue() 定时或
+ *                           joinMatchQueue() 加入满员时触发，synchronized 保证线程安全
+ * ─────────────────────────────────────────────────────────
  *
  * 核心流程：
- * 1. joinMatchQueue → 加入匹配队列 → checkAndMatch 检查是否满4人
- * 2. cancelMatch → 从队列移除
- * 3. checkAndMatch → 取前4人创建房间 → 全部加入 → 设置匹配结果
- * 4. getMatchResult → 返回匹配到的房间号
+ * 1. joinMatchQueue → 加入匹配队列 → 触发 checkAndMatch 检查是否满4人
+ * 2. cancelMatch → 从队列移除并清理匹配结果
+ * 3. checkAndMatch → 取前4人创建房间 → 全部加入 → 设置每个玩家的匹配结果
+ * 4. getMatchResult → 返回匹配到的房间号（轮询用）
  *
  * 线程安全：checkAndMatch 使用 synchronized 确保并发安全
  */
@@ -39,6 +48,9 @@ public class MatchService {
 
     /**
      * 加入匹配队列
+     *
+     * 职责：将用户加入匹配队列的入口方法。
+     * 上游由 MatchController.joinMatch() 调用。
      *
      * 状态一致性判断：
      * - 重复提交检测：用户已在队列中时直接返回 true（幂等）
@@ -83,8 +95,9 @@ public class MatchService {
     /**
      * 取消匹配
      *
-     * @param userId 用户ID
-     * @return 是否成功取消
+     * 职责：从匹配队列中移除用户并清理其匹配结果缓存。
+     * 上游由 MatchController.cancelMatch() 调用。
+     * 同时清理队列记录和结果缓存，避免脏数据残留。
      */
     public boolean cancelMatch(Long userId) {
         if (userId == null) {
@@ -107,8 +120,8 @@ public class MatchService {
     /**
      * 查询用户是否在匹配队列中
      *
-     * @param userId 用户ID
-     * @return 是否在队列中
+     * 职责：供 MatchController.getMatchStatus() 调用，返回布尔值。
+     * 上游也可在 joinMatchQueue 中幂等检测时调用。
      */
     public boolean isInMatchQueue(Long userId) {
         if (userId == null) {
@@ -120,8 +133,10 @@ public class MatchService {
     /**
      * 获取匹配结果
      *
-     * @param userId 用户ID
-     * @return 匹配到的房间号，null表示尚未匹配成功
+     * 职责：供前端轮询调用，返回匹配成功的房间号。
+     * 上游由 MatchController.getMatchResult() 调用。
+     * 匹配成功后由 checkAndMatch 设置结果到 RoomCache。
+     * 返回 null 表示尚未匹配成功，前端继续轮询。
      */
     public String getMatchResult(Long userId) {
         if (userId == null) {
@@ -131,7 +146,12 @@ public class MatchService {
     }
 
     /**
-     * 检查匹配队列，如果达到4人则创建房间并匹配
+     * 检查并执行匹配（核心匹配逻辑）
+     *
+     * 职责：检查匹配队列是否达到 4 人，满足条件则创建房间并完成匹配。
+     * 触发方式：
+     * 1. ScheduleConfig.pollMatchQueue() 每 3 秒定时轮询触发
+     * 2. joinMatchQueue() 在加入后立即触发（满员加速）
      *
      * 核心判断逻辑：
      * 1. 获取当前队列快照
