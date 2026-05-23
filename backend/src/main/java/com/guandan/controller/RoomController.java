@@ -2,7 +2,7 @@ package com.guandan.controller;
 
 import com.guandan.common.ApiResult;
 import com.guandan.dto.NewGameRequest;
-import com.guandan.entity.Room;
+import com.guandan.entity.RoomEntity;
 import com.guandan.entity.RoomPlayer;
 import com.guandan.service.AuthService;
 import com.guandan.service.RoomService;
@@ -82,10 +82,10 @@ public class RoomController {
      * @return 等待中的房间列表
      */
     @GetMapping("/rooms")
-    public ApiResult<List<Room>> getAvailableRooms(@RequestHeader("Authorization") String token) {
+    public ApiResult<List<RoomEntity>> getAvailableRooms(@RequestHeader("Authorization") String token) {
         try {
             getUserIdFromToken(token);
-            List<Room> rooms = roomService.getAvailableRooms();
+            List<RoomEntity> rooms = roomService.getAvailableRooms();
             return ApiResult.success(rooms);
         } catch (Exception e) {
             return ApiResult.error(e.getMessage());
@@ -156,10 +156,10 @@ public class RoomController {
      * @return 用户当前所在房间信息
      */
     @GetMapping("/room/current")
-    public ApiResult<Room> getCurrentRoom(@RequestHeader("Authorization") String token) {
+    public ApiResult<RoomEntity> getCurrentRoom(@RequestHeader("Authorization") String token) {
         try {
             Long userId = getUserIdFromToken(token);
-            Room room = roomService.getCurrentRoom(userId);
+            RoomEntity room = roomService.getCurrentRoom(userId);
             if (room == null) {
                 return ApiResult.success(null);
             }
@@ -199,9 +199,9 @@ public class RoomController {
      * GET /api/room/detail/{roomNo}
      */
     @GetMapping("/room/detail/{roomNo}")
-    public ApiResult<Room> getRoomDetail(@PathVariable String roomNo) {
+    public ApiResult<RoomEntity> getRoomDetail(@PathVariable String roomNo) {
         try {
-            Room room = roomService.getRoomByRoomNo(roomNo);
+            RoomEntity room = roomService.getRoomByRoomNo(roomNo);
             if (room == null) {
                 return ApiResult.error("房间不存在");
             }
