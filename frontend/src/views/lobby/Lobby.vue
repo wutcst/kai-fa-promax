@@ -28,3 +28,4 @@ async function match() { await joinMatch(); alert('已进入匹配队列') }
 
 onMounted(refresh)
 </script>
+// Lobby: store roomList in reactive state, handle loading/error

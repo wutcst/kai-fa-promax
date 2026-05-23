@@ -4,3 +4,4 @@ export const joinRoom = roomNo => request.post('/room/join', { roomNo })
 export const listRooms = () => request.get('/rooms')
 export const ready = (roomNo, value) => request.post(`/game/${roomNo}/ready?ready=${value}`)
 export const joinMatch = () => request.post('/match/join')
+// API: room list polling with auto-refresh every 5s
