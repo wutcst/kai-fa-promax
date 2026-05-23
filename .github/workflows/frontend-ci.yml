@@ -1,5 +1,14 @@
 name: Frontend CI Pipeline
 
+# ============================================================
+# 前端 CI 编译验证流水线
+# 验证点：
+# 1. Lint Check  —— ESLint 代码规范检查（非阻塞警告）
+# 2. Build       —— npm run build 编译，验证 dist/ 产物
+# 3. Type Check  —— vue-tsc 类型检查（非阻塞警告）
+# Action 运行结果：通过 Frontend CI Pipeline 页面查看
+# ============================================================
+
 on:
   push:
     branches:
