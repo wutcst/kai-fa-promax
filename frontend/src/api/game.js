@@ -6,3 +6,4 @@ export const ready = (roomNo, value) => request.post(`/game/${roomNo}/ready?read
 export const joinMatch = () => request.post('/match/join')
 // API: room list polling with auto-refresh every 5s
 // Fix: clear refresh timer on unmount, handle empty room list
+// Style: consistent button styling and layout spacing
