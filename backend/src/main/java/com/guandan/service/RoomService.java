@@ -36,6 +36,12 @@ import java.util.Random;
  *    - 若已存在则直接返回现有 RoomPlayer 记录（幂等设计）
  *    - 并发场景下 insert 可能抛出异常，捕获后重新查一次确认
  *
+ * 配置说明：
+ * - MAX_PLAYERS=4 为硬编码常量，不可通过配置文件修改
+ * - 房间号生成：seed 为 Random 默认构造（系统时间），无需显式设置
+ * - 创建房间自动将创建者加入房间并分配 seatIndex=0
+ * - 递归重试 createRoom(Boolean, String) 用尾递归风格，深度不超过3层
+ *
  * 重构说明：
  * - joinRoom 收拢所有校验逻辑，业务异常统一抛出 IllegalArgumentException
  * - 新增 removePlayer 方法替换旧的 leaveRoom → getRoomByRoomNo 链路
