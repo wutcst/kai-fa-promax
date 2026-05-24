@@ -24,6 +24,20 @@ import java.util.stream.Collectors;
  * - 游戏开始/状态查询
  * - 房间状态查询（等待页）
  * - 房主提示信息
+ *
+ * 配置说明：
+ * - 准备接口（POST /api/game/ready）：房主自动视为已准备，无需调用此接口
+ * - 开始接口（POST /api/game/start）：仅房主可调用，需全部非房主玩家准备
+ * - 状态接口（GET /api/game/{roomNo}/status）：提供等待页轮询状态
+ * - 房主提示（GET /api/game/{roomNo}/host-tip）：返回可开始/人数不足/未准备等提示
+ * - 玩家状态（GET /api/game/{roomNo}/player-status）：返回每个玩家的准备详情
+ * - 等待页完整状态（GET /api/game/{roomNo}/waiting-status）：等待页一站式状态查询
+ * - 最少人数要求：2 人（不包括房主自动准备）
+ * - 最大人数限制：4 人（与 RoomService.MAX_PLAYERS 对齐）
+ * -
+ * - 重复提交处理：
+ *   - ready 接口：已在目标准备状态时返回当前状态，不重复切换
+ *   - start 接口：房间已在游戏中时返回错误
  */
 @CrossOrigin(originPatterns = "*")
 @RestController
