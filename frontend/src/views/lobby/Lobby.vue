@@ -293,7 +293,7 @@
  * - 每 10 秒自动轮询房间列表（仅页面在前台）
  * - onBeforeUnmount 时清除定时器
  */
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { WarningFilled, CircleCheck, Loading, User, Lock, Cpu, Search } from '@element-plus/icons-vue'
@@ -308,27 +308,33 @@ import {
   createRoomAndSave,
   joinRoomAndSave
 } from '@/api/game'
+import { useLobby } from '@/composables/useLobby'
 
 const router = useRouter()
 const nickname = ref(localStorage.getItem('nickname') || '玩家')
-const rooms = ref([])
-const sortedRooms = computed(() => {
-  const source = filteredRooms.value.length > 0 ? filteredRooms.value : rooms.value
-  if (sortBy.value === 'default') return source
-  const sorted = [...source]
-  sorted.sort((a, b) => {
-    let cmp = 0
-    if (sortBy.value === 'playerCount') {
-      cmp = a.playerCount - b.playerCount
-    } else if (sortBy.value === 'status') {
-      cmp = (a.status || 0) - (b.status || 0)
-    }
-    return sortAsc.value ? cmp : -cmp
-  })
-  return sorted
-})
-const loading = ref(false)
-const loadError = ref('')
+
+// ── 从组合式函数获取大厅状态管理 ──
+const {
+  rooms,
+  sortedRooms,
+  loading,
+  loadError,
+  isFirstLoad,
+  roomSearchQuery,
+  debouncedSearchQuery,
+  sortBy,
+  sortAsc,
+  fetchRooms,
+  retryFetchRooms,
+  clearSearchAndRefresh,
+  onSearchInput,
+  applySorting,
+  toggleSortDirection,
+  startAutoRefresh,
+  stopAutoRefresh
+} = useLobby()
+
+// ── 对话框和表单状态 ──
 const showCreateDialog = ref(false)
 const showJoinDialog = ref(false)
 const creating = ref(false)
@@ -343,47 +349,6 @@ const joinError = ref('')
 const createStep = ref(0)
 const roomNameChecking = ref(false)
 const roomNameCheckResult = ref(null) // null | 'ok' | 'taken'
-const sortBy = ref('default')
-const sortAsc = ref(true)
-const autoRefreshTimer = ref(null)
-const isFirstLoad = ref(true)
-
-// ── 房间搜索防抖 ─────────────────────────────────
-const roomSearchQuery = ref('')
-const debouncedSearchQuery = ref('')
-let searchDebounceTimer = null
-
-const onSearchInput = (value) => {
-  roomSearchQuery.value = value
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
-  }
-  searchDebounceTimer = setTimeout(() => {
-    debouncedSearchQuery.value = value
-    applyRoomFilter()
-  }, 300)
-}
-
-const filteredRooms = ref([])
-
-const applyRoomFilter = () => {
-  const query = debouncedSearchQuery.value.trim()
-  if (!query) {
-    filteredRooms.value = []
-    return
-  }
-  filteredRooms.value = rooms.value.filter(room => {
-    return String(room.roomNo).includes(query)
-  })
-}
-
-const applySorting = () => {
-  // computed 自动重新计算 sortedRooms
-}
-
-const toggleSortDirection = () => {
-  sortAsc.value = !sortAsc.value
-}
 
 const createRules = {
   roomName: [
@@ -559,98 +524,11 @@ const handleJoinRoom = async () => {
   }
 }
 
-const fetchRooms = async () => {
-  loading.value = true
-  loadError.value = ''
-  try {
-    const response = await getRooms()
-    const roomList = response.data || response || []
-    rooms.value = roomList.map(room => ({
-      id: room.id || room.roomNo,
-      roomNo: room.roomNo || room.id,
-      playerCount: room.playerCount || room.userCount || 0,
-      status: room.status !== undefined ? room.status : 0,
-      creatorId: room.creatorId
-    }))
-    // 处理空状态：当房间列表为空且存在搜索条件时，提示用户
-    if (rooms.value.length === 0 && debouncedSearchQuery.value) {
-      ElMessage.info('未找到匹配的房间，请尝试其他房间号')
-    } else if (rooms.value.length === 0) {
-      // 空列表正常状态，等待房主创建
-    }
-    isFirstLoad.value = false
-  } catch (err) {
-    console.error('获取房间列表失败:', err)
-    loadError.value = '获取房间列表失败，请检查网络后重试'
-  } finally {
-    loading.value = false
-  }
-}
-
-/** 出错时重试获取房间列表，增加短暂延迟 */
-const retryFetchRooms = () => {
-  setTimeout(() => {
-    fetchRooms()
-  }, 300)
-}
-
-/** 清除搜索条件并刷新列表 */
-const clearSearchAndRefresh = () => {
-  roomSearchQuery.value = ''
-  debouncedSearchQuery.value = ''
-  filteredRooms.value = []
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
-    searchDebounceTimer = null
-  }
-  fetchRooms()
-}
-
-// 启动后台定时刷新（仅页面在前台运行时有效）
-const startAutoRefresh = () => {
-  stopAutoRefresh()
-  autoRefreshTimer.value = setInterval(async () => {
-    isFirstLoad.value = false
-    loading.value = true
-    try {
-      const response = await getRooms()
-      const roomList = response.data || response || []
-      rooms.value = roomList.map(room => ({
-        id: room.id || room.roomNo,
-        roomNo: room.roomNo || room.id,
-        playerCount: room.playerCount || room.userCount || 0,
-        status: room.status !== undefined ? room.status : 0,
-        creatorId: room.creatorId
-      }))
-    } catch (e) {
-      console.error('刷新房间列表失败:', e)
-    } finally {
-      loading.value = false
-    }
-  }, 10000)
-}
-
-// 停止定时刷新
-const stopAutoRefresh = () => {
-  if (autoRefreshTimer.value) {
-    clearInterval(autoRefreshTimer.value)
-    autoRefreshTimer.value = null
-  }
-}
-
+// ── 生命周期 ──
 onMounted(() => {
   isFirstLoad.value = true
   fetchRooms()
   startAutoRefresh()
-})
-
-onBeforeUnmount(() => {
-  stopAutoRefresh()
-  // 清理搜索防抖定时器
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
-    searchDebounceTimer = null
-  }
 })
 </script>
 
