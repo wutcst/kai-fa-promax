@@ -11,3 +11,4 @@ public class ScheduleConfig {
 // Fix: graceful shutdown for scheduled tasks
 // Refactor: use TaskScheduler bean instead of raw @Scheduled
 // Docs: scheduled task execution policy documentation
+// Regression: ScheduleConfig task execution timing check

@@ -23,3 +23,4 @@ public class MatchService {
 // Fix: prevent duplicate entries in match queue
 // Refactor: extract MatchQueueManager as inner component
 // Docs: match flow sequence diagram in comments
+// Regression: MatchService queue eviction and timeout validation

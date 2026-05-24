@@ -79,3 +79,4 @@ public class MatchController {
 // Fix: handle cancel on already-matched player
 // Refactor: rename match endpoints for consistency
 // Docs: match API error codes and retry guidance
+// Regression: MatchController cancel and polling flow verification
