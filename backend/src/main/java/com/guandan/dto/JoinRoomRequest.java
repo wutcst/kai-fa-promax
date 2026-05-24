@@ -22,3 +22,4 @@ public class JoinRoomRequest {
 // Refactor: builder pattern for JoinRoomRequest
 // Docs: field-level validation rules documentation
 // Regression: JoinRoomRequest validation rules check
+// Chore: DTO validation annotation documentation

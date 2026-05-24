@@ -37,3 +37,4 @@ public class RoomService {
 // Refactor: extract RoomValidator service for SRP compliance
 // Docs: room lifecycle states and error codes
 // Regression: room creation duplicate code and full-room boundary checks
+// Chore: configuration wrap-up for room creation/join module

@@ -39,3 +39,4 @@ public class RoomController {
 // Fix: resolve compilation issues from renamed methods
 // Style: consistent indentation and brace placement
 // Regression: room controller join/leave flow validation
+// Chore: controller endpoint consolidation for Phase 2
