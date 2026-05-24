@@ -1,6 +1,11 @@
 import axiosInstance from './axiosInstance'
 
-// 加入房间
+/**
+ * 加入房间
+ *
+ * 空值保护：username 不存在时返回错误，不发起请求。
+ * 防止未登录用户误操作。
+ */
 export const joinRoom = (roomNo) => {
   const username = sessionStorage.getItem('username') || localStorage.getItem('username')
   if (!username) {
@@ -9,7 +14,11 @@ export const joinRoom = (roomNo) => {
   return axiosInstance.post('/room/join', { roomNo, username })
 }
 
-// 退出房间
+/**
+ * 退出房间
+ *
+ * 空值保护：roomId 为空时直接拒绝，避免无效请求。
+ */
 export const exitRoom = (roomId) => {
   if (!roomId) {
     return Promise.reject(new Error('房间ID不能为空'))
@@ -17,7 +26,11 @@ export const exitRoom = (roomId) => {
   return axiosInstance.post('/room/exit', { roomId })
 }
 
-// 获取房间详细信息
+/**
+ * 获取房间详细信息
+ *
+ * 空值保护：roomNo 为空时直接拒绝。
+ */
 export const getRoomDetail = (roomNo) => {
   if (!roomNo) {
     return Promise.reject(new Error('房间号不能为空'))
@@ -25,7 +38,11 @@ export const getRoomDetail = (roomNo) => {
   return axiosInstance.get(`/room/${roomNo}/detail`)
 }
 
-// 解散房间
+/**
+ * 解散房间
+ *
+ * 空值保护：roomNo 为空时直接拒绝。
+ */
 export const dissolveRoom = (roomNo) => {
   if (!roomNo) {
     return Promise.reject(new Error('房间号不能为空'))
