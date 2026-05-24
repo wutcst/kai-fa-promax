@@ -26,6 +26,12 @@ import java.util.Map;
  * - 重复加入：joinRoom 通过 findExistingPlayer 检测用户是否已在房间中，若已存在直接返回现有记录
  * - 状态校验：仅 status=0（等待中）的房间可加入，游戏中/已结束状态不可加入
  *
+ * 配置说明：
+ * - MAX_PLAYERS=4 定义在 RoomService 中，不可通过配置文件覆盖（硬编码常量）
+ * - Token 前缀支持 "Bearer "，不区分大小写（已在 getUserIdFromToken 中处理 lowercase）
+ * - 跨域配置：使用 originPatterns 通配符，开发环境允许所有来源
+ * - 幂等设计：joinRoom 的重复加入检测由数据库唯一索引兜底，业务层做前置检查减少异常日志
+ *
  * 重构说明：
  * - 提取 joinRoom 的公共校验逻辑到 RoomService
  * - 移除重复的 Token 空值校验，统一由 getUserIdFromToken 处理

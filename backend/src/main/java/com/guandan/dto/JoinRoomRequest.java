@@ -15,6 +15,11 @@ import lombok.Data;
  * - 房间号前后空格：通过 getTrimmedRoomNo() 自动去除空格
  * - 用户ID由服务端从Token解析，不通过请求体传递
  *
+ * 配置说明：
+ * - ROOM_NO_REGEX="^\\d{6}$" 硬编码为常量，统一校验入口
+ * - 前端/后端共享相同正则，保证校验一致性
+ * - validateRequest() 为统一校验入口，Controller 和 Service 层均可调用
+ *
  * 职责边界：仅做请求参数封装和校验，不包含业务逻辑。
  * 重构说明：移除冗余的校验方法，保留 validateRequest 作为统一校验入口，
  * 提取公共校验常量，使代码职责更清晰。
