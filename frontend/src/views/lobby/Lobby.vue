@@ -543,11 +543,32 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  /* 优化：增加底部边框区分导航区与内容区 */
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
 }
 .room-actions {
   display: flex;
   gap: 12px;
   margin-bottom: 25px;
+  /* 优化：按钮组居中布局，增大间距提升点击区域 */
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.room-actions .el-button {
+  min-width: 120px;
+  padding: 10px 24px;
+  font-size: 15px;
+  border-radius: 8px;
+  transition: all 0.25s ease;
+  font-weight: 500;
+}
+.room-actions .el-button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.room-actions .el-button:active:not(:disabled) {
+  transform: translateY(0);
 }
 .search-bar {
   margin-bottom: 15px;
@@ -569,6 +590,8 @@ onMounted(() => {
   background: #fff;
   border-radius: 6px;
   border: 1px solid #e8e8e8;
+  /* 优化：增加微阴影提升层级感 */
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
 }
 .sort-label {
   font-size: 13px;
@@ -591,11 +614,14 @@ onMounted(() => {
   margin-bottom: 4px;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  /* 优化：添加左边框指示器增强视觉层次 */
+  border-left: 4px solid transparent;
 }
 .room-card:hover {
   background: #f5f7fa;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   transform: translateX(4px);
+  border-left-color: #409eff;
 }
 .room-card-header {
   min-width: 120px;
@@ -730,18 +756,37 @@ onMounted(() => {
 }
 .empty-state {
   text-align: center;
-  padding: 40px;
-  color: #999;
+  padding: 60px 40px;
+  color: #909399;
+  /* 优化：添加图标氛围和视觉引导 */
+  background: linear-gradient(180deg, #fafafa, #f5f7fa);
+  border-radius: 12px;
+  border: 2px dashed #dcdfe6;
+  margin: 20px 0;
+}
+.empty-state p {
+  font-size: 16px;
+  margin-bottom: 20px;
+  color: #909399;
+}
+.empty-state .el-button {
+  padding: 10px 28px;
+  font-size: 14px;
+  border-radius: 8px;
 }
 .loading-state {
   text-align: center;
-  padding: 40px;
-  color: #666;
+  padding: 60px 40px;
+  color: #909399;
+  font-size: 15px;
 }
 .error-state {
   text-align: center;
-  padding: 40px;
+  padding: 60px 40px;
   color: #e74c3c;
+  background: #fef0f0;
+  border-radius: 12px;
+  margin: 20px 0;
 }
 .error-state p {
   margin-bottom: 12px;
