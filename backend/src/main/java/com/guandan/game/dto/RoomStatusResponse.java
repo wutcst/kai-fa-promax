@@ -22,6 +22,12 @@ import java.util.Map;
  * 通过 builder 方法（buildWaitingResponse / buildFullResponse / buildPlayingResponse / buildFinishedResponse）
  * 统一构造不同状态的响应对象，保证响应结构一致性。
  *
+ * 配置说明：
+ * - 房间号字段（roomNo）：等待页轮询时客户端需要房间号信息跳转，新增此字段
+ * - 准备字段（allReady / readyCount）：配合前端等待页进度条展示
+ * - 玩家列表（players）：用于等待页展示每个玩家的准备状态和昵称
+ * - 房主提示（hostTip / canStart）：为房主提供明确的操作指引
+ *
  * 异常场景覆盖：
  * - 房间不存在：由 Controller 层统一返回 404 error
  * - Token 无效：由拦截器统一返回 401
