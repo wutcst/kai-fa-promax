@@ -19,3 +19,4 @@ public class RoomStatusResponse {
 // Refactor: rename PlayerReadyInfo to ReadySlot for clarity
 // Docs: ready status response field descriptions
 // Regression: RoomStatusResponse field validation for all player states
+// Chore: finalize RoomStatusResponse DTO delivery
