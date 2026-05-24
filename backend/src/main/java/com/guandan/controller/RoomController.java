@@ -17,6 +17,29 @@ import java.util.Map;
 /**
  * 房间控制器
  *
+ * ── 目录结构说明 ──────────────────────────────────────────
+ * backend/src/main/java/com/guandan/
+ * ├── config/          # 配置类（跨域、定时任务、Redis）
+ * ├── controller/      # RESTful API 控制器层
+ * │   ├── RoomController.java    # 房间管理（创建/加入/退出）
+ * │   ├── MatchController.java   # 快速匹配
+ * │   ├── GameController.java    # 游戏控制
+ * │   └── UserController.java    # 用户认证
+ * ├── service/         # 业务逻辑层
+ * ├── mapper/          # MyBatis-Plus 数据访问层
+ * ├── entity/          # 数据库实体
+ * ├── dto/             # 数据传输对象（请求/响应）
+ * ├── common/          # 通用工具类（Result, ApiResult）
+ * └── util/            # 工具类（UserContext, TokenUtil）
+ *
+ * ── 命名规范 ──────────────────────────────────────────────
+ * 1. 控制器类以 Controller 后缀结尾，RESTful 风格命名方法
+ * 2. Service 层接口以 Service 后缀，实现类以 Impl 后缀
+ * 3. DTO 区分请求/响应：*Request / *Response
+ * 4. 实体类与数据库表名一一对应，使用 @TableName 注解映射
+ * 5. 工具类使用 Util 后缀，不依赖 Spring 容器
+ * ─────────────────────────────────────────────────────────
+ *
  * 职责：房间基础管理（创建、加入、查询）
  * 注意：游戏核心逻辑（出牌、计分等）由 GameController 处理
  *
