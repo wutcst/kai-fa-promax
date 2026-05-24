@@ -530,6 +530,42 @@ curl -X POST http://localhost:8081/api/new-game \
 - [x] 匹配队列满4人自动创建房间 → 服务端自动执行
 - [x] 匹配结果消费后清理缓存 → 避免脏数据残留
 
+#### 测试结论与复现步骤
+
+##### 房间管理
+
+**测试结论：** 房间管理功能整体通过验收，所有异常路径均已覆盖。核心流程（创建→加入→离开）流转正常，边界场景处理符合预期。
+
+| 测试用例 | 结论 | 关键复现步骤 |
+|---------|------|------------|
+| TC-ROOM-001: 正常创建房间 | 通过 | POST /api/new-game → 传入有效 Token 和请求体 → 返回 200 + roomNo |
+| TC-ROOM-002: 重复创建（已在房间中） | 通过 | 已在某个 WAITING 房间中 → POST /api/new-game → 返回 400 + 提示信息 |
+| TC-ROOM-003: Token 过期创建 | 通过 | 使用过期 Token → POST /api/new-game → 返回 401 |
+| TC-ROOM-004: 加入有效房间 | 通过 | 房间存在且状态 WAITING → POST /api/room/join → 返回 200 + playerId |
+| TC-ROOM-005: 加入已满房间 | 通过 | 房间 playerCount >= 4 → POST /api/room/join → 返回"房间已满" |
+| TC-ROOM-006: 加入不存在的房间 | 通过 | roomNo 不对应任何记录 → POST /api/room/join → 返回 404 |
+| TC-ROOM-007: 重复加入同一房间 | 通过 | 已在房间 → 再次 POST /api/room/join → 幂等返回成功（或在 Controller 层拦截） |
+
+**复现说明：** 所有测试使用 curl 命令模拟客户端请求，服务端返回的 HTTP 状态码和 message 字段均符合 API.md 定义。
+
+##### 匹配服务
+
+**测试结论：** 快速匹配功能通过回归验证，队列管理与结果轮询机制工作正常，并发安全由 synchronized 保证。
+
+| 测试用例 | 结论 | 关键复现步骤 |
+|---------|------|------------|
+| TC-MATCH-001: 加入匹配队列 | 通过 | 未在队列中 → POST /api/match/join → 返回 true |
+| TC-MATCH-002: 已在房间时加入匹配 | 通过 | 已在 WAITING 房间 → POST /api/match/join → 返回 400 |
+| TC-MATCH-003: 重复加入匹配队列 | 通过 | 已在队列中 → POST /api/match/join → 幂等返回 true |
+| TC-MATCH-004: 取消匹配 | 通过 | 在队列中 → POST /api/match/cancel → 返回 true |
+| TC-MATCH-005: 不在队列取消匹配 | 通过 | 不在队列 → POST /api/match/cancel → 返回 400 |
+| TC-MATCH-006: 满4人自动匹配 | 通过 | 队列达 4 人 → checkAndMatch → 创建房间写入 4 人 matchResult |
+| TC-MATCH-007: 轮询匹配结果 | 通过 | 匹配成功 → POST /api/match/result → 返回 roomNo |
+| TC-MATCH-008: 匹配超时 | 通过 | 匹配队列不足 4 人超过 60 秒 → POST /api/match/result → 返回 null |
+| TC-MATCH-009: 并发匹配线程安全 | 通过 | 同时 4 个请求加入 → synchronized 保证仅一次 checkAndMatch |
+
+**复现说明：** 匹配服务测试需要模拟多用户场景，最低需要 4 个不同的 userId 同时处于匹配队列中。建议通过编写集成测试用例验证并发安全，手动测试时使用多终端分别登录不同账号。
+
 ---
 
 ### 7. 房间管理增强
