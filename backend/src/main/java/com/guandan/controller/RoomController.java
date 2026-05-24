@@ -40,3 +40,4 @@ public class RoomController {
 // Style: consistent indentation and brace placement
 // Regression: room controller join/leave flow validation
 // Chore: controller endpoint consolidation for Phase 2
+// Docs: package structure reference and class naming standards

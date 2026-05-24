@@ -21,3 +21,4 @@ public class Room {
 // Style: unified class naming - PascalCase, method naming - camelCase
 // Regression: Room entity field validation and unique constraint checks
 // Chore: Phase 2 room entity configuration consolidation
+// Docs: backend directory structure and naming convention guide
