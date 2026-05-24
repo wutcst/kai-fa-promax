@@ -49,12 +49,21 @@ public class MatchService {
     /**
      * 加入匹配队列
      *
-     * 职责：将用户加入匹配队列的入口方法。
-     * 上游由 MatchController.joinMatch() 调用。
+     * <p>职责：将用户加入匹配队列的入口方法。
+     * 上游由 {@link com.guandan.controller.MatchController#joinMatch()} 调用。</p>
      *
-     * 状态一致性判断：
-     * - 重复提交检测：用户已在队列中时直接返回 true（幂等）
-     * - 已匹配用户检测：用户有未消费的匹配结果时优先返回 false
+     * <h4>状态一致性判断</h4>
+     * <ul>
+     *   <li><b>重复提交检测</b>：用户已在队列中时直接返回 true（幂等）</li>
+     *   <li><b>已匹配用户检测</b>：用户有未消费的匹配结果时优先返回 false</li>
+     * </ul>
+     *
+     * <h4>异常场景</h4>
+     * <ul>
+     *   <li>userId 为 null → 返回 false</li>
+     *   <li>用户不存在（数据库查不到）→ 返回 false 并记录警告日志</li>
+     *   <li>用户已有未消费匹配结果 → 返回 false，防止重复入队</li>
+     * </ul>
      *
      * @param userId 用户ID
      * @return 是否成功加入
@@ -95,9 +104,20 @@ public class MatchService {
     /**
      * 取消匹配
      *
-     * 职责：从匹配队列中移除用户并清理其匹配结果缓存。
-     * 上游由 MatchController.cancelMatch() 调用。
-     * 同时清理队列记录和结果缓存，避免脏数据残留。
+     * <p>职责：从匹配队列中移除用户并清理其匹配结果缓存。
+     * 上游由 {@link com.guandan.controller.MatchController#cancelMatch()} 调用。</p>
+     *
+     * <h4>清理策略</h4>
+     * <p>同时清理队列记录和结果缓存，避免脏数据残留导致状态不一致。</p>
+     *
+     * <h4>异常场景</h4>
+     * <ul>
+     *   <li>userId 为 null → 返回 false</li>
+     *   <li>用户不在匹配队列中 → 返回 false 并记录警告日志</li>
+     * </ul>
+     *
+     * @param userId 用户ID
+     * @return 是否成功取消
      */
     public boolean cancelMatch(Long userId) {
         if (userId == null) {
@@ -120,8 +140,16 @@ public class MatchService {
     /**
      * 查询用户是否在匹配队列中
      *
-     * 职责：供 MatchController.getMatchStatus() 调用，返回布尔值。
-     * 上游也可在 joinMatchQueue 中幂等检测时调用。
+     * <p>职责：供 {@link com.guandan.controller.MatchController#getMatchStatus()} 调用，返回布尔值。
+     * 上游也可在 {@link #joinMatchQueue} 中幂等检测时调用。</p>
+     *
+     * <h4>异常场景</h4>
+     * <ul>
+     *   <li>userId 为 null → 返回 false（非异常，降级处理）</li>
+     * </ul>
+     *
+     * @param userId 用户ID
+     * @return true 表示在队列中
      */
     public boolean isInMatchQueue(Long userId) {
         if (userId == null) {
@@ -133,10 +161,21 @@ public class MatchService {
     /**
      * 获取匹配结果
      *
-     * 职责：供前端轮询调用，返回匹配成功的房间号。
-     * 上游由 MatchController.getMatchResult() 调用。
-     * 匹配成功后由 checkAndMatch 设置结果到 RoomCache。
-     * 返回 null 表示尚未匹配成功，前端继续轮询。
+     * <p>职责：供前端轮询调用，返回匹配成功的房间号。
+     * 上游由 {@link com.guandan.controller.MatchController#getMatchResult()} 调用。</p>
+     *
+     * <h4>流程说明</h4>
+     * <p>匹配成功后由 {@link #checkAndMatch} 设置结果到 {@link com.guandan.config.RoomCache}。
+     * 返回 null 表示尚未匹配成功，前端继续轮询。</p>
+     *
+     * <h4>异常场景</h4>
+     * <ul>
+     *   <li>userId 为 null → 返回 null（降级处理）</li>
+     *   <li>尚未匹配成功 → 返回 null（非异常）</li>
+     * </ul>
+     *
+     * @param userId 用户ID
+     * @return 匹配成功的房间号，未匹配成功返回 null
      */
     public String getMatchResult(Long userId) {
         if (userId == null) {

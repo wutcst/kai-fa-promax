@@ -15,28 +15,44 @@ import java.util.Map;
 /**
  * 快速匹配控制器
  *
- * 职责：提供快速匹配功能的 RESTful API 入口。
- * 包括加入匹配队列、取消匹配、查询匹配状态和匹配结果轮询。
+ * <p>职责：提供快速匹配功能的 RESTful API 入口。
+ * 包括加入匹配队列、取消匹配、查询匹配状态和匹配结果轮询。</p>
  *
- * ── 职责边界 ────────────────────────────────────
- * 1. 参数校验和用户认证：通过 UserContext 获取当前用户
- * 2. 结果包装：统一使用 Result<T> 包装响应
- * 3. 不做业务决策：所有匹配逻辑委托给 MatchService
- * ────────────────────────────────────────────────
+ * <h3>职责边界</h3>
+ * <ol>
+ *   <li><b>参数校验和用户认证</b>：通过 {@link com.guandan.util.UserContext} 获取当前用户</li>
+ *   <li><b>结果包装</b>：统一使用 {@code Result<T>} 包装响应</li>
+ *   <li><b>不做业务决策</b>：所有匹配逻辑委托给 {@link MatchService}</li>
+ * </ol>
  *
- * 核心流程：
- * 1. 玩家调用 /api/match/join 加入匹配队列（由 MatchService.joinMatchQueue 处理）
- * 2. 系统在队列中等待收集满 4 名玩家（由 ScheduleConfig.pollMatchQueue 定时触发）
- * 3. 收集完成后自动创建房间并将玩家加入（由 MatchService.checkAndMatch 执行）
- * 4. 玩家通过 /api/match/result 轮询获取匹配结果（由 MatchService.getMatchResult 返回）
- * 5. 玩家可随时调用 /api/match/cancel 取消匹配（由 MatchService.cancelMatch 处理）
+ * <h3>核心流程</h3>
+ * <ol>
+ *   <li>玩家调用 {@code POST /api/match/join} 加入匹配队列（由 {@link MatchService#joinMatchQueue} 处理）</li>
+ *   <li>系统在队列中等待收集满 4 名玩家（由 {@link com.guandan.config.ScheduleConfig#pollMatchQueue} 定时触发）</li>
+ *   <li>收集完成后自动创建房间并将玩家加入（由 {@link MatchService#checkAndMatch} 执行）</li>
+ *   <li>玩家通过 {@code POST /api/match/result} 轮询获取匹配结果（由 {@link MatchService#getMatchResult} 返回）</li>
+ *   <li>玩家可随时调用 {@code POST /api/match/cancel} 取消匹配（由 {@link MatchService#cancelMatch} 处理）</li>
+ * </ol>
  *
-
- * 匹配队列管理职责链：
- * - MatchController：API 入口，负责请求/响应
- * - MatchService：匹配业务逻辑，负责队列维护和匹配执行
- * - ScheduleConfig：定时触发匹配检测
- * - RoomCache：队列数据存储，线程安全
+ * <h3>匹配队列管理职责链</h3>
+ * <ul>
+ *   <li>{@code MatchController}：API 入口，负责请求/响应</li>
+ *   <li>{@link MatchService}：匹配业务逻辑，负责队列维护和匹配执行</li>
+ *   <li>{@link com.guandan.config.ScheduleConfig}：定时触发匹配检测</li>
+ *   <li>{@link com.guandan.config.RoomCache}：队列数据存储，线程安全</li>
+ * </ul>
+ *
+ * <h3>异常场景汇总</h3>
+ * <ul>
+ *   <li>加入匹配时用户未登录 → 返回"用户未登录"</li>
+ *   <li>加入匹配时已在队列中 → 幂等返回成功</li>
+ *   <li>加入匹配队列失败 → 返回"加入匹配队列失败，请稍后重试"</li>
+ *   <li>取消匹配时用户不在队列中 → 返回"取消匹配失败，可能不在匹配队列中"</li>
+ *   <li>查询匹配结果时用户未登录 → 返回"用户未登录"</li>
+ * </ul>
+ *
+ * @author 何涛
+ * @since 1.0.0
  */
 @Slf4j
 @RestController
