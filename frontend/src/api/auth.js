@@ -150,7 +150,14 @@ export const changePassword = (params) => {
 }
 
 
-// ── Phase 1 联调验证记录 ──
+// ── Phase 2 联调验证记录 ──
+// [2026-05-24] Phase 2 前端依赖版本更新：
+//   - vue@3.5.0 (from 3.4.x)
+//   - element-plus@2.8.0 (from 2.7.x)
+//   - @element-plus/icons-vue@2.3.1 (from 2.3.0)
+//   - axios@1.7.0 (from 1.6.x)
+//   - vue-router@4.4.0 (from 4.3.x)
+//   - vite@5.4.0 (from 5.3.x)
 // [2026-05] 登录/注册/退出全流程联调完成
 // [2026-05] 表单校验规则已与后端对齐
 // [2026-05] 登录后跳转 /lobby 已验证
