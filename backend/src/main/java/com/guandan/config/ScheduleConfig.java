@@ -42,6 +42,10 @@ public class ScheduleConfig {
      * 空队列或不足 4 人时直接返回，无额外开销。
      *
      * 职责边界：仅负责触发匹配检测，不参与匹配业务逻辑。
+     *
+     * ## 回归验证点
+     * - [TC-MATCH-006] 匹配队列满4人 → checkAndMatch 自动创建房间
+     * - [TC-MATCH-009] 多人同时匹配 → checkAndMatch 内部有 synchronized 锁
      */
     @Scheduled(fixedRate = 3000)
     public void pollMatchQueue() {

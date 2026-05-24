@@ -32,6 +32,14 @@ import java.util.Set;
  * 4. getMatchResult → 返回匹配到的房间号（轮询用）
  *
  * 线程安全：checkAndMatch 使用 synchronized 确保并发安全
+ *
+ * ## 回归验证点
+ * - [TC-MATCH-001] joinMatchQueue 加入队列 → roomCache.addToMatchQueue 执行
+ * - [TC-MATCH-002] 用户已在房间中时加入匹配 → Controller 层由 UserContext 校验
+ * - [TC-MATCH-003] 重复加入 → isInMatchQueue 检测返回 true（幂等）
+ * - [TC-MATCH-006] checkAndMatch 满4人 → 创建房间并设置匹配结果
+ * - [TC-MATCH-007] 匹配成功后 getMatchResult → 返回 roomNo
+ * - [TC-MATCH-009] synchronized 保证线程安全 → 并发下不会重复创建多组房间
  */
 @Slf4j
 @Service
