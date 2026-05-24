@@ -35,3 +35,4 @@ onMounted(refresh)
 // Feat: room creation dialog with form validation and error states
 // Fix: lobby room list auto-refresh triggering on every navigation
 // Style: room card component with status badges and player count
+// Refactor: split lobby state management into composable function
