@@ -51,6 +51,14 @@ import java.util.Map;
  *   <li>查询匹配结果时用户未登录 → 返回"用户未登录"</li>
  * </ul>
  *
+ * ## 回归验证点
+ * - [TC-MATCH-001] 加入匹配队列 → joinMatch 返回 true
+ * - [TC-MATCH-003] 重复加入 → isInMatchQueue 检测幂等返回
+ * - [TC-MATCH-004] 取消匹配 → cancelMatch 返回 true
+ * - [TC-MATCH-005] 不在队列取消匹配 → cancelMatch 返回 false
+ * - [TC-MATCH-007] 轮询匹配结果 → getMatchResult 返回房间号
+ * - [TC-MATCH-008] 匹配超时 → getMatchResult 返回 null（前端处理超时逻辑）
+ *
  * @author 何涛
  * @since 1.0.0
  */
