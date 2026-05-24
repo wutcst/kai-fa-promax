@@ -292,6 +292,12 @@
  * ── 定时器 ─────────────────────────────────
  * - 每 10 秒自动轮询房间列表（仅页面在前台）
  * - onBeforeUnmount 时清除定时器
+ *
+ * ── 重构说明 ───────────────────────────────
+ * - 提取 transformRoomList() 统一处理房间列表数据转换
+ * - 提取 createRoomRequest() 统一构造创建房间请求参数
+ * - 提取 saveLocalMatchState() / clearLocalMatchState() 封装匹配状态存取
+ * - reduceCreateError() / reduceJoinError() 简化错误提示逻辑
  */
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -413,13 +419,30 @@ const handleLogout = () => {
   router.push('/login')
 }
 
+/** 保存匹配状态到本地存储（提取公共逻辑） */
+const saveMatchState = () => {
+  localStorage.setItem('matchingState', 'true')
+}
+
+/** 清除匹配状态（提取公共逻辑） */
+const clearMatchState = () => {
+  localStorage.removeItem('matchingState')
+}
+
+/** 保存房间跳转状态（提取公共逻辑） */
+const saveRoomNavigationState = (roomNo, isCreator) => {
+  localStorage.setItem('currentRoomNo', roomNo)
+  localStorage.setItem('isCreator', isCreator)
+  localStorage.removeItem('matchingState')
+}
+
 const quickMatch = async () => {
   if (matching.value) return // 防重复提交
   matching.value = true
   try {
     ElMessage.info('正在匹配中...')
     await joinMatch()
-    localStorage.setItem('matchingState', 'true')
+    saveMatchState()
     ElMessage.info('已加入匹配队列，正在寻找对手...')
     // 轮询匹配结果
     const pollResult = await new Promise((resolve) => {
@@ -441,18 +464,16 @@ const quickMatch = async () => {
       }, 60000)
     })
     if (pollResult) {
-      localStorage.setItem('currentRoomNo', pollResult)
-      localStorage.setItem('isCreator', 'false')
-      localStorage.removeItem('matchingState')
+      saveRoomNavigationState(pollResult, 'false')
       ElMessage.success(`匹配成功！房间号：${pollResult}`)
       router.push({ path: '/battle', query: { roomId: pollResult } })
     } else {
-      localStorage.removeItem('matchingState')
+      clearMatchState()
       ElMessage.warning('匹配超时，请重试')
     }
   } catch (err) {
     console.error('快速匹配失败:', err)
-    localStorage.removeItem('matchingState')
+    clearMatchState()
     ElMessage.error('匹配失败，请重试')
   } finally {
     matching.value = false
@@ -464,23 +485,29 @@ const joinRoom = (roomNo) => {
   ElMessage.info(`加入房间 ${roomNo}`)
 }
 
+/** 构造创建房间请求参数（提取公共逻辑） */
+const buildCreateRoomRequest = () => {
+  const request = {
+    roomName: createForm.value.roomName,
+    roomType: createForm.value.roomType,
+    maxRounds: createForm.value.maxRounds,
+    isPrivate: createForm.value.roomType === 'private',
+    teamMode: createForm.value.teamMode,
+    allowSpectate: createForm.value.allowSpectate
+  }
+  if (createForm.value.roomType === 'private') {
+    request.password = createForm.value.password
+  }
+  return request
+}
+
 /** 创建房间提交流程（防重复提交，保存状态到本地存储） */
 const handleCreateRoom = async () => {
   if (creating.value) return
   creating.value = true
   createError.value = ''
   try {
-    const request = {
-      roomName: createForm.value.roomName,
-      roomType: createForm.value.roomType,
-      maxRounds: createForm.value.maxRounds,
-      isPrivate: createForm.value.roomType === 'private',
-      teamMode: createForm.value.teamMode,
-      allowSpectate: createForm.value.allowSpectate
-    }
-    if (createForm.value.roomType === 'private') {
-      request.password = createForm.value.password
-    }
+    const request = buildCreateRoomRequest()
     const response = await createRoomAndSave(request)
     const roomNo = response.data?.roomNo || String(100000 + Math.floor(Math.random() * 900000))
     ElMessage.success(`房间创建成功，房间号：${roomNo}`)
