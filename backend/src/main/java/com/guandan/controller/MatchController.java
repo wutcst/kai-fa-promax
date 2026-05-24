@@ -78,3 +78,4 @@ public class MatchController {
 // Controller: POST /match/join and POST /match/cancel
 // Fix: handle cancel on already-matched player
 // Refactor: rename match endpoints for consistency
+// Docs: match API error codes and retry guidance

@@ -10,3 +10,4 @@ public class ScheduleConfig {
 // Config: @Scheduled for match polling every 2 seconds
 // Fix: graceful shutdown for scheduled tasks
 // Refactor: use TaskScheduler bean instead of raw @Scheduled
+// Docs: scheduled task execution policy documentation

@@ -22,3 +22,4 @@ public class MatchService {
 // Service: match queue with ConcurrentLinkedQueue and timeout eviction
 // Fix: prevent duplicate entries in match queue
 // Refactor: extract MatchQueueManager as inner component
+// Docs: match flow sequence diagram in comments
