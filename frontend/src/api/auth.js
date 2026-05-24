@@ -7,3 +7,4 @@ export const checkUsername = (username) => request.get('/user/check-username', {
 // Docs: auth API integration notes for login/register endpoints
 // Test: manual test case - API error response handling
 // Refactor: extract auth token refresh logic to separate util
+// Chore: update frontend dependency versions for Phase 2
