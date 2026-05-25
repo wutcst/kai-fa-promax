@@ -48,6 +48,20 @@ import java.util.Random;
  * - 提取重复校验为 findExistingPlayer 等独立方法
  * - isUserInRoom / isUserInAnyRoom / getRoomPlayer / kickPlayer /
  *   transferCreator 等管理方法职责明确
+ *
+ * ## 回归验证点
+ * - [TC-ROOM-001] createRoom 正常创建 → 返回 6 位 roomNo，数据库有记录
+ * - [TC-ROOM-002] createRoom 重复创建（已在房间中）→ Controller 层由 UserContext 校验返回 400
+ * - [TC-ROOM-003] createRoom 房间号生成冲突重试 → 循环最多 3 次，超过返回 null
+ * - [TC-ROOM-004] joinRoom 加入有效房间 → 返回 RoomPlayer（含 seatIndex）
+ * - [TC-ROOM-005] joinRoom 加入已满房间 → 抛出 IllegalArgumentException("房间已满，最多4人")
+ * - [TC-ROOM-006] joinRoom 加入不存在房间 → 抛出 IllegalArgumentException("房间不存在")
+ * - [TC-ROOM-007] joinRoom 重复加入同一房间 → 幂等返回现有 RoomPlayer
+ * - [TC-ROOM-008] joinRoom 房间状态非 0（游戏中/已结束）→ 抛出 IllegalArgumentException
+ * - [TC-ROOM-009] joinRoom 空参数 → 抛出 IllegalArgumentException
+ * - [TC-ROOM-010] removePlayer 正常离开 → 数据库记录删除，剩余 0 人时房间自动删除
+ * - [TC-ROOM-011] getAvailableRooms 返回等待中+游戏中房间 → 按 ID 倒序，填充 playerCount
+ * - [TC-ROOM-012] getCurrentRoom 用户不在任何房间 → 返回 null
  */
 @Slf4j
 @Service
