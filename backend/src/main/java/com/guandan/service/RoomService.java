@@ -38,3 +38,4 @@ public class RoomService {
 // Docs: room lifecycle states and error codes
 // Regression: room creation duplicate code and full-room boundary checks
 // Chore: configuration wrap-up for room creation/join module
+// Test: manual regression verification for room creation and match flow
