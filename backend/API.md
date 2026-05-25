@@ -1052,3 +1052,41 @@ GET /api/match/status
 | 联调测试检查清单可独立执行验证 | ✅ 通过 | 何涛 | 2026-05-25 |
 | 验收示例包含请求/响应完整交互过程 | ✅ 通过 | 何涛 | 2026-05-25 |
 
+### API 测试点与异常路径补充
+
+> 以下内容补充各 API 接口的测试点和异常路径，用于设计和执行联调测试。
+
+#### 房间管理 API 测试点
+
+| API 路径 | 测试点 | 正常场景 | 异常场景 |
+|---------|--------|---------|---------|
+| POST /api/new-game | 创建房间 | 返回 200 + roomNo 6 位房间号 | 已在房间中 400；Token 过期 401；房间号冲突重试3次后 500 |
+| GET /api/rooms | 获取可用房间列表 | 返回 Room 数组 | Token 过期 401 |
+| GET /api/room/current | 获取当前房间 | 返回当前房间信息 200 | 无房间时返回 data=null |
+| GET /api/room/detail/{roomNo} | 获取房间详情 | 返回完整 Room 含 players | 房间不存在 404 |
+| POST /api/room/leave | 离开房间 | 返回操作结果消息 | roomNo 为空 400；Token 过期 401；房间不存在 404 |
+| POST /api/room/kick | 踢出玩家 | 成功踢出，返回结果 | 非房主 403；房主踢自己 403；参数缺失 400 |
+| POST /api/room/transfer | 转移房主 | 新房主获得管理权限 | 非房主 403；新房主不在房间 404；参数不完整 400 |
+
+#### 匹配服务 API 测试点
+
+| API 路径 | 测试点 | 正常场景 | 异常场景 |
+|---------|--------|---------|---------|
+| POST /api/match/join | 加入匹配队列 | 返回 success=true, estimatedWait, queueSize | 已在房间中 400；重复加入幂等处理 |
+| POST /api/match/cancel | 取消匹配 | 返回 success=true, message | 不在队列中 400 |
+| GET /api/match/status | 查询匹配状态 | inQueue/matched/roomNo/queueSize 等字段 | 不在队列返回 inQueue=false |
+| POST /api/match/result | 查询匹配结果 | 匹配成功返回 roomNo | 未匹配返回 null；超时 60 秒返回 null |
+
+#### 游戏控制 API 异常路径
+
+| API 路径 | 异常条件 | 预期响应 |
+|---------|---------|---------|
+| POST /api/game/ready | roomNo 为空 | 400 |
+| POST /api/game/ready | 房间不存在 | 404 |
+| POST /api/game/ready | 房间不在等待状态 | 400 |
+| POST /api/game/ready | 玩家不在该房间中 | 400 |
+| POST /api/game/start | 非房主操作 | 403 |
+| POST /api/game/start | 人数不足 2 人 | 400 |
+| POST /api/game/start | 还有玩家未准备 | 400 |
+| GET /api/game/{roomNo}/status | 房间不存在 | 404 |
+

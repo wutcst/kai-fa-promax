@@ -98,6 +98,36 @@
 | 联调测试用例可独立执行且结果可复现 | ✅ 通过 | 何涛 | 2026-05-25 |
 | 回归验证点与 API 文档保持一致 | ✅ 通过 | 何涛 | 2026-05-25 |
 
+### 测试检查清单补充：异常场景测试点
+
+#### 房间管理异常路径详细测试点
+| 测试点 | 前置条件 | 操作步骤 | 预期结果 |
+|--------|---------|---------|---------|
+| TC-ROOM-ERR-001 | 用户已在房间A中，status=WAITING | POST /api/new-game 创建新房间 | 400 "您已在房间 xxx 中，请先退出再加入其他房间" |
+| TC-ROOM-ERR-002 | 房间号生成连续冲突3次 | 自动重试创建房间 | 500 并记录日志 |
+| TC-ROOM-ERR-003 | 目标房间已满员（playerCount >= 4） | POST /api/room/join 加入该房间 | "房间已满" 错误提示 |
+| TC-ROOM-ERR-004 | 房间号不存在 | POST /api/room/join 传入不存在的 roomNo | 404 |
+| TC-ROOM-ERR-005 | 房主调用踢出接口，targetUserId=自身 | POST /api/room/kick 踢出自己 | 403 "房主不可踢出自己" |
+| TC-ROOM-ERR-006 | 非房主调用踢出接口 | POST /api/room/kick 踢出其他玩家 | 403 |
+| TC-ROOM-ERR-007 | 房主解散房间后其他玩家访问 | 房间已解散，其他玩家 GET 房间信息 | 404 或空值 |
+| TC-ROOM-ERR-008 | 转移房主给不在房间中的用户 | POST /api/room/transfer 传入非房间内用户 | 404 "新房主不在房间中" |
+| TC-ROOM-ERR-009 | Token 过期且已失效 | 使用过期 Token 访问房间接口 | 401 拦截 |
+| TC-ROOM-ERR-010 | 退出不存在的房间 | POST /api/room/leave 传入空 roomNo | 400 "房间号不能为空" |
+
+#### 匹配服务异常路径详细测试点
+| 测试点 | 前置条件 | 操作步骤 | 预期结果 |
+|--------|---------|---------|---------|
+| TC-MATCH-ERR-001 | 用户已在 WAITING 房间中 | POST /api/match/join 加入匹配队列 | 400 "您已在房间中，请先退出再匹配" |
+| TC-MATCH-ERR-002 | 用户已在匹配队列中 | 再次 POST /api/match/join 加入匹配 | 幂等处理，直接返回成功 |
+| TC-MATCH-ERR-003 | 用户不在匹配队列中 | POST /api/match/cancel 取消匹配 | 400 "用户不在匹配队列中" |
+| TC-MATCH-ERR-004 | 轮询匹配结果超60秒 | 队列不足4人，持续轮询 getMatchResult | 返回 null，前端提示"匹配超时，请重试" |
+| TC-MATCH-ERR-005 | 取消匹配后队列和结果缓存 | 取消后检查 matchResult 缓存 | 清理队列和结果缓存，无脏数据残留 |
+| TC-MATCH-ERR-006 | 匹配成功但玩家加入房间失败 | 触发 checkAndMatch 创建房间，但玩家无法加入 | 记录日志，不影响其他已加入玩家 |
+| TC-MATCH-ERR-007 | 前端轮询消费匹配结果 | 匹配成功后前端获取 roomNo | 消费后后端清理缓存，避免脏数据残留 |
+| TC-MATCH-ERR-008 | 匹配过程中断线重连 | 断开 WebSocket 后重新连接 | 需重新加入匹配队列，旧队列状态已清理 |
+| TC-MATCH-ERR-009 | 匹配队列满4人自动创建房间 | 第4人加入队列触发 checkAndMatch | 服务端自动创建房间，写入4人 matchResult |
+| TC-MATCH-ERR-010 | 匹配结果消费后重复查询 | 前端已跳转后再次 GET /api/match/result | 路由/NavigationGuard 拦截，防止重复匹配 |
+
 ### Issue 描述
 本阶段聚焦于提升项目整体可验收性，围绕以下维度展开：
 - **代码质量提升**：统一命名规范、增加维护注释、优化错误处理流程
