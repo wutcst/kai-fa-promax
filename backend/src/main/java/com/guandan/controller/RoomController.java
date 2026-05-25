@@ -41,3 +41,4 @@ public class RoomController {
 // Regression: room controller join/leave flow validation
 // Chore: controller endpoint consolidation for Phase 2
 // Docs: package structure reference and class naming standards
+// Chore: Phase 2 backend room and match modules configuration consolidation
