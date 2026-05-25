@@ -9,3 +9,4 @@ export const joinMatch = () => request.post('/match/join')
 // Style: consistent button styling and layout spacing
 // Refactor: separate room API calls into gameApi module
 // Docs: gameApi integration notes for room CRUD endpoints
+// Test: manual test case - room create/join API error handling
