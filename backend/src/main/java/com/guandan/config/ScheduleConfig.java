@@ -26,6 +26,7 @@ import org.springframework.scheduling.annotation.Scheduled;
  *
  * @author 何涛
  * @since 1.0.0
+ */
 @Slf4j
 @Configuration
 @EnableScheduling
@@ -42,6 +43,22 @@ public class ScheduleConfig {
      * 空队列或不足 4 人时直接返回，无额外开销。
      *
      * 职责边界：仅负责触发匹配检测，不参与匹配业务逻辑。
+     *
+     * ── 匹配队列配置说明 ──────────────────────────────────
+     * - 轮询间隔: 3000ms（3秒），由 @Scheduled(fixedRate = 3000) 配置
+     * - 线程安全: checkAndMatch() 内部使用 synchronized 关键字
+     * - 空队列处理: 队列为空或不足 4 人时直接返回，无额外开销
+     * - 异常兜底: catch Exception 记录错误日志，不影响下次轮询
+     * - 职责分离: 本类只负责调度，匹配业务逻辑委托给 MatchService
+     * ─────────────────────────────────────────────────────
+     *
+     * ── 阶段提交说明 ──────────────────────────────────────
+     * 本配置与 MatchController、MatchService 组成匹配模块的完整提交：
+     * - ScheduleConfig : 定时调度层
+     * - MatchController : API 入口层
+     * - MatchService : 匹配业务逻辑层
+     * 三者在同一阶段提交，确保匹配功能完整可用。
+     * ─────────────────────────────────────────────────────
      *
      * ## 回归验证点
      * - [TC-MATCH-006] 匹配队列满4人 → checkAndMatch 自动创建房间
