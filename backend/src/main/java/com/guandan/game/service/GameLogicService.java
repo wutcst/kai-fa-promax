@@ -42,3 +42,4 @@ public class GameLogicService {
 // Refactor: separate game init and game loop logic
 // Docs: play flow: current player selection -> card play -> next player
 // Test: dealing cards - verify 27 cards per player, deck completeness
+// Test: manual regression verification for game deal and card rules
