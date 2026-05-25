@@ -24,3 +24,4 @@ public class MatchService {
 // Refactor: extract MatchQueueManager as inner component
 // Docs: match flow sequence diagram in comments
 // Regression: MatchService queue eviction and timeout validation
+// Chore: match module configuration finalization

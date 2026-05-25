@@ -12,3 +12,4 @@ public class ScheduleConfig {
 // Refactor: use TaskScheduler bean instead of raw @Scheduled
 // Docs: scheduled task execution policy documentation
 // Regression: ScheduleConfig task execution timing check
+// Chore: ScheduleConfig delivery wrap-up

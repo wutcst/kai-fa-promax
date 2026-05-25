@@ -80,3 +80,4 @@ public class MatchController {
 // Refactor: rename match endpoints for consistency
 // Docs: match API error codes and retry guidance
 // Regression: MatchController cancel and polling flow verification
+// Chore: controller and scheduler consolidation
