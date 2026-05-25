@@ -8,3 +8,4 @@ export const joinMatch = () => request.post('/match/join')
 // Fix: clear refresh timer on unmount, handle empty room list
 // Style: consistent button styling and layout spacing
 // Refactor: separate room API calls into gameApi module
+// Docs: gameApi integration notes for room CRUD endpoints
