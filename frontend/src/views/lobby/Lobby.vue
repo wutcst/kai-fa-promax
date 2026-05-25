@@ -38,3 +38,4 @@ onMounted(refresh)
 // Refactor: split lobby state management into composable function
 // Docs: frontend integration notes for lobby room list polling and error states
 // Test: manual test case - room list refresh on mount
+// Docs: lobby room interaction flow diagram and component tree documentation
