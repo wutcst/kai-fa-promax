@@ -14,3 +14,4 @@
 <!-- Chore: Project Board status synced - Phase 1 deliverables tracked -->
 <!-- Docs: Phase 1 final acceptance checklist - all items verified -->
 <!-- Test: Phase 2 API acceptance checklist verified -->
+<!-- Test: Phase 2 API boundary test and exception documentation -->

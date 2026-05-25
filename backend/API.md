@@ -17,3 +17,4 @@
 <!-- Chore: API doc status synced with Phase 1 completions -->
 <!-- Docs: API final acceptance - all endpoints documented -->
 ## Test: acceptance criteria verified for Phase 2 room/match APIs
+## Test: boundary test points and exception paths for Phase 2 APIs
