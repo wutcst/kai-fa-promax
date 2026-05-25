@@ -65,47 +65,65 @@
         <p>未找到匹配 "{{ debouncedSearchQuery }}" 的房间</p>
         <el-button size="small" @click="clearSearchAndRefresh">清除搜索并刷新</el-button>
       </div>
-      <div v-for="room in sortedRooms" :key="room.id" class="room-card">
-        <div class="room-card-header">
-          <span class="room-no">房间 {{ room.roomNo }}</span>
-          <el-button
-              size="small"
-              type="text"
-              class="copy-room-btn"
-              @click.stop="copyRoomNo(room.roomNo)"
-              title="复制房间号"
+      <!-- 虚拟滚动容器：房间列表（优化大量房间时的渲染性能） -->
+      <div
+          ref="virtualScrollRef"
+          class="virtual-scroll-container"
+          @scroll="onVirtualScroll"
+      >
+        <div class="virtual-scroll-phantom" :style="{ height: virtualTotalHeight + 'px' }"></div>
+        <div
+            class="virtual-scroll-content"
+            :style="{ transform: 'translateY(' + virtualOffsetY + 'px)' }"
+        >
+          <div
+              v-for="(room, idx) in virtualVisibleRooms"
+              :key="room.id"
+              :data-index="virtualStart + idx"
+              class="room-card"
           >
-            <el-icon><DocumentCopy /></el-icon>
-          </el-button>
-        </div>
-        <div class="room-card-body">
-          <div class="room-card-meta">
-            <span class="room-players">
-              <el-tag :type="room.playerCount >= 4 ? 'danger' : 'success'" size="small" class="player-count-tag">
-                <span class="player-count-icon">&#x1F465;</span>
-                {{ room.playerCount }}/4人
-              </el-tag>
-            </span>
-            <span :class="['room-status-badge', room.status === 0 ? 'badge-waiting' : 'badge-playing']">
-              <span class="status-dot"></span>
-              {{ room.status === 0 ? '等待中' : '游戏中' }}
-            </span>
-          </div>
-          <div class="room-card-progress">
-            <div class="progress-bar">
-              <div
-                  class="progress-fill"
-                  :class="room.playerCount >= 4 ? 'fill-full' : 'fill-partial'"
-                  :style="{ width: (room.playerCount / 4 * 100) + '%' }"
-              ></div>
+            <div class="room-card-header">
+              <span class="room-no">房间 {{ room.roomNo }}</span>
+              <el-button
+                  size="small"
+                  type="text"
+                  class="copy-room-btn"
+                  @click.stop="copyRoomNo(room.roomNo)"
+                  title="复制房间号"
+              >
+                <el-icon><DocumentCopy /></el-icon>
+              </el-button>
             </div>
-            <span class="progress-text">{{ room.playerCount }}/4 已就位</span>
+            <div class="room-card-body">
+              <div class="room-card-meta">
+                <span class="room-players">
+                  <el-tag :type="room.playerCount >= 4 ? 'danger' : 'success'" size="small" class="player-count-tag">
+                    <span class="player-count-icon">&#x1F465;</span>
+                    {{ room.playerCount }}/4人
+                  </el-tag>
+                </span>
+                <span :class="['room-status-badge', room.status === 0 ? 'badge-waiting' : 'badge-playing']">
+                  <span class="status-dot"></span>
+                  {{ room.status === 0 ? '等待中' : '游戏中' }}
+                </span>
+              </div>
+              <div class="room-card-progress">
+                <div class="progress-bar">
+                  <div
+                      class="progress-fill"
+                      :class="room.playerCount >= 4 ? 'fill-full' : 'fill-partial'"
+                      :style="{ width: (room.playerCount / 4 * 100) + '%' }"
+                  ></div>
+                </div>
+                <span class="progress-text">{{ room.playerCount }}/4 已就位</span>
+              </div>
+            </div>
+            <div class="room-card-footer">
+              <el-button size="small" type="primary" @click="joinRoom(room.roomNo)" :disabled="room.status !== 0 || room.playerCount >= 4" class="join-room-btn">
+                {{ room.status === 0 ? (room.playerCount >= 4 ? '已满' : '加入') : (room.status === 1 ? '游戏中' : '已结束') }}
+              </el-button>
+            </div>
           </div>
-        </div>
-        <div class="room-card-footer">
-          <el-button size="small" type="primary" @click="joinRoom(room.roomNo)" :disabled="room.status !== 0 || room.playerCount >= 4" class="join-room-btn">
-            {{ room.status === 0 ? (room.playerCount >= 4 ? '已满' : '加入') : (room.status === 1 ? '游戏中' : '已结束') }}
-          </el-button>
         </div>
       </div>
     </div>
@@ -427,7 +445,7 @@
  * [TC-LOBBY-LIST-013] 页面卸载 → 自动清除定时器，无内存泄漏
  * ─────────────────────────────────────────────────────
  */
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { WarningFilled, CircleCheck, Loading, User, Lock, Cpu, Search, DocumentCopy } from '@element-plus/icons-vue'
@@ -467,6 +485,46 @@ const {
   startAutoRefresh,
   stopAutoRefresh
 } = useLobby()
+
+// ── 虚拟滚动（大量房间高性能渲染） ──
+const ITEM_HEIGHT = 100 // 每个房间卡片预估高度（px）
+const OVER_SCAN = 5     // 上下额外渲染数量
+
+const virtualScrollRef = ref(null)
+const virtualStart = ref(0)
+const virtualEnd = ref(0)
+const virtualOffsetY = ref(0)
+const containerHeight = ref(600)
+
+const virtualTotalHeight = computed(() => {
+  return sortedRooms.value.length * ITEM_HEIGHT
+})
+
+const virtualVisibleRooms = computed(() => {
+  return sortedRooms.value.slice(virtualStart.value, virtualEnd.value)
+})
+
+const onVirtualScroll = () => {
+  if (!virtualScrollRef.value) return
+  const scrollTop = virtualScrollRef.value.scrollTop
+  const newStart = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - OVER_SCAN)
+  const newEnd = Math.min(
+    sortedRooms.value.length,
+    Math.ceil((scrollTop + containerHeight.value) / ITEM_HEIGHT) + OVER_SCAN
+  )
+  virtualStart.value = newStart
+  virtualEnd.value = newEnd
+  virtualOffsetY.value = newStart * ITEM_HEIGHT
+}
+
+const initVirtualScroll = () => {
+  if (!virtualScrollRef.value) return
+  containerHeight.value = virtualScrollRef.value.clientHeight || 600
+  virtualEnd.value = Math.min(
+    sortedRooms.value.length,
+    Math.ceil(containerHeight.value / ITEM_HEIGHT) + OVER_SCAN
+  )
+}
 
 // ── 对话框和表单状态 ──
 const showCreateDialog = ref(false)
@@ -711,10 +769,12 @@ const handleJoinRoom = async () => {
 }
 
 // ── 生命周期 ──
-onMounted(() => {
+onMounted(async () => {
   isFirstLoad.value = true
   fetchRooms()
   startAutoRefresh()
+  await nextTick()
+  initVirtualScroll()
 })
 </script>
 
@@ -1047,4 +1107,20 @@ onMounted(() => {
 .field-checking { color: #909399; }
 .field-valid { color: #67c23a; }
 .field-invalid { color: #e74c3c; }
+/* 虚拟滚动容器样式 */
+.virtual-scroll-container {
+  position: relative;
+  overflow-y: auto;
+  max-height: 600px;
+  min-height: 300px;
+}
+.virtual-scroll-phantom {
+  pointer-events: none;
+}
+.virtual-scroll-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
 </style>
