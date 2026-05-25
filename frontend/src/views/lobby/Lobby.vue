@@ -445,7 +445,7 @@
  * [TC-LOBBY-LIST-013] 页面卸载 → 自动清除定时器，无内存泄漏
  * ─────────────────────────────────────────────────────
  */
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { WarningFilled, CircleCheck, Loading, User, Lock, Cpu, Search, DocumentCopy } from '@element-plus/icons-vue'
@@ -771,11 +771,40 @@ const handleJoinRoom = async () => {
 // ── 生命周期 ──
 onMounted(async () => {
   isFirstLoad.value = true
+  // 优先加载缓存，提升感知速度
+  const cached = sessionStorage.getItem('lobby_rooms_cache')
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        rooms.value = parsed
+      }
+    } catch (_) { /* 缓存格式异常则忽略 */ }
+  }
   fetchRooms()
   startAutoRefresh()
   await nextTick()
   initVirtualScroll()
 })
+
+// ── 在每次 fetchRooms 后缓存结果 ──
+import { watch } from 'vue'
+
+// 房间列表稳定后写入缓存（防抖 2s）
+const cacheRooms = (() => {
+  let timer = null
+  return () => {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => {
+      if (rooms.value && rooms.value.length > 0) {
+        sessionStorage.setItem('lobby_rooms_cache', JSON.stringify(rooms.value))
+      }
+      timer = null
+    }, 2000)
+  }
+})()
+
+watch(() => rooms.value, () => { cacheRooms() }, { deep: true })
 </script>
 
 <style scoped>
