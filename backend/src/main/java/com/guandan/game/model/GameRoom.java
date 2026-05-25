@@ -14,3 +14,4 @@ public class GameRoom {
 // Refactor: extract GameState enum from GameRoom inner class
 // Docs: game room state transition: WAITING -> DEALING -> PLAYING -> FINISHED
 // Test: game room state machine transition verification
+// Chore: Phase 3 backend game modules configuration consolidation
