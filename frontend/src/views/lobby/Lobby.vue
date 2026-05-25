@@ -280,6 +280,74 @@
 /**
  * Lobby 组件 — 游戏大厅
  *
+ * ── 组件树结构 ──────────────────────────────
+ * Lobby (游戏大厅)
+ * ├── header.lobby-header
+ * │   ├── h2 ("游戏大厅")
+ * │   └── div.user-info
+ * │       ├── span (欢迎, {{ nickname }})
+ * │       ├── el-button ("个人主页" @click → /personal-home)
+ * │       └── el-button ("退出" @click → handleLogout → /login)
+ * ├── div.room-actions
+ * │   ├── el-button ("创建房间" @click → showCreateDialog)
+ * │   ├── el-button ("加入房间" @click → showJoinDialog)
+ * │   └── el-button ("快速匹配" @click → quickMatch)
+ * ├── div.room-list
+ * │   ├── h3 ("房间列表")
+ * │   ├── div.sort-controls
+ * │   │   ├── el-radio-group (排序: 默认/人数/状态)
+ * │   │   └── el-button (升序/降序切换)
+ * │   ├── div.search-bar
+ * │   │   └── el-input (搜索房间号)
+ * │   ├── div.loading-state / div.error-state (加载/错误状态)
+ * │   ├── div.empty-state (空状态: "暂无房间，创建一个吧")
+ * │   ├── v-for room-card (房间列表项)
+ * │   │   ├── div.room-card-header (房间号 + 复制按钮)
+ * │   │   ├── div.room-card-body (人数标签 + 状态徽章 + 进度条)
+ * │   │   └── div.room-card-footer (加入按钮)
+ * │   └── (搜索无结果时的空状态)
+ * ├── el-dialog (创建房间弹窗)
+ * │   ├── el-steps (基本信息 → 房间设置 → 确认创建)
+ * │   ├── el-form (step0: 房间名称/房间类型)
+ * │   ├── el-form (step1: 游戏局数/密码/队伍/观战)
+ * │   ├── div (step2: el-descriptions 确认信息)
+ * │   └── dialog-footer (上一步/取消/下一步/确认创建)
+ * └── el-dialog (加入房间弹窗)
+ *     ├── el-form (房间号/密码)
+ *     └── dialog-footer (取消/确认加入)
+ * ─────────────────────────────────────────────────────
+ *
+ * ── 房间交互流程 ────────────────────────────
+ * 1. 页面加载
+ *    → onMounted() → fetchRooms() + startAutoRefresh()
+ *    → 每 10 秒钟轮询 GET /api/rooms 获取最新房间列表
+ *    → 排序/搜索均为前端过滤，不额外请求后端
+ *
+ * 2. 创建房间
+ *    → 点击"创建房间" → showCreateDialog = true
+ *    → 多步表单: 基本信息(step0) → 房间设置(step1) → 确认(step2)
+ *    → handleCreateRoom() → createRoomAndSave(request)
+ *    → 成功后跳转 /battle?roomId={roomNo}
+ *    → 失败: createError 显示错误提示，保留表单数据
+ *
+ * 3. 加入房间
+ *    → 点击列表中的"加入"按钮或打开加入弹窗
+ *    → 输入 6 位房间号并校验格式
+ *    → handleJoinRoom() → joinRoomAndSave(roomNo)
+ *    → 成功后跳转 /battle?roomId={roomNo}
+ *    → 失败: joinError 显示错误提示
+ *
+ * 4. 快速匹配
+ *    → 点击"快速匹配" → joinMatch()
+ *    → 轮询 getMatchResult() 每 2 秒一次
+ *    → 匹配成功: 跳转 /battle?roomId={roomNo}
+ *    → 超时(60秒): 提示"匹配超时，请重试"
+ *    → 匹配中可取消: cancelMatch()
+ *
+ * 5. 页面离开
+ *    → onBeforeUnmount() → stopAutoRefresh() 清理定时器
+ * ─────────────────────────────────────────────────────
+ *
  * ── 联调说明 ──────────────────────────────────────────
  * 本组件与后端的联调涉及以下接口：
  *
