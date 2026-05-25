@@ -333,6 +333,22 @@
  * - 提取 createRoomRequest() 统一构造创建房间请求参数
  * - 提取 saveLocalMatchState() / clearLocalMatchState() 封装匹配状态存取
  * - reduceCreateError() / reduceJoinError() 简化错误提示逻辑
+ *
+ * ── 手动测试用例（大厅交互 · 房间列表/空状态） ──────
+ * [TC-LOBBY-LIST-001] 进入大厅 → 自动请求房间列表并渲染
+ * [TC-LOBBY-LIST-002] 首次加载时显示"加载中..."状态
+ * [TC-LOBBY-LIST-003] 网络错误加载失败 → 显示错误提示和"重新加载"按钮
+ * [TC-LOBBY-LIST-004] 房间列表为空 → 显示"暂无房间，创建一个吧"和"立即创建"按钮
+ * [TC-LOBBY-LIST-005] 搜索无匹配结果 → 显示"未找到匹配"和"清除搜索并刷新"按钮
+ * [TC-LOBBY-LIST-006] 搜索框输入 → 防抖后过滤房间列表，输入/清除保持响应
+ * [TC-LOBBY-LIST-007] 排序切换 → 默认/人数/状态 三种排序方式可切换
+ * [TC-LOBBY-LIST-008] 排序方向切换 → 升序/降序切换按钮有效
+ * [TC-LOBBY-LIST-009] 房间卡片展示 → 显示房间号、人数/4、等待中/游戏中状态
+ * [TC-LOBBY-LIST-010] 房间卡片进度条 → 人数占比显示正确，满员显示红色
+ * [TC-LOBBY-LIST-011] 加入按钮状态 → 等待中可点击，已满/游戏中按钮置灰
+ * [TC-LOBBY-LIST-012] 自动刷新 → 每10秒自动刷新房间列表
+ * [TC-LOBBY-LIST-013] 页面卸载 → 自动清除定时器，无内存泄漏
+ * ─────────────────────────────────────────────────────
  */
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
