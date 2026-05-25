@@ -61,6 +61,13 @@ import java.util.Map;
  * - NewGameRequest 使用 DTO 内置的校验方法
  * - leaveRoom 委托 RoomService 的 removePlayer 方法
  * - 明确控制器职责边界：只做参数校验和结果包装
+ *
+ * ── Phase 2 阶段标记 ──────────────────────────────────────
+ * 所属阶段：Phase 2 —— 房间管理增强
+ * 关联文档：API.md §7 房间管理增强
+ * 验收说明：本控制器与 MatchController 协同完成 Phase 2 房间+匹配流程
+ * 控制器职责边界明确：仅做参数校验和结果包装，业务逻辑委托 Service 层
+ * ─────────────────────────────────────────────────────────
  */
 @CrossOrigin(originPatterns = "*")
 @RestController
