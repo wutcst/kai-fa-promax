@@ -68,6 +68,15 @@
       <div v-for="room in sortedRooms" :key="room.id" class="room-card">
         <div class="room-card-header">
           <span class="room-no">房间 {{ room.roomNo }}</span>
+          <el-button
+              size="small"
+              type="text"
+              class="copy-room-btn"
+              @click.stop="copyRoomNo(room.roomNo)"
+              title="复制房间号"
+          >
+            <el-icon><DocumentCopy /></el-icon>
+          </el-button>
         </div>
         <div class="room-card-body">
           <div class="room-card-meta">
@@ -353,7 +362,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { WarningFilled, CircleCheck, Loading, User, Lock, Cpu, Search } from '@element-plus/icons-vue'
+import { WarningFilled, CircleCheck, Loading, User, Lock, Cpu, Search, DocumentCopy } from '@element-plus/icons-vue'
 import {
   getRooms,
   joinRoom as joinRoomApi,
@@ -536,6 +545,37 @@ const joinRoom = (roomNo) => {
   ElMessage.info(`加入房间 ${roomNo}`)
 }
 
+/**
+ * 一键复制房间号到剪贴板
+ * 使用 navigator.clipboard.writeText API 实现复制
+ * 兼容性兜底：若 Clipboard API 不可用，使用 document.execCommand('copy') 方案
+ * 复制成功后显示 ElMessage 提示反馈
+ */
+const copyRoomNo = async (roomNo) => {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(roomNo)
+    } else {
+      // 降级方案：创建临时 textarea 元素执行复制
+      const textarea = document.createElement('textarea')
+      textarea.value = roomNo
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    ElMessage.success({
+      message: `房间号 ${roomNo} 已复制到剪贴板`,
+      duration: 2000
+    })
+  } catch (err) {
+    console.error('复制房间号失败:', err)
+    ElMessage.error('复制失败，请手动复制房间号')
+  }
+}
+
 /** 构造创建房间请求参数（提取公共逻辑） */
 const buildCreateRoomRequest = () => {
   const request = {
@@ -703,6 +743,8 @@ onMounted(() => {
 }
 .room-card-header {
   min-width: 120px;
+  display: flex;
+  align-items: center;
 }
 .room-card-body {
   flex: 1;
@@ -818,6 +860,22 @@ onMounted(() => {
 .room-card-footer {
   display: flex;
   align-items: center;
+}
+/** 房间号一键复制按钮样式 */
+.copy-room-btn {
+  margin-left: 6px;
+  padding: 4px 6px !important;
+  font-size: 14px;
+  color: #409eff !important;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+.copy-room-btn:hover {
+  background: rgba(64, 158, 255, 0.1);
+  transform: scale(1.15);
+}
+.copy-room-btn:active {
+  transform: scale(0.95);
 }
 .room-status-tag {
   font-size: 12px;
