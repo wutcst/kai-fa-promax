@@ -40,3 +40,4 @@ onMounted(refresh)
 // Test: manual test case - room list refresh on mount
 // Docs: lobby room interaction flow diagram and component tree documentation
 // Perf: optimize lobby room list rendering with virtual scroll for 100+ rooms
+// Perf: optimize lobby initial load with room list caching strategy
