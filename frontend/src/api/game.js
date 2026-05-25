@@ -1,6 +1,34 @@
 import axiosInstance from './axiosInstance'
 
 /**
+ * ── 联调说明 ──────────────────────────────────────────
+ * 本文件封装前端与后端的所有 API 交互方法，涉及大厅交互的
+ * 接口包括：
+ *
+ * 房间列表相关：
+ * - getRooms()          : GET /api/rooms → 获取可用房间列表
+ * - getLobbyData()      : GET /api/lobby/data → 获取大厅完整数据
+ * - getCurrentRoom()    : GET /api/room/current → 获取用户当前房间
+ *
+ * 创建/加入按钮相关：
+ * - createRoomAndSave() : POST /api/new-game → 创建房间并保存状态
+ * - joinRoomAndSave()   : POST /api/room/join → 加入房间并保存状态
+ * - joinRoom()          : POST /api/room/join → 基础加入房间
+ * - exitRoom()          : POST /api/room/exit → 退出房间
+ *
+ * 空状态相关：
+ * - getRooms() 返回空列表时 → 前端展示空状态提示"暂无房间"
+ * - 网络错误时 getRooms 返回 { data: [] } 兜底
+ *
+ * 快速匹配相关：
+ * - joinMatch() / cancelMatch() / getMatchStatus() / getMatchResult()
+ *
+ * 联调依赖：后端服务启动在 localhost:8081，前端通过 axiosInstance
+ * 自动代理到 /api 路径。详见 Lobby.vue 的联调说明。
+ * ─────────────────────────────────────────────────────
+ */
+
+/**
  * 加入房间
  *
  * 空值保护：username 不存在时返回错误，不发起请求。
