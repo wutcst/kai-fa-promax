@@ -890,4 +890,111 @@ public class GameLogicService {
             }
         }
     }
+
+    // ============================================================
+    //  新增：游戏状态查询接口（提升开局和联调可追踪性）
+    // ============================================================
+
+    /**
+     * 获取游戏房间的完整状态快照（供前端/接口调用）
+     * @param roomId 房间ID
+     * @return 包含房间、玩家、手牌、出牌记录等完整信息的Map
+     */
+    public Map<String, Object> getGameState(String roomId) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        GameRoom room = rooms.get(roomId);
+        if (room == null) {
+            state.put("error", "房间不存在");
+            return state;
+        }
+
+        state.put("roomId", room.getRoomId());
+        state.put("status", room.getStatus().name());
+        state.put("playerCount", room.getPlayerIds().size());
+        state.put("playerIds", new ArrayList<>(room.getPlayerIds()));
+        state.put("currentPlayerIndex", room.getCurrentPlayerIndex());
+        state.put("currentPlayerId", room.getCurrentPlayerId());
+        state.put("levelCardRank", room.getLevelCardRank());
+        state.put("levelCardName", CardUtils.getRankName(room.getLevelCardRank()));
+        state.put("levelTeamA", room.getLevelTeamA());
+        state.put("levelTeamB", room.getLevelTeamB());
+
+        // 各玩家手牌数量
+        Map<String, Integer> handCardCounts = new LinkedHashMap<>();
+        for (String pid : room.getPlayerIds()) {
+            List<Integer> hand = room.getHandCards().get(pid);
+            handCardCounts.put(pid, hand != null ? hand.size() : 0);
+        }
+        state.put("handCardCounts", handCardCounts);
+
+        // 上一手牌信息
+        state.put("lastCardType", room.getLastCardType());
+        state.put("lastCardValue", room.getLastCardValue());
+        state.put("lastPlayerId", room.getLastPlayerId());
+        state.put("lastHandCards", room.getLastHandCards());
+
+        // 完成排名的玩家
+        state.put("firstFinishPlayerId", room.getFirstFinishPlayerId());
+        state.put("secondFinishPlayerId", room.getSecondFinishPlayerId());
+        state.put("thirdFinishPlayerId", room.getThirdFinishPlayerId());
+
+        // 连续跳过次数
+        state.put("consecutivePassCount", room.getConsecutivePassCount());
+
+        log.info("获取游戏状态: roomId={}, status={}, playerCount={}",
+                roomId, room.getStatus(), room.getPlayerIds().size());
+        return state;
+    }
+
+    /**
+     * 获取所有房间的简要状态列表（供大厅接口调用）
+     * @return 房间列表
+     */
+    public List<Map<String, Object>> getAllRoomsBrief() {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, GameRoom> entry : rooms.entrySet()) {
+            GameRoom room = entry.getValue();
+            Map<String, Object> brief = new LinkedHashMap<>();
+            brief.put("roomId", room.getRoomId());
+            brief.put("playerCount", room.getPlayerIds().size());
+            brief.put("maxPlayers", 4);
+            brief.put("status", room.getStatus().name());
+            brief.put("levelTeamA", room.getLevelTeamA());
+            brief.put("levelTeamB", room.getLevelTeamB());
+            result.add(brief);
+        }
+        return result;
+    }
+
+    /**
+     * 重置房间状态（用于一局结束后重新开始）
+     * @param roomId 房间ID
+     * @return 是否成功
+     */
+    public boolean resetRoom(String roomId) {
+        GameRoom room = rooms.get(roomId);
+        if (room == null) {
+            log.error("重置失败：房间 {} 不存在", roomId);
+            return false;
+        }
+
+        // 清空手牌
+        room.getHandCards().clear();
+
+        // 重置游戏状态
+        room.setStatus(GameRoom.GameStatus.WAITING);
+        room.setCurrentPlayerIndex(0);
+        room.setFirstFinishPlayerId(null);
+        room.setSecondFinishPlayerId(null);
+        room.setThirdFinishPlayerId(null);
+        room.resetLastPlayedCards();
+        room.resetPassCount();
+        room.clearLastHandCards();
+        room.setLastHandCards(null);
+        room.setLastHandPlayerId(null);
+        room.setTableCleared(false);
+
+        log.info("房间 {} 已重置，等待下一局", roomId);
+        return true;
+    }
 }

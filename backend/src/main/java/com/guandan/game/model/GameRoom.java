@@ -336,4 +336,52 @@ public class GameRoom {
         }
         return null;
     }
+
+    /**
+     * 获取房间中尚未出完牌的玩家数量
+     * @return 手牌非空的玩家数量
+     */
+    public int getActivePlayerCount() {
+        int count = 0;
+        for (String pid : playerIds) {
+            List<Integer> hand = handCards.get(pid);
+            if (hand != null && !hand.isEmpty()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 判断指定玩家是否已出完所有手牌
+     * @param playerId 玩家ID
+     * @return 是否已出完
+     */
+    public boolean isPlayerFinished(String playerId) {
+        List<Integer> hand = handCards.get(playerId);
+        return hand != null && hand.isEmpty();
+    }
+
+    /**
+     * 获取所有未出完牌的玩家ID
+     * @return 活跃玩家ID列表
+     */
+    public List<String> getActivePlayerIds() {
+        List<String> active = new ArrayList<>();
+        for (String pid : playerIds) {
+            List<Integer> hand = handCards.get(pid);
+            if (hand != null && !hand.isEmpty()) {
+                active.add(pid);
+            }
+        }
+        return active;
+    }
+
+    /**
+     * 判断房间是否可开始游戏（至少2名真人玩家）
+     * @return 是否可开始
+     */
+    public boolean canStartGame() {
+        return playerIds.size() >= 2;
+    }
 }
