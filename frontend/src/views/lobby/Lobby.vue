@@ -128,6 +128,24 @@
       </div>
     </div>
 
+    <!-- 房间事件通知 Toast 浮层 -->
+    <div class="event-toast-container" v-if="toastQueue.length > 0">
+      <transition-group name="toast-slide">
+        <div
+            v-for="evt in toastQueue"
+            :key="evt.id"
+            class="event-toast-item"
+            :class="'toast-' + evt.type"
+            @click="dismissToast(evt.id)"
+        >
+          <span class="toast-icon" v-html="getEventIcon(evt.type)"></span>
+          <span class="toast-message">{{ evt.message }}</span>
+          <span class="toast-time">{{ formatEventTime(evt.time) }}</span>
+          <el-button size="small" text class="toast-close-btn" @click.stop="dismissToast(evt.id)">&times;</el-button>
+        </div>
+      </transition-group>
+    </div>
+
     <!-- 创建房间对话框（多步表单） -->
     <el-dialog v-model="showCreateDialog" title="创建房间" width="460px" :close-on-click-modal="false" @close="resetCreateForm" @open="onCreateDialogOpen">
       <el-steps :active="createStep" align-center finish-status="success" class="create-steps">
@@ -445,7 +463,7 @@
  * [TC-LOBBY-LIST-013] 页面卸载 → 自动清除定时器，无内存泄漏
  * ─────────────────────────────────────────────────────
  */
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { WarningFilled, CircleCheck, Loading, User, Lock, Cpu, Search, DocumentCopy } from '@element-plus/icons-vue'
@@ -524,6 +542,148 @@ const initVirtualScroll = () => {
     sortedRooms.value.length,
     Math.ceil(containerHeight.value / ITEM_HEIGHT) + OVER_SCAN
   )
+}
+
+// ── 房间事件通知 Toast 系统 ──
+/**
+ * 房间事件通知系统
+ * 监听 WebSocket 或轮询发现房间变化事件（新房间创建、玩家加入/离开、游戏开始等），
+ * 以 Toast 浮层形式实时展示，帮助玩家掌握大厅动态。
+ *
+ * 事件类型：
+ * - room_created: 新房间创建
+ * - player_joined: 有玩家加入某房间
+ * - player_left: 有玩家离开某房间
+ * - game_started: 某房间游戏开始
+ * - room_closed: 房间关闭/解散
+ */
+
+const EVENT_ICONS = {
+  room_created: '&#x1F4E2;',
+  player_joined: '&#x1F4E3;',
+  player_left: '&#x1F6AA;',
+  game_started: '&#x1F3AE;',
+  room_closed: '&#x1F6AB;'
+}
+
+const EVENT_TYPES = ['room_created', 'player_joined', 'player_left', 'game_started', 'room_closed']
+
+/** 事件列表（最多保留 50 条） */
+const roomEvents = ref([])
+
+/** Toast 通知队列（最多同时展示 3 条） */
+const toastQueue = ref([])
+const toastTimer = ref(null)
+
+/**
+ * 将事件推送到列表并触发 Toast 展示
+ * @param {string} type - 事件类型
+ * @param {string} message - 事件描述
+ * @param {object} [meta] - 附加信息（房间号等）
+ */
+const pushRoomEvent = (type, message, meta) => {
+  if (!EVENT_TYPES.includes(type)) return
+  const event = {
+    id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    type,
+    message,
+    meta: meta || {},
+    time: Date.now()
+  }
+  // 加入事件列表
+  roomEvents.value.unshift(event)
+  if (roomEvents.value.length > 50) roomEvents.value.pop()
+
+  // 推入 Toast 队列
+  enqueueToast(event)
+}
+
+/** 将事件加入 Toast 队列（最多 3 条） */
+const enqueueToast = (event) => {
+  toastQueue.value.push(event)
+  if (toastQueue.value.length > 3) toastQueue.value.shift()
+  if (!toastTimer.value) {
+    startToastCycle()
+  }
+}
+
+/** 依次展示 Toast（每条展示 4 秒） */
+const startToastCycle = () => {
+  if (toastTimer.value) clearTimeout(toastTimer.value)
+  if (toastQueue.value.length === 0) {
+    toastTimer.value = null
+    return
+  }
+  // 展示当前第一条（Toast 已由模板渲染）
+  toastTimer.value = setTimeout(() => {
+    toastQueue.value.shift()
+    startToastCycle()
+  }, 4000)
+}
+
+/** 手动关闭指定 Toast */
+const dismissToast = (eventId) => {
+  const idx = toastQueue.value.findIndex(e => e.id === eventId)
+  if (idx !== -1) {
+    toastQueue.value.splice(idx, 1)
+    if (toastQueue.value.length === 0 && toastTimer.value) {
+      clearTimeout(toastTimer.value)
+      toastTimer.value = null
+    }
+  }
+}
+
+/** 清空所有 Toast */
+const clearAllToasts = () => {
+  toastQueue.value = []
+  if (toastTimer.value) {
+    clearTimeout(toastTimer.value)
+    toastTimer.value = null
+  }
+}
+
+/** 模拟接收房间事件（模拟后端推送） */
+const simulateRoomEvent = () => {
+  if (sortedRooms.value.length === 0) return
+  const randomRoom = sortedRooms.value[Math.floor(Math.random() * sortedRooms.value.length)]
+  const eventTypes = ['player_joined', 'player_left', 'game_started', 'room_closed']
+  const type = eventTypes[Math.floor(Math.random() * eventTypes.length)]
+  const msgs = {
+    player_joined: `玩家加入房间 ${randomRoom.roomNo}`,
+    player_left: `玩家离开房间 ${randomRoom.roomNo}`,
+    game_started: `房间 ${randomRoom.roomNo} 游戏已开始`,
+    room_closed: `房间 ${randomRoom.roomNo} 已关闭`
+  }
+  pushRoomEvent(type, msgs[type], { roomNo: randomRoom.roomNo })
+}
+
+/** 启动事件监听（通过轮询或 WebSocket TODO） */
+const startEventPolling = () => {
+  // 模拟每 30 秒产生一条随机事件
+  return setInterval(simulateRoomEvent, 30000)
+}
+
+/** 停止事件监听 */
+const stopEventPolling = (timer) => {
+  if (timer) clearInterval(timer)
+}
+
+// ── 事件通知 Toast 区 ──
+
+/** 获取事件图标 */
+const getEventIcon = (type) => {
+  return EVENT_ICONS[type] || '&#x1F514;'
+}
+
+/** 格式化事件时间 */
+const formatEventTime = (timestamp) => {
+  const d = new Date(timestamp)
+  const now = new Date()
+  const diff = now - d
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前'
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前'
+  return d.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 // ── 对话框和表单状态 ──
@@ -769,6 +929,8 @@ const handleJoinRoom = async () => {
 }
 
 // ── 生命周期 ──
+const eventPollTimer = ref(null)
+
 onMounted(async () => {
   isFirstLoad.value = true
   // 优先加载缓存，提升感知速度
@@ -785,6 +947,19 @@ onMounted(async () => {
   startAutoRefresh()
   await nextTick()
   initVirtualScroll()
+  // 启动事件轮询
+  eventPollTimer.value = startEventPolling()
+})
+
+// 清理事件轮询定时器
+import { onBeforeUnmount } from 'vue'
+
+onBeforeUnmount(() => {
+  if (eventPollTimer.value) {
+    stopEventPolling(eventPollTimer.value)
+    eventPollTimer.value = null
+  }
+  clearAllToasts()
 })
 
 // ── 在每次 fetchRooms 后缓存结果 ──
@@ -1151,5 +1326,96 @@ watch(() => rooms.value, () => { cacheRooms() }, { deep: true })
   top: 0;
   left: 0;
   right: 0;
+}
+/* 房间事件通知 Toast 样式 */
+.event-toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: 380px;
+}
+.event-toast-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #fff;
+}
+.event-toast-item:hover {
+  transform: translateX(-4px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+}
+.event-toast-item.toast-room_created {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+.event-toast-item.toast-player_joined {
+  background: linear-gradient(135deg, #43e97b, #38f9d7);
+  color: #1a5c2a;
+}
+.event-toast-item.toast-player_left {
+  background: linear-gradient(135deg, #fa709a, #fee140);
+  color: #5c3a1a;
+}
+.event-toast-item.toast-game_started {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+}
+.event-toast-item.toast-room_closed {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  color: #1a3a5c;
+}
+.toast-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.toast-message {
+  flex: 1;
+  font-weight: 500;
+}
+.toast-time {
+  font-size: 11px;
+  opacity: 0.8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.toast-close-btn {
+  flex-shrink: 0;
+  color: inherit !important;
+  opacity: 0.7;
+  padding: 0 4px !important;
+  font-size: 18px;
+}
+.toast-close-btn:hover {
+  opacity: 1;
+}
+/* Toast 进出动画 */
+.toast-slide-enter-active {
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+.toast-slide-leave-active {
+  transition: all 0.3s ease;
+}
+.toast-slide-enter-from {
+  opacity: 0;
+  transform: translateX(100%) scale(0.8);
+}
+.toast-slide-leave-to {
+  opacity: 0;
+  transform: translateX(100%) scale(0.8);
+}
+.toast-slide-move {
+  transition: transform 0.4s ease;
 }
 </style>
