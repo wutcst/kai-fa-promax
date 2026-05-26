@@ -37,3 +37,4 @@ public class GameLogicService {
         room.lastCards = new ArrayList<>(cards);
     }
 }
+// GameLogicService: deal cards, validate player turn, check game end

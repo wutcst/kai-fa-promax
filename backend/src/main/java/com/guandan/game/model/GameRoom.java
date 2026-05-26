@@ -9,3 +9,4 @@ public class GameRoom {
     public List<Integer> lastCards = new ArrayList<>();
     public int passCount = 0;
 }
+// GameRoom: game state machine - WAITING/DEALING/PLAYING/FINISHED

@@ -18,3 +18,4 @@ public class CardUtils {
         return r == 0 ? 13 : r;
     }
 }
+// CardUtils: shuffle and deal with deterministic seed
