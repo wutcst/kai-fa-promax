@@ -47,3 +47,4 @@ onMounted(refresh)
 // Docs: lobby component props and event documentation
 // Perf: debounce room search input to reduce API calls
 // Feat: add room code copy-to-clipboard with toast feedback
+// Feat: add game notification toast for room events
