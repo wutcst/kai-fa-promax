@@ -11,22 +11,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * 负责人：成员A（核心引擎与逻辑）
  *
  * 存储房间内的玩家信息、手牌和游戏状态
- *
- * ── Phase 3 阶段标记 ──────────────────────────────────────
- * 所属阶段：Phase 3 —— 游戏开局与牌型规则
- * 关联文件：GameLogicService.java, CardUtils.java, GameReferee.java
- * 职责说明：GameRoom 为内存级游戏房间模型，与数据库 Room 实体分离
- *           负责游戏进行中的状态管理（手牌、回合、排名、级牌）
- * 关键字段：
- *   - handCards: 玩家手牌映射，ConcurrentHashMap 保证并发安全
- *   - levelCardRank: 级牌点数（0-12 对应 2-A），由数据库级别换算
- *   - lastHandCards / lastHandPlayerId: 上一手牌，用于比牌判断
- *   - firstFinishPlayerId ~ thirdFinishPlayerId: 头游/二游/三游排名
- * 边界处理：
- *   - addPlayer 最多 4 人，重复加入返回 false
- *   - removeCards 检查所有卡牌在手牌中才移除
- *   - nextPlayer 环形切换，自动跳过已出完牌的玩家（由 GameLogicService 处理）
- * ─────────────────────────────────────────────────────────
  */
 @Data
 public class GameRoom {
@@ -329,7 +313,7 @@ public class GameRoom {
             firstFinishPlayerId = playerId;
         } else if (secondFinishPlayerId == null && !playerId.equals(firstFinishPlayerId)) {
             secondFinishPlayerId = playerId;
-        } else if (thirdFinishPlayerId == null && !playerId.equals(firstFinishPlayerId)
+        } else if (thirdFinishPlayerId == null && !playerId.equals(firstFinishPlayerId) 
                 && !playerId.equals(secondFinishPlayerId)) {
             thirdFinishPlayerId = playerId;
         }
