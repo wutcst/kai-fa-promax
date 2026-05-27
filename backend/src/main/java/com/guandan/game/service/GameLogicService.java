@@ -113,22 +113,7 @@ public class GameLogicService {
                     // 更新房间级别信息
                     room.setLevelTeamA(dbRoom.getLevelTeamA());
                     room.setLevelTeamB(dbRoom.getLevelTeamB());
-                    // 根据级别计算级牌点数
-                    // 正确的映射关系：
-                    // 级别2→级牌2→levelCardRank=0 (因为RANKS[0] = "2")
-                    // 级别3→级牌3→levelCardRank=1 (因为RANKS[1] = "3")
-                    // 级别4→级牌4→levelCardRank=2 (因为RANKS[2] = "4")
-                    // ...
-                    // 级别14→级牌A→levelCardRank=12 (因为RANKS[12] = "A")
-                    int level = Math.max(dbRoom.getLevelTeamA(), dbRoom.getLevelTeamB());
-                    int levelCardRank;
-                    if (level == 2) {
-                        levelCardRank = 0; // 2对应levelCardRank 0
-                    } else if (level >= 3 && level <= 14) {
-                        levelCardRank = level - 2; // 3对应1, 4对应2, ..., 14对应12
-                    } else {
-                        levelCardRank = 0; // 默认打2
-                    }
+                    int levelCardRank = computeLevelCardRank(dbRoom.getLevelTeamA(), dbRoom.getLevelTeamB());
                     room.setLevelCardRank(levelCardRank);
                     log.info("从数据库更新房间级别信息: roomId={}, levelTeamA={}, levelTeamB={}, levelCardRank={}",
                             roomId, dbRoom.getLevelTeamA(), dbRoom.getLevelTeamB(), levelCardRank);
@@ -587,7 +572,7 @@ public class GameLogicService {
         String cardType = CardUtils.getCardType(cardIds);
         Integer cardValue = CardUtils.getCardValue(cardIds);
         room.updateLastPlayedCards(playerId, cardType, cardValue);
-        room.updateLastPlayedCardsWithList(playerId, cardIds);
+        room.recordPlayedCards(playerId, cardIds);
 
         // 检查玩家是否出完牌，如果是第一个出完牌的玩家，记录为头游
         List<Integer> currentHand = room.getHandCards().get(playerId);
@@ -607,6 +592,27 @@ public class GameLogicService {
         checkGameEnd(room);
 
         return true;
+    }
+
+    // ============================================================
+    //  私有工具方法
+    // ============================================================
+
+    /**
+     * 根据AB队级别计算级牌点数
+     * 级别2→级牌2→levelCardRank=0 → 级别14→级牌A→levelCardRank=12
+     * @param levelTeamA A队级别
+     * @param levelTeamB B队级别
+     * @return levelCardRank (0-12)
+     */
+    private int computeLevelCardRank(int levelTeamA, int levelTeamB) {
+        int level = Math.max(levelTeamA, levelTeamB);
+        if (level == 2) {
+            return 0;
+        } else if (level >= 3 && level <= 14) {
+            return level - 2;
+        }
+        return 0;
     }
 
     /**

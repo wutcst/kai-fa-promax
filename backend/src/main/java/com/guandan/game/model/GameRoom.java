@@ -152,12 +152,19 @@ public class GameRoom {
      * @param playerId 玩家ID
      * @param cardIds 出牌列表
      */
-    public void updateLastPlayedCardsWithList(String playerId, List<Integer> cardIds) {
+    public void recordPlayedCards(String playerId, List<Integer> cardIds) {
         if (playerId == null) {
             return; // 空值保护
         }
         this.lastPlayerId = playerId;
         this.lastHandCards = (cardIds == null) ? null : new java.util.ArrayList<>(cardIds);
+    }
+
+    /**
+     * 重置上一次出牌信息（同 resetLastPlayedCards 别名，提升可读性）
+     */
+    public void clearPlayedCards() {
+        resetLastPlayedCards();
     }
 
     /**
@@ -341,6 +348,27 @@ public class GameRoom {
             return 4; // 末游
         }
         return null;
+    }
+
+    /**
+     * 重置所有游戏状态（用于一局结束后重新开始）
+     */
+    public void resetGameState() {
+        this.status = GameStatus.WAITING;
+        this.currentPlayerIndex = 0;
+        this.levelCardRank = 0;
+        this.lastCardType = null;
+        this.lastCardValue = null;
+        this.lastPlayerId = null;
+        this.lastHandCards = null;
+        this.lastHandPlayerId = null;
+        this.consecutivePassCount = 0;
+        this.tableCleared = false;
+        this.firstFinishPlayerId = null;
+        this.secondFinishPlayerId = null;
+        this.thirdFinishPlayerId = null;
+        this.levelTeamA = 2;
+        this.levelTeamB = 2;
     }
 
     /**
