@@ -104,6 +104,21 @@ public class CardUtils {
     }
 
     /**
+     * 统计卡牌列表中每个点数的出现次数
+     * @param cardIds 卡牌ID列表
+     * @return 点数->次数 映射
+     */
+    private static Map<Integer, Integer> countRanks(List<Integer> cardIds) {
+        Map<Integer, Integer> rankCount = new HashMap<>();
+        if (cardIds == null) return rankCount;
+        for (Integer cardId : cardIds) {
+            int rank = getRank(cardId);
+            rankCount.put(rank, rankCount.getOrDefault(rank, 0) + 1);
+        }
+        return rankCount;
+    }
+
+    /**
      * 获取牌型
      * @param cardIds 卡牌ID列表
      * @return 牌型字符串
@@ -124,11 +139,7 @@ public class CardUtils {
         }
 
         // 统计每个点数的数量
-        Map<Integer, Integer> rankCount = new HashMap<>();
-        for (Integer cardId : cardIds) {
-            int rank = getRank(cardId);
-            rankCount.put(rank, rankCount.getOrDefault(rank, 0) + 1);
-        }
+        Map<Integer, Integer> rankCount = countRanks(cardIds);
 
         // 检查是否为炸弹（4张及以上同点数）
         if (rankCount.values().stream().anyMatch(count -> count >= 4)) {
@@ -165,7 +176,7 @@ public class CardUtils {
                 return "无法识别";
             case 6:
                 // 检查是否为钢板（连续三张）
-                if (isSteelPlate(cardIds)) {
+                if (isTripletStraight(cardIds)) {
                     return "钢板";
                 }
                 return "无法识别";
@@ -189,11 +200,7 @@ public class CardUtils {
         }
 
         // 统计每个点数的数量
-        Map<Integer, Integer> rankCount = new HashMap<>();
-        for (Integer cardId : cardIds) {
-            int rank = getRank(cardId);
-            rankCount.put(rank, rankCount.getOrDefault(rank, 0) + 1);
-        }
+        Map<Integer, Integer> rankCount = countRanks(cardIds);
 
         // 炸弹：返回最大点数
         if (rankCount.values().stream().anyMatch(count -> count >= 4)) {
@@ -230,7 +237,7 @@ public class CardUtils {
         }
 
         // 钢板：返回最大点数
-        if (isSteelPlate(cardIds)) {
+        if (isTripletStraight(cardIds)) {
             return cardIds.stream().mapToInt(CardUtils::getRank).max().orElse(-1);
         }
 
@@ -330,11 +337,11 @@ public class CardUtils {
     }
 
     /**
-     * 检查是否为钢板（连续三张）
+     * 检查是否为钢板（连续三张，同 isSteelPlate）
      * @param cardIds 卡牌ID列表
      * @return 是否为钢板
      */
-    private static boolean isSteelPlate(List<Integer> cardIds) {
+    private static boolean isTripletStraight(List<Integer> cardIds) {
         if (cardIds.size() != 6) {
             return false;
         }
