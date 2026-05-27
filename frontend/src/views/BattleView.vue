@@ -361,6 +361,16 @@ const handStyle = computed(() => {
   const minStep = Math.max(20, cardWidth * 0.24)
   const maxStep = cardWidth * 0.60
   step = Math.max(minStep, Math.min(maxStep, step))
+
+  // 手牌布局间距优化适配不同屏幕宽度
+  if (width <= 1024) {
+    // 小屏：牌距紧凑，避免牌挤到屏幕外
+    step = Math.max(minStep * 0.9, Math.min(maxStep * 0.85, step))
+  } else if (width >= 1920) {
+    // 大屏：牌距自然拉开，视觉更舒适
+    step = Math.max(minStep, Math.min(maxStep * 1.08, step))
+  }
+
   const marginX = (step - cardWidth) / 2
   return {
     '--my-card-width': `${cardWidth}px`,
@@ -2375,6 +2385,26 @@ const handleError = (data) => {
   .my-info-section .player-details,
   .quick-texts {
     display: none !important;
+  }
+
+  /* 小屏手牌底部间距优化 */
+  .my-hand {
+    padding: 4px 10px 0 !important;
+  }
+
+  .action-area {
+    bottom: calc(var(--my-hand-height, 128px) + 12px) !important;
+  }
+}
+
+/* 超大屏手牌间距优化 */
+@media (min-width: 1920px) {
+  .my-hand {
+    padding: 4px 32px 0 !important;
+  }
+
+  .my-hand .card {
+    margin: 0 calc(var(--my-card-margin-x, -20px) * 1.2) !important;
   }
 }
 
