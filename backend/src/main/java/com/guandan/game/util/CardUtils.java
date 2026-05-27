@@ -656,4 +656,26 @@ public class CardUtils {
         }
         return result;
     }
+
+    /**
+     * 比较两手牌的牌型值大小（简化版本，供服务层使用）
+     * @param hand1 第一手牌
+     * @param hand2 第二手牌
+     * @param levelCardRank 级牌点数
+     * @return 如果hand1大于hand2返回正数，相等返回0，小于返回负数
+     */
+    public static int compareHandValues(List<Integer> hand1, List<Integer> hand2, int levelCardRank) {
+        if (hand1 == null || hand2 == null) {
+            return 0;
+        }
+
+        Integer value1 = getCardValue(hand1);
+        Integer value2 = getCardValue(hand2);
+
+        if (value1 == null || value2 == null) {
+            return 0;
+        }
+
+        return value1 - value2;
+    }
 }
