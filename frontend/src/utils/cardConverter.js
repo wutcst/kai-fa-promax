@@ -11,3 +11,4 @@ export function cardText(card) {
 // Refactor: extract card rendering to CardRenderer component
 // Fix: memory leak from unremoved card event listeners
 // Style: transition animations for card selection/deselection
+// Feat: card group detection for combo selection helpers

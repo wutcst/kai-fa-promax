@@ -30,3 +30,4 @@ function pass() {}
 // Refactor: separate card state management from display logic
 // Fix: card animation jank - debounce rapid selection changes
 // Style: card deal animation - staggered entry with CSS transitions
+// Feat: drag-and-drop card selection mechanism
