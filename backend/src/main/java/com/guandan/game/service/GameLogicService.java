@@ -469,6 +469,12 @@ public class GameLogicService {
      * @return 是否成功出牌
      */
     public boolean playCards(String playerId, List<Integer> cardIds) {
+        // 参数空值检查
+        if (playerId == null) {
+            log.error("playCards 参数为空：playerId=null");
+            return false;
+        }
+
         String roomId = playerToRoom.get(playerId);
         if (roomId == null) {
             log.error("玩家 {} 不在任何房间中", playerId);
@@ -481,16 +487,25 @@ public class GameLogicService {
             return false;
         }
 
+        // 状态一致性检查
         if (room.getStatus() != GameRoom.GameStatus.PLAYING) {
-            log.warn("房间 {} 不在游戏中，无法出牌", roomId);
+            log.warn("房间 {} 不在游戏中，状态={}，无法出牌", roomId, room.getStatus());
+            return false;
+        }
+
+        // 房间玩家列表一致性检查
+        if (room.getPlayerIds() == null || !room.getPlayerIds().contains(playerId)) {
+            log.warn("玩家 {} 不在房间 {} 的玩家列表中，状态不一致", playerId, roomId);
             return false;
         }
 
         // 检查是否是当前玩家的回合
-        String currentPlayerId = room.getCurrentPlayerId();
-        if (!playerId.equals(currentPlayerId)) {
-            log.warn("玩家 {} 尝试出牌，但当前回合是玩家 {}", playerId, currentPlayerId);
-            return false;
+        if (room.getPlayerIds() != null && !room.getPlayerIds().isEmpty()) {
+            String currentPlayerId = room.getCurrentPlayerId();
+            if (!playerId.equals(currentPlayerId)) {
+                log.warn("玩家 {} 尝试出牌，但当前回合是玩家 {}", playerId, currentPlayerId);
+                return false;
+            }
         }
 
         if (cardIds == null || cardIds.isEmpty()) {

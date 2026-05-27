@@ -148,11 +148,14 @@ public class GameRoom {
     }
 
     /**
-     * 更新上一次出牌信息（包含牌列表）
+     * 更新上一次出牌信息（包含牌列表及空值保护）
      * @param playerId 玩家ID
      * @param cardIds 出牌列表
      */
     public void updateLastPlayedCardsWithList(String playerId, List<Integer> cardIds) {
+        if (playerId == null) {
+            return; // 空值保护
+        }
         this.lastPlayerId = playerId;
         this.lastHandCards = (cardIds == null) ? null : new java.util.ArrayList<>(cardIds);
     }
@@ -191,11 +194,14 @@ public class GameRoom {
     }
 
     /**
-     * 获取玩家手牌
+     * 获取玩家手牌（含空值保护）
      * @param playerId 玩家ID
-     * @return 手牌列表
+     * @return 手牌列表，若playerId为空返回空列表
      */
     public List<Integer> getPlayerHandCards(String playerId) {
+        if (playerId == null || handCards == null) {
+            return new ArrayList<>();
+        }
         return handCards.getOrDefault(playerId, new ArrayList<>());
     }
 
@@ -378,10 +384,16 @@ public class GameRoom {
     }
 
     /**
-     * 判断房间是否可开始游戏（至少2名真人玩家）
+     * 判断房间是否可开始游戏（至少2名真人玩家，含状态一致性检查）
      * @return 是否可开始
      */
     public boolean canStartGame() {
+        if (playerIds == null || playerIds.isEmpty()) {
+            return false;
+        }
+        if (status != GameStatus.WAITING) {
+            return false; // 非等待状态不能开始
+        }
         return playerIds.size() >= 2;
     }
 }

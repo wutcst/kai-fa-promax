@@ -448,6 +448,9 @@ public class CardUtils {
      * @return 级牌ID列表
      */
     public static List<Integer> getLevelCards(List<Integer> cardIds, int levelCardRank) {
+        if (cardIds == null) {
+            return new ArrayList<>(); // 空值保护
+        }
         List<Integer> levelCards = new ArrayList<>();
         for (Integer cardId : cardIds) {
             if (isLevelCard(cardId, levelCardRank)) {
@@ -464,6 +467,9 @@ public class CardUtils {
      * @return 逢人配ID列表
      */
     public static List<Integer> getWildCards(List<Integer> cardIds, int levelCardRank) {
+        if (cardIds == null) {
+            return new ArrayList<>(); // 空值保护
+        }
         List<Integer> wildCards = new ArrayList<>();
         for (Integer cardId : cardIds) {
             if (isWildCard(cardId, levelCardRank)) {
