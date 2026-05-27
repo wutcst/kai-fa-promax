@@ -22,3 +22,4 @@ public class CardUtils {
 // Fix: card format validation for deal results
 // Refactor: split CardUtils into compare and deal utilities
 // Docs: card value mapping: 3-2 (low to high), suit ordering
+// CardUtils: combo recognition and comparison logic

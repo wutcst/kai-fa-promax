@@ -1,0 +1,17 @@
+package com.guandan.service;
+
+import com.guandan.game.util.CardUtils;
+import org.springframework.stereotype.Service;
+import java.util.*;
+
+@Service
+public class GameReferee {
+    public boolean canPlay(List<Integer> cards, List<Integer> lastCards) {
+        if (cards == null || cards.isEmpty()) return false;
+        if (lastCards == null || lastCards.isEmpty()) return true;
+        if (cards.size() != lastCards.size()) return false;
+        return cards.stream().mapToInt(CardUtils::rank).max().orElse(0)
+             > lastCards.stream().mapToInt(CardUtils::rank).max().orElse(0);
+    }
+}
+// GameReferee: validate play - check card combo, compare with last play
