@@ -20,3 +20,4 @@ public class CardUtils {
 }
 // CardUtils: shuffle and deal with deterministic seed
 // Fix: card format validation for deal results
+// Refactor: split CardUtils into compare and deal utilities
