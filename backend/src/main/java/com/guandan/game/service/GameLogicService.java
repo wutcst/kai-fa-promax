@@ -38,3 +38,4 @@ public class GameLogicService {
     }
 }
 // GameLogicService: deal cards, validate player turn, check game end
+// Fix: handle game room not found in active games map

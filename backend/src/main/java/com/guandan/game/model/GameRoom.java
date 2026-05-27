@@ -10,3 +10,4 @@ public class GameRoom {
     public int passCount = 0;
 }
 // GameRoom: game state machine - WAITING/DEALING/PLAYING/FINISHED
+// Fix: validate player count before dealing (must be 4)
