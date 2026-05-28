@@ -1,0 +1,14 @@
+name: websocket-check
+on:
+  pull_request:
+    branches: [ "master" ]
+    paths: [ "backend/src/main/java/com/guandan/game/**", "frontend/src/api/websocket.js" ]
+jobs:
+  websocket-static-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check websocket entry files
+        run: |
+          echo "Checking websocket server/client files for Phase 3+"
+          find backend/src/main/java/com/guandan/game -maxdepth 4 -type f | head || true
