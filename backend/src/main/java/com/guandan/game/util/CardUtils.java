@@ -40,6 +40,10 @@ import java.util.TreeMap;
  * [CardUtils-20] compareHandValues 比较两手牌大小 -> 正/负/零
  * [CardUtils-21] createNewDeck -> 返回 108 张牌，从 0 到 107
  * [CardUtils-22] dealCards 发牌 -> 各玩家牌数相等，总牌数不变
+ * [CardUtils-23] getCardTypeEnum "单张" -> SINGLE, "对子" -> PAIR, null -> UNKNOWN
+ * [CardUtils-24] getCardTypeEnum "无法识别" -> UNKNOWN
+ * [CardUtils-25] isStraight null/不足5张 -> false，5张连续 -> true
+ * [CardUtils-26] isThreeWithTwo 三带二合法组合 -> true，其他 -> false
  * [CardUtils-23] sortHandCards 排序后级牌优先
  * [CardUtils-24] analyzeHand 返回完整的牌型分布统计
  */
