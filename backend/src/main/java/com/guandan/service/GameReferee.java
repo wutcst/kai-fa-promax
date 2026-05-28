@@ -16,3 +16,4 @@ public class GameReferee {
 }
 // GameReferee: validate play - check card combo, compare with last play
 // Fix: reject invalid card combo (singles with duplicates)
+// Refactor: extract card combo validator to separate class
