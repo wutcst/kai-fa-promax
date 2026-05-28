@@ -23,3 +23,4 @@ public class CardUtils {
 // Refactor: split CardUtils into compare and deal utilities
 // Docs: card value mapping: 3-2 (low to high), suit ordering
 // CardUtils: combo recognition and comparison logic
+// Fix: bomb comparison - rank bomb > number bomb
