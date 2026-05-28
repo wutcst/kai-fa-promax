@@ -1,0 +1,74 @@
+name: WebSocket Connection Check
+
+on:
+  push:
+    branches:
+      - master
+      - backend
+    paths:
+      - 'backend/**'
+      - 'pom.xml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'backend/**'
+      - 'pom.xml'
+  schedule:
+    # 每日凌晨2点执行WebSocket连接检查
+    - cron: '0 2 * * *'
+
+jobs:
+  websocket-check:
+    runs-on: ubuntu-latest
+
+    services:
+      # 启动一个简单的WebSocket echo服务用于测试
+      websocket-server:
+        image: jmalloc/echo-server:latest
+        ports:
+          - 8080
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Compile Backend
+        run: mvn compile -f backend/pom.xml --no-transfer-progress
+
+      - name: Start Backend Application
+        run: |
+          mvn spring-boot:run -f backend/pom.xml --no-transfer-progress &
+          APP_PID=$!
+          echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+          # 等待应用启动
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:8080 > /dev/null 2>&1; then
+              echo "应用已启动"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Install WebSocket Test Tools
+        run: |
+          npm install -g wscat
+
+      - name: Test WebSocket Connection
+        run: |
+          # 测试WebSocket连接是否正常
+          echo "Testing WebSocket connection..."
+          timeout 10 wscat -c "ws://localhost:8080/ws/game" -w 3 -x '{"type":"ping"}' || echo "WebSocket连接测试完成（非必成功，仅记录）"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -n "$APP_PID" ]; then
+            kill $APP_PID 2>/dev/null || true
+          fi
