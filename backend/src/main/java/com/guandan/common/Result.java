@@ -5,18 +5,38 @@ public class Result<T> {
     private String message;
     private T data;
 
+    public Result() {}
+
+    public Result(int code, String message, T data) {
+        this.code = code;
+        this.message = message;
+        this.data = data;
+    }
+
+    public int getCode() { return code; }
+    public void setCode(int code) { this.code = code; }
+    public String getMessage() { return message; }
+    public void setMessage(String message) { this.message = message; }
+    public T getData() { return data; }
+    public void setData(T data) { this.data = data; }
+
     public static <T> Result<T> ok(T data) {
-        Result<T> r = new Result<>();
-        r.code = 0;
-        r.message = "success";
-        r.data = data;
-        return r;
+        return new Result<>(ResponseCode.SUCCESS.getCode(), "success", data);
+    }
+
+    public static <T> Result<T> ok() {
+        return new Result<>(ResponseCode.SUCCESS.getCode(), "success", null);
     }
 
     public static <T> Result<T> fail(int code, String message) {
-        Result<T> r = new Result<>();
-        r.code = code;
-        r.message = message;
-        return r;
+        return new Result<>(code, message, null);
+    }
+
+    public static <T> Result<T> error(int code, String message) {
+        return new Result<>(code, message, null);
+    }
+
+    public static <T> Result<T> error(ResponseCode responseCode) {
+        return new Result<>(responseCode.getCode(), responseCode.getMessage(), null);
     }
 }
