@@ -84,7 +84,25 @@ public class GameReferee {
      * @return 如果合法返回true，否则返回false
      */
     public boolean isValidHand(List<Integer> cardIds, int levelCardRank) {
-        // 空值检查
+        // 空值和边界校验（提取为核心判断前置守卫）
+        if (!validateCardIds(cardIds)) {
+            return false;
+        }
+
+        CardType type = gameAlgorithm.getCardType(cardIds, levelCardRank);
+        if (type == CardType.UNKNOWN) {
+            log.warn("牌型验证失败：无法识别的牌型，卡牌数量={}", cardIds.size());
+        }
+        return type != CardType.UNKNOWN;
+    }
+
+    /**
+     * 验证卡牌ID列表的合法性（空值检查、重复提交、边界校验）
+     *
+     * @param cardIds 卡牌ID列表
+     * @return 如果合法返回true
+     */
+    private boolean validateCardIds(List<Integer> cardIds) {
         if (cardIds == null || cardIds.isEmpty()) {
             log.warn("牌型验证失败：卡牌列表为空");
             return false;
@@ -104,10 +122,6 @@ public class GameReferee {
             }
         }
 
-        CardType type = gameAlgorithm.getCardType(cardIds, levelCardRank);
-        if (type == CardType.UNKNOWN) {
-            log.warn("牌型验证失败：无法识别的牌型，卡牌数量={}", cardIds.size());
-        }
-        return type != CardType.UNKNOWN;
+        return true;
     }
 }

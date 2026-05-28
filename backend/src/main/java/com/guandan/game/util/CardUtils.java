@@ -186,7 +186,7 @@ public class CardUtils {
                 return "无法识别";
             case 6:
                 // 检查是否为钢板（连续三张）
-                if (isTripletStraight(cardIds)) {
+                if (isSteelPlate(cardIds)) {
                     return "钢板";
                 }
                 return "无法识别";
@@ -247,7 +247,7 @@ public class CardUtils {
         }
 
         // 钢板：返回最大点数
-        if (isTripletStraight(cardIds)) {
+        if (isSteelPlate(cardIds)) {
             return cardIds.stream().mapToInt(CardUtils::getRank).max().orElse(-1);
         }
 
@@ -354,11 +354,11 @@ public class CardUtils {
     }
 
     /**
-     * 检查是否为钢板（连续三张，同 isSteelPlate）
+     * 检查是否为钢板（连续三张）
      * @param cardIds 卡牌ID列表
      * @return 是否为钢板
      */
-    private static boolean isTripletStraight(List<Integer> cardIds) {
+    private static boolean isSteelPlate(List<Integer> cardIds) {
         if (cardIds.size() != 6) {
             return false;
         }
