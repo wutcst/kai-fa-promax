@@ -880,9 +880,14 @@ const toggleCardLogic = (index) => {
   if (suggestedCards.value.length > 0) {
     suggestedCards.value = []
   }
+  // 快速点选防御：如果该卡牌正在动画过渡中（selected 状态未稳定），跳过本次操作
   if (selectedCards.value.includes(index)) {
     selectedCards.value = selectedCards.value.filter(i => i !== index)
   } else {
+    // 防止同一张卡被重复加入（已在数组中但还没渲染完成）
+    if (selectedCards.value.includes(index)) {
+      return
+    }
     selectedCards.value.push(index)
   }
 }
