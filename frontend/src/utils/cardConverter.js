@@ -117,6 +117,45 @@ export function cardsToIds(cards) {
 }
 
 /**
+ * 手牌自动排序（收到发牌后自动调用）
+ * 排序规则：先按点数从大到小，同点数按花色（黑桃>红桃>梅花>方块），级牌和逢人配优先
+ * @param {Array<Object>} cards 前端卡牌对象数组
+ * @param {number} levelCardRank 级牌点数 (0-12对应2-A)
+ * @returns {Array<Object>} 排序后的手牌
+ */
+export function sortHandCards(cards, levelCardRank = null) {
+  if (!cards || !Array.isArray(cards)) return [];
+
+  return [...cards].sort((a, b) => {
+    // 逢人配（红桃级牌）最优先
+    if (levelCardRank !== null) {
+      const aIsWild = isWildCard(a, levelCardRank);
+      const bIsWild = isWildCard(b, levelCardRank);
+      if (aIsWild && !bIsWild) return -1;
+      if (!aIsWild && bIsWild) return 1;
+
+      // 级牌优先
+      const aIsLevel = isLevelCard(a, levelCardRank);
+      const bIsLevel = isLevelCard(b, levelCardRank);
+      if (aIsLevel && !bIsLevel) return -1;
+      if (!aIsLevel && bIsLevel) return 1;
+    }
+
+    // 大小王优先
+    if (a.suit === 'jokers' && b.suit !== 'jokers') return -1;
+    if (a.suit !== 'jokers' && b.suit === 'jokers') return 1;
+    if (a.suit === 'jokers' && b.suit === 'jokers') return b.rank - a.rank;
+
+    // 按点数从大到小
+    if (b.rank !== a.rank) return b.rank - a.rank;
+
+    // 同点数按花色（黑桃3 > 红桃2 > 梅花1 > 方块0）
+    const suitOrder = { spades: 3, hearts: 2, clubs: 1, diamonds: 0 };
+    return (suitOrder[b.suit] || 0) - (suitOrder[a.suit] || 0);
+  });
+}
+
+/**
  * 获取卡牌的可读名称
  * @param {Object} card 前端卡牌对象
  * @param {number} levelCardRank 级牌点数 (0-12对应2-A)
