@@ -126,11 +126,14 @@ public class CardUtils {
     }
 
     /**
-     * 获取牌型
-     * @param cardIds 卡牌ID列表
-     * @return 牌型字符串
+     * 获取牌型（含空值保护）
+     * @param cardIds 卡牌ID列表（可为 null）
+     * @return 牌型字符串，null/空列表返回 null
      */
     public static String getCardType(List<Integer> cardIds) {
+        if (cardIds == null || cardIds.isEmpty()) {
+            return null;
+        }
         return getCardType(cardIds, 2); // 默认打2
     }
 
@@ -257,11 +260,15 @@ public class CardUtils {
     }
 
     /**
-     * 获取卡牌的点数
-     * @param cardId 卡牌ID
-     * @return 点数 (0-12对应2-A, 13对应小王, 14对应大王)
+     * 获取卡牌的点数（含边界校验）
+     * @param cardId 卡牌ID (0-107)
+     * @return 点数 (0-12对应2-A, 13对应小王, 14对应大王)，越界返回 -1
      */
     public static int getRank(int cardId) {
+        // 边界校验：卡牌ID越界
+        if (cardId < 0 || cardId > 107) {
+            return -1;
+        }
         // 处理大小王
         if (cardId >= 104) {
             if (cardId <= 105) {
@@ -277,11 +284,14 @@ public class CardUtils {
     }
 
     /**
-     * 获取卡牌的花色
-     * @param cardId 卡牌ID
-     * @return 花色 (0-3对应方块、梅花、红桃、黑桃，大小王返回-1)
+     * 获取卡牌的花色（含边界校验）
+     * @param cardId 卡牌ID (0-107)
+     * @return 花色 (0-3对应方块、梅花、红桃、黑桃)，大小王返回-1，越界返回-2
      */
     public static int getSuit(int cardId) {
+        if (cardId < 0 || cardId > 107) {
+            return -2; // 越界标记
+        }
         if (cardId >= 104) {
             return -1; // 大小王无花色
         }
@@ -406,40 +416,51 @@ public class CardUtils {
     }
 
     /**
-     * 判断卡牌是否为级牌
+     * 判断卡牌是否为级牌（含边界校验）
      * @param cardId 卡牌ID
      * @param levelCardRank 级牌点数 (0-12对应2-A)
-     * @return 是否为级牌
+     * @return 是否为级牌，越界返回 false
      */
     public static boolean isLevelCard(int cardId, int levelCardRank) {
+        // 级牌点数边界校验
+        if (levelCardRank < 0 || levelCardRank > 12) {
+            return false;
+        }
         int rank = getRank(cardId);
-        // 大小王不是级牌
-        if (rank >= 13) {
+        // 越界或大小王不是级牌
+        if (rank < 0 || rank >= 13) {
             return false;
         }
         return rank == levelCardRank;
     }
 
     /**
-     * 判断卡牌是否为逢人配（万能牌）
+     * 判断卡牌是否为逢人配（万能牌，含边界校验）
      * 逢人配是红桃的级牌，可以作为任意牌使用
      * @param cardId 卡牌ID
      * @param levelCardRank 级牌点数 (0-12对应2-A)
-     * @return 是否为逢人配
+     * @return 是否为逢人配，越界返回 false
      */
     public static boolean isWildCard(int cardId, int levelCardRank) {
-        // 必须是级牌且是红桃花色
+        // 级牌点数边界校验
+        if (levelCardRank < 0 || levelCardRank > 12) {
+            return false;
+        }
         return isLevelCard(cardId, levelCardRank) && getSuit(cardId) == 2;
     }
 
     /**
-     * 获取卡牌在游戏中的等级（用于比较大小）
+     * 获取卡牌在游戏中的等级（用于比较大小，含边界校验）
      * 级牌的等级最高
      * @param cardId 卡牌ID
      * @param levelCardRank 级牌点数 (0-12对应2-A)
-     * @return 卡牌等级
+     * @return 卡牌等级，越界返回 -1
      */
     public static int getGameLevel(int cardId, int levelCardRank) {
+        // 边界校验
+        if (cardId < 0 || cardId > 107) {
+            return -1;
+        }
         // 大王最大，返回16
         if (cardId >= 106) {
             return 16;
