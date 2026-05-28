@@ -16,6 +16,7 @@ import com.guandan.service.AuthService;
 import com.guandan.service.RoomService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -44,6 +45,7 @@ import java.util.stream.Collectors;
  *   - ready 接口：已在目标准备状态时返回当前状态，不重复切换
  *   - start 接口：房间已在游戏中时返回错误
  */
+@Slf4j
 @CrossOrigin(originPatterns = "*")
 @RestController
 @RequestMapping("/api")
@@ -282,6 +284,20 @@ public class GameController {
 
             // 更新房间状态为游戏中
             roomService.updateRoomStatus(room.getId(), 1);
+
+            // 调用 gameLogicService 启动游戏（发牌、初始化状态）
+            boolean started = gameLogicService.startGame("room_" + roomNo);
+            if (!started) {
+                return Result.error("游戏开始失败，房间可能没有玩家");
+            }
+
+            // 通过 WebSocket 广播游戏开始和首轮出牌
+            try {
+                com.guandan.game.websocket.GameWebSocketServer.broadcastGameStartStatic("room_" + roomNo);
+                com.guandan.game.websocket.GameWebSocketServer.broadcastInitialTurnStatic("room_" + roomNo);
+            } catch (Exception e) {
+                log.warn("广播游戏开始消息失败", e);
+            }
 
             Map<String, Object> data = new HashMap<>();
             data.put("success", true);
