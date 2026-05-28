@@ -518,3 +518,4 @@ public class GameController {
 // Docs: room status lifecycle and ready state transitions
 // Regression: GameController ready status and host tip verification
 // Chore: readiness module configuration wrap-up for Phase 2
+// GameController: POST /game/play and POST /game/pass endpoints

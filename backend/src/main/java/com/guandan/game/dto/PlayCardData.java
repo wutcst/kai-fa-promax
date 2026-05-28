@@ -7,3 +7,4 @@ public class PlayCardData {
     private String playerId;
     private List<Integer> cards;
 }
+// PlayCardData: card selection with combo validation
