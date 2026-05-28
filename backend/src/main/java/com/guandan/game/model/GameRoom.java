@@ -43,6 +43,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * [GameRoom-14] isPlayerFinished 在手牌为空时返回 true
  * [GameRoom-15] getActivePlayerCount 排除手牌为空的玩家
  * [GameRoom-16] canStartGame 在 WAITING 状态且 >= 2 人时返回 true
+ * [GameRoom-17] updateLastPlayedCardsWithList 更新 lastHandCards 为深拷贝
+ * [GameRoom-18] getPlayerRank 头游=1, 二游=2, 三游=3, 未出完=4
+ * [GameRoom-19] clearLastHandCards 将 lastHandCards/lastHandPlayerId 置 null，tableCleared=true
  */
 @Data
 public class GameRoom {

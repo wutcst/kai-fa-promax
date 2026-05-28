@@ -44,7 +44,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * [GameLogic-15] getGameState 返回完整状态快照（含手牌数量、上一手牌、排名）
  * [GameLogic-16] resetRoom 清空手牌并恢复 WAITING 状态
  */
- */
 @Slf4j
 @Service
 public class GameLogicService {
