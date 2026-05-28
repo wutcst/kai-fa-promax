@@ -10,7 +10,21 @@ import java.util.concurrent.ConcurrentHashMap;
  * 游戏房间模型
  * 负责人：成员A（核心引擎与逻辑）
  *
- * 存储房间内的玩家信息、手牌和游戏状态
+ * <p>存储房间内的玩家信息、手牌和游戏状态。提供房间生命周期管理，包括：
+ * <ul>
+ *   <li>玩家加入/离开房间</li>
+ *   <li>手牌分配与移除</li>
+ *   <li>出牌状态追踪（上一手牌、当前玩家、跳过计数）</li>
+ *   <li>游戏排名与升级计算</li>
+ * </ul>
+ *
+ * <p><b>异常场景：</b>
+ * <ul>
+ *   <li>玩家重复加入同一房间 → 返回 false</li>
+ *   <li>房间满员时尝试加入 → 返回 false</li>
+ *   <li>查询 null 玩家手牌 → 返回空列表而非 NPE</li>
+ *   <li>currentPlayerIndex 越界 → 自动重置为 0</li>
+ * </ul>
  */
 @Data
 public class GameRoom {
@@ -352,6 +366,14 @@ public class GameRoom {
 
     /**
      * 重置所有游戏状态（用于一局结束后重新开始）
+     *
+     * <p>恢复所有字段到初始值，包括：
+     * 状态设为 WAITING，当前玩家索引归零，级牌点数归零，
+     * 清空上一手牌信息、跳过计数、排名记录。
+     * AB 队级别恢复为 2。
+     *
+     * <p><b>注意：</b>该方法不影响 playerIds 和 handCards 引用，
+     * 调用方需自行清空手牌数据。
      */
     public void resetGameState() {
         this.status = GameStatus.WAITING;

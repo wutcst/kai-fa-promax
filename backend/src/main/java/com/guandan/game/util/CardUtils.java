@@ -105,6 +105,13 @@ public class CardUtils {
 
     /**
      * 统计卡牌列表中每个点数的出现次数
+     *
+     * <p><b>异常场景：</b>
+     * <ul>
+     *   <li>cardIds 为 null 则返回空 Map（非 NPE）</li>
+     *   <li>列表中包含越界 ID 仍尝试取值，调用方需保证传入合法 ID</li>
+     * </ul>
+     *
      * @param cardIds 卡牌ID列表
      * @return 点数->次数 映射
      */
