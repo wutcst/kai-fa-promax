@@ -4,6 +4,9 @@
  * 从 BattleView.vue 中提取的独立 WebSocket 连接逻辑，
  * 负责建立/断开连接、消息收发、事件注册。
  *
+ * 【提取来源】本文件于 refactor commit 中从 BattleView.vue 提取为独立 hook，
+ *   原 BattleView 中的 WebSocket 连接/重连/消息分发代码统一收敛至此。
+ *
  * 用法：
  *   import webSocketService, { WS_MESSAGE_TYPES } from '../api/websocket'
  *   webSocketService.connect(userId, roomId)
