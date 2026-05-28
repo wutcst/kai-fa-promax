@@ -1,5 +1,6 @@
 package com.guandan.game.util;
 
+import com.guandan.model.CardType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -196,6 +197,30 @@ public class CardUtils {
                     return "顺子";
                 }
                 return "无法识别";
+        }
+    }
+
+    /**
+     * 将牌型字符串映射为 CardType 枚举
+     * 统一牌型识别接口，用于下游比牌逻辑的判断
+     *
+     * @param cardIds 卡牌ID列表
+     * @param levelCardRank 级牌点数
+     * @return CardType 枚举，无法识别返回 UNKNOWN
+     */
+    public static CardType getCardTypeEnum(List<Integer> cardIds, int levelCardRank) {
+        String typeStr = getCardType(cardIds, levelCardRank);
+        if (typeStr == null) return CardType.UNKNOWN;
+        switch (typeStr) {
+            case "单张": return CardType.SINGLE;
+            case "对子": return CardType.PAIR;
+            case "三张": return CardType.TRIPLET;
+            case "顺子": return CardType.STRAIGHT;
+            case "三带二": return CardType.TRIPLET_WITH_TWO;
+            case "钢板": return CardType.TRIPLET_STRAIGHT;
+            case "同花顺": return CardType.FLUSH_STRAIGHT;
+            case "炸弹": return CardType.SMALL_BOMB;
+            default: return CardType.UNKNOWN;
         }
     }
 
