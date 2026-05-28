@@ -69,16 +69,45 @@ public class GameReferee {
     }
 
     /**
-     * 验证牌型是否合法
+     * 验证牌型是否合法（含重复提交和空值拦截）
+     *
+     * <p><b>检查规则：</b>
+     * <ul>
+     *   <li>cardIds 为 null 或空 → 不合法</li>
+     *   <li>cardIds 包含重复卡牌ID（同一张牌出现多次）→ 不合法（防重复提交）</li>
+     *   <li>cardIds 中包含越界ID（<0 或 >107）→ 不合法</li>
+     *   <li>通过 GameAlgorithm 识别牌型 → UNKNOWN 则不合法</li>
+     * </ul>
+     *
      * @param cardIds 卡牌ID列表
      * @param levelCardRank 级牌点数 (0-12对应2-A)
      * @return 如果合法返回true，否则返回false
      */
     public boolean isValidHand(List<Integer> cardIds, int levelCardRank) {
+        // 空值检查
         if (cardIds == null || cardIds.isEmpty()) {
+            log.warn("牌型验证失败：卡牌列表为空");
             return false;
         }
+
+        // 重复提交检查：同一张卡牌ID不能出现两次
+        if (cardIds.stream().distinct().count() != cardIds.size()) {
+            log.warn("牌型验证失败：卡牌列表包含重复ID");
+            return false;
+        }
+
+        // 卡牌ID边界校验
+        for (Integer id : cardIds) {
+            if (id == null || id < 0 || id > 107) {
+                log.warn("牌型验证失败：包含非法卡牌ID {}", id);
+                return false;
+            }
+        }
+
         CardType type = gameAlgorithm.getCardType(cardIds, levelCardRank);
+        if (type == CardType.UNKNOWN) {
+            log.warn("牌型验证失败：无法识别的牌型，卡牌数量={}", cardIds.size());
+        }
         return type != CardType.UNKNOWN;
     }
 }
