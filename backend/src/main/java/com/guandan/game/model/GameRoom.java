@@ -12,3 +12,4 @@ public class GameRoom {
 // GameRoom: game state machine - WAITING/DEALING/PLAYING/FINISHED
 // Fix: validate player count before dealing (must be 4)
 // Refactor: extract GameState enum from GameRoom inner class
+// Docs: game room state transition: WAITING -> DEALING -> PLAYING -> FINISHED

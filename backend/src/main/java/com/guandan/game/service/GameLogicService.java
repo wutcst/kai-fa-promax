@@ -40,3 +40,4 @@ public class GameLogicService {
 // GameLogicService: deal cards, validate player turn, check game end
 // Fix: handle game room not found in active games map
 // Refactor: separate game init and game loop logic
+// Docs: play flow: current player selection -> card play -> next player
