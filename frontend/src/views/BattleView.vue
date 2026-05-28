@@ -31,3 +31,4 @@ function pass() {}
 // Fix: card animation jank - debounce rapid selection changes
 // Style: card deal animation - staggered entry with CSS transitions
 // Feat: drag-and-drop card selection mechanism
+// Fix: rapid tap selection race condition on mobile
