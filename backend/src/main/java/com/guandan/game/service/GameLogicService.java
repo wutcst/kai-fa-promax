@@ -918,8 +918,32 @@ public class GameLogicService {
 
     /**
      * 获取游戏房间的完整状态快照（供前端/接口调用）
+     *
+     * <p><b>返回字段说明：</b>
+     * <ul>
+     *   <li>roomId - 房间ID</li>
+     *   <li>status - 房间状态 (WAITING/PLAYING/FINISHED)</li>
+     *   <li>playerCount - 当前玩家人数</li>
+     *   <li>playerIds - 玩家ID列表</li>
+     *   <li>currentPlayerIndex - 当前出牌玩家索引</li>
+     *   <li>currentPlayerId - 当前出牌玩家ID</li>
+     *   <li>levelCardRank - 级牌点数 (0-12对应2-A)</li>
+     *   <li>levelCardName - 级牌名称</li>
+     *   <li>levelTeamA / levelTeamB - AB队级别</li>
+     *   <li>handCardCounts - 各玩家手牌数量</li>
+     *   <li>lastCardType / lastCardValue / lastPlayerId - 上一手牌信息</li>
+     *   <li>consecutivePassCount - 连续跳过次数</li>
+     *   <li>firstFinishPlayerId / secondFinishPlayerId / thirdFinishPlayerId - 完成排名</li>
+     * </ul>
+     *
+     * <p><b>异常场景：</b>
+     * <ul>
+     *   <li>房间不存在 → 返回包含 error 字段的 Map</li>
+     *   <li>玩家手牌为 null → handCardCounts 中计为 0</li>
+     * </ul>
+     *
      * @param roomId 房间ID
-     * @return 包含房间、玩家、手牌、出牌记录等完整信息的Map
+     * @return 包含房间、玩家、手牌、出牌记录等完整信息的 Map
      */
     public Map<String, Object> getGameState(String roomId) {
         Map<String, Object> state = new LinkedHashMap<>();
@@ -969,7 +993,17 @@ public class GameLogicService {
 
     /**
      * 获取所有房间的简要状态列表（供大厅接口调用）
-     * @return 房间列表
+     *
+     * <p><b>返回字段说明：</b>
+     * <ul>
+     *   <li>roomId - 房间ID</li>
+     *   <li>playerCount - 当前玩家人数</li>
+     *   <li>maxPlayers - 最大人数 (4)</li>
+     *   <li>status - 房间状态</li>
+     *   <li>levelTeamA / levelTeamB - AB队级别</li>
+     * </ul>
+     *
+     * @return 房间列表（每个元素为房间简要信息 Map）
      */
     public List<Map<String, Object>> getAllRoomsBrief() {
         List<Map<String, Object>> result = new ArrayList<>();
@@ -989,6 +1023,16 @@ public class GameLogicService {
 
     /**
      * 重置房间状态（用于一局结束后重新开始）
+     *
+     * <p>清空手牌、重置游戏状态为 WAITING、清空排名和上一次出牌记录。
+     * 保留玩家列表和房间级别信息。
+     *
+     * <p><b>异常场景：</b>
+     * <ul>
+     *   <li>房间不存在 → 返回 false 并记录错误日志</li>
+     *   <li>房间手牌为 null → clear() 安全执行</li>
+     * </ul>
+     *
      * @param roomId 房间ID
      * @return 是否成功
      */
