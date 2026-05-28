@@ -26,3 +26,4 @@ public class CardUtils {
 // Fix: bomb comparison - rank bomb > number bomb
 // Refactor: split compare logic into CompareResult enum
 // Docs: comparison rules: same type -> compare rank; bomb > regular; king bomb > all
+// Test: CardUtils deal distribution edge cases
