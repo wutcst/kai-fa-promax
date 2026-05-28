@@ -2,10 +2,15 @@ package com.guandan.controller;
 
 import com.guandan.common.Result;
 import com.guandan.dto.JoinRoomRequest;
+import com.guandan.dto.PassData;
 import com.guandan.entity.Room;
 import com.guandan.entity.RoomPlayer;
 import com.guandan.entity.User;
+import com.guandan.game.dto.PlayCardData;
 import com.guandan.game.dto.RoomStatusResponse;
+import com.guandan.game.model.GameRoom;
+import com.guandan.game.service.GameLogicService;
+import com.guandan.game.util.CardUtils;
 import com.guandan.mapper.UserMapper;
 import com.guandan.service.AuthService;
 import com.guandan.service.RoomService;
@@ -52,6 +57,9 @@ public class GameController {
 
     @Resource
     private UserMapper userMapper;
+
+    @Resource
+    private GameLogicService gameLogicService;
 
     /**
      * 玩家准备/取消准备
@@ -677,6 +685,122 @@ public class GameController {
             data.put("isCreator", isCreator);
             data.put("allReady", allReady);
             data.put("hostTip", isCreator ? hostTip : "等待房主开始游戏");
+
+            return Result.success(data);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 玩家出牌
+     * POST /api/game/play-cards
+     *
+     * <p>处理玩家的出牌请求，包括正常出牌和过牌（空列表表示过牌）。
+     * 服务层负责验证当前玩家身份、牌型合法性、是否能管住上一手牌，
+     * 以及连续过牌后的清桌和头游判定。
+     *
+     * <p><b>请求参数：</b>
+     * <ul>
+     *   <li>roomId - 房间ID</li>
+     *   <li>cards - 卡牌ID列表（空列表表示过牌）</li>
+     * </ul>
+     *
+     * <p><b>返回结构：</b>
+     * <ul>
+     *   <li>success - 是否成功</li>
+     *   <li>message - 提示消息</li>
+     *   <li>isPass - 是否过牌</li>
+     *   <li>currentPlayerId - 当前出牌玩家</li>
+     * </ul>
+     */
+    @PostMapping("/game/play-cards")
+    public Result<Map<String, Object>> playCards(
+            @RequestHeader("Authorization") String token,
+            @RequestBody PlayCardData request) {
+        try {
+            Long userId = getUserIdFromToken(token);
+            if (userId == null) {
+                return Result.error("用户未登录或Token已过期");
+            }
+
+            String playerId = String.valueOf(userId);
+            List<Integer> cards = request.getCards();
+            boolean isPass = cards == null || cards.isEmpty();
+
+            boolean success = gameLogicService.playCards(playerId, cards);
+            if (!success) {
+                return Result.error(isPass ? "过牌处理失败" : "出牌失败，请检查牌型或回合");
+            }
+
+            // 获取当前房间和玩家信息
+            GameRoom room = gameLogicService.getPlayerRoom(playerId);
+            String currentPlayerId = room != null ? room.getCurrentPlayerId() : null;
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("success", true);
+            data.put("message", isPass ? "过牌成功" : "出牌成功");
+            data.put("isPass", isPass);
+            data.put("currentPlayerId", currentPlayerId);
+
+            return Result.success(data);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取游戏房间状态（供前端轮询）
+     * GET /api/game/{roomNo}/play-state
+     *
+     * <p>返回游戏对局的实时状态，包括当前玩家、上一手牌信息、连续过牌次数等。
+     * 用于前端出牌界面的状态同步。
+     *
+     * <p><b>返回字段：</b>
+     * <ul>
+     *   <li>roomId - 房间ID</li>
+     *   <li>status - 房间状态</li>
+     *   <li>currentPlayerId - 当前轮到的玩家ID</li>
+     *   <li>lastPlayerId - 上一手出牌玩家ID</li>
+     *   <li>lastHandCards - 上一手牌（卡牌ID列表）</li>
+     *   <li>consecutivePassCount - 连续过牌次数</li>
+     *   <li>playerCount - 玩家数量</li>
+     *   <li>handCardCounts - 各玩家手牌数量</li>
+     * </ul>
+     */
+    @GetMapping("/game/{roomNo}/play-state")
+    public Result<Map<String, Object>> getPlayState(
+            @RequestHeader("Authorization") String token,
+            @PathVariable String roomNo) {
+        try {
+            Long userId = getUserIdFromToken(token);
+            if (userId == null) {
+                return Result.error("用户未登录或Token已过期");
+            }
+
+            String roomId = "room_" + roomNo;
+            GameRoom room = gameLogicService.getRoom(roomId);
+            if (room == null) {
+                return Result.error("游戏房间不存在");
+            }
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("roomId", room.getRoomId());
+            data.put("status", room.getStatus().name());
+            data.put("currentPlayerId", room.getCurrentPlayerId());
+            data.put("lastPlayerId", room.getLastPlayerId());
+            data.put("lastHandCards", room.getLastHandCards());
+            data.put("consecutivePassCount", room.getConsecutivePassCount());
+            data.put("playerCount", room.getPlayerIds().size());
+            data.put("tableCleared", room.isTableCleared());
+
+            // 各玩家手牌数量
+            Map<String, Integer> handCardCounts = new LinkedHashMap<>();
+            for (String pid : room.getPlayerIds()) {
+                List<Integer> hand = room.getHandCards().get(pid);
+                handCardCounts.put(pid, hand != null ? hand.size() : 0);
+            }
+            data.put("handCardCounts", handCardCounts);
 
             return Result.success(data);
         } catch (Exception e) {
