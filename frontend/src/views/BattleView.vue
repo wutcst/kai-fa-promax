@@ -339,6 +339,9 @@ const isDragging = ref(false)
 const dragType = ref(true)
 const mouseDownX = ref(0)
 const mouseDownY = ref(0)
+// 快速点选防抖：在短时间内防止同一张卡被反复选中/取消
+const lastTapTime = ref(0)
+const tapDebounceMs = 150
 const deskDisplay = ref({
   '我': [], '右对手': [], '队友': [], '左对手': []
 })
@@ -855,6 +858,14 @@ const startDragging = () => { isDragging.value = true }
 const stopDragging = () => { isDragging.value = false }
 const handleCardMousedown = (index, event) => {
   if (currentPlayer.value !== '我') return
+
+  // 快速点选防御：如果距离上次点击时间过短，忽略本次操作
+  const now = Date.now()
+  if (now - lastTapTime.value < tapDebounceMs) {
+    return
+  }
+  lastTapTime.value = now
+
   mouseDownX.value = event.clientX
   mouseDownY.value = event.clientY
   isDragging.value = true
