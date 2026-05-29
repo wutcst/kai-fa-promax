@@ -44,3 +44,4 @@ public class GameLogicService {
 // Test: dealing cards - verify 27 cards per player, deck completeness
 // Test: manual regression verification for game deal and card rules
 // Chore: game logic service delivery materials
+// Perf: optimize player turn calculation in active games

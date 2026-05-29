@@ -16,3 +16,4 @@ public class GameRoom {
 // Test: game room state machine transition verification
 // Chore: Phase 3 backend game modules configuration consolidation
 // Chore: Phase 3 game room and deal configuration finalization
+// Perf: cache game state lookups for high-frequency polling

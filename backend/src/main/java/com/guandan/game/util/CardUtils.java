@@ -30,3 +30,4 @@ public class CardUtils {
 // Test: compare same-type combos, bomb vs non-bomb, king bomb ruling
 // Chore: game logic and card utils stage delivery materials
 // Chore: CardUtils stage wrap-up
+// Perf: pre-compute card value mappings in CardUtils
