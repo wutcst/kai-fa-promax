@@ -14,3 +14,4 @@ public class SessionManager {
     public static void removeSession(String playerId) { sessionMap.remove(playerId); }
     public static Session getSession(String playerId) { return sessionMap.get(playerId); }
 }
+// SessionManager: thread-safe session registry by playerId
