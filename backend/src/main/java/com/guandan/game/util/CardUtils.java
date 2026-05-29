@@ -25,3 +25,4 @@ public class CardUtils {
 // CardUtils: combo recognition and comparison logic
 // Fix: bomb comparison - rank bomb > number bomb
 // Refactor: split compare logic into CompareResult enum
+// Docs: comparison rules: same type -> compare rank; bomb > regular; king bomb > all
