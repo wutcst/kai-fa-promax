@@ -16,3 +16,4 @@ export function cardText(card) {
 // Docs: card data format conversion and display mapping
 // Test: card sort and filter boundary - sorted vs unsorted
 // Fix: sort hand cards after receiving deal from server
+// Docs: card converter utility API documentation
