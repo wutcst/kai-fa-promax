@@ -8,15 +8,53 @@ on:
     paths:
       - 'backend/**'
       - 'pom.xml'
+      - '.github/workflows/websocket-check.yml'
   pull_request:
     branches:
       - master
     paths:
       - 'backend/**'
       - 'pom.xml'
+      - '.github/workflows/websocket-check.yml'
   schedule:
     # 每日凌晨2点执行WebSocket连接检查
     - cron: '0 2 * * *'
+
+  # 手动触发支持
+  workflow_dispatch:
+    inputs:
+      websocket_url:
+        description: 'WebSocket 服务端地址'
+        required: false
+        default: 'ws://localhost:8080/ws/game'
+        type: string
+      test_duration:
+        description: '连接测试持续时间（秒）'
+        required: false
+        default: '10'
+        type: string
+      log_level:
+        description: '日志级别'
+        required: true
+        default: 'info'
+        type: choice
+        options:
+          - debug
+          - info
+          - warn
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # WebSocket 连接检查环境变量
+  WS_CHECK_URL: ${{ inputs.websocket_url || 'ws://localhost:8080/ws/game' }}
+  WS_CHECK_TIMEOUT: ${{ inputs.test_duration || '10' }}
+  WS_CHECK_LOG_LEVEL: ${{ inputs.log_level || 'info' }}
+  # 后端测试环境变量
+  JAVA_OPTS: '-Xmx512m -Xms256m'
+  BACKEND_PORT: '8080'
 
 jobs:
   websocket-check:
@@ -47,9 +85,10 @@ jobs:
           mvn spring-boot:run -f backend/pom.xml --no-transfer-progress &
           APP_PID=$!
           echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+          echo "WS_URL=$WS_CHECK_URL" >> $GITHUB_ENV
           # 等待应用启动
           for i in $(seq 1 30); do
-            if curl -s http://localhost:8080 > /dev/null 2>&1; then
+            if curl -s http://localhost:${{ env.BACKEND_PORT || 8080 }} > /dev/null 2>&1; then
               echo "应用已启动"
               break
             fi
@@ -64,7 +103,9 @@ jobs:
         run: |
           # 测试WebSocket连接是否正常
           echo "Testing WebSocket connection..."
-          timeout 10 wscat -c "ws://localhost:8080/ws/game" -w 3 -x '{"type":"ping"}' || echo "WebSocket连接测试完成（非必成功，仅记录）"
+          echo "URL: $WS_CHECK_URL"
+          echo "Timeout: $WS_CHECK_TIMEOUT"
+          timeout $WS_CHECK_TIMEOUT wscat -c "$WS_CHECK_URL" -w 3 -x '{"type":"ping"}' || echo "WebSocket连接测试完成（非必成功，仅记录）"
 
       - name: Cleanup
         if: always()
