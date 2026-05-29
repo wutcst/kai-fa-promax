@@ -22,4 +22,12 @@ public class PassData {
      * 当前轮到出牌的玩家ID（放弃后的下一个玩家）
      */
     private String currentPlayerId;
+
+    /**
+     * 检查数据是否有效
+     * @return true 如果 playerId 不为空
+     */
+    public boolean isValid() {
+        return playerId != null && !playerId.trim().isEmpty();
+    }
 }

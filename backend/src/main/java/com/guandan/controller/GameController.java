@@ -740,9 +740,35 @@ public class GameController {
                 return Result.error("用户未登录或Token已过期");
             }
 
+            // 空值保护：检查请求对象
+            if (request == null) {
+                return Result.error("请求数据不能为空");
+            }
+
             String playerId = String.valueOf(userId);
             List<Integer> cards = request.getCards();
             boolean isPass = cards == null || cards.isEmpty();
+
+            // 检查当前玩家状态一致性
+            String roomId = gameLogicService.getPlayerRoomId(playerId);
+            if (roomId == null) {
+                return Result.error("玩家不在任何房间中");
+            }
+
+            GameRoom room = gameLogicService.getRoom(roomId);
+            if (room == null) {
+                return Result.error("游戏房间不存在");
+            }
+
+            // 状态一致性判断：检查房间是否在游戏中
+            if (room.getStatus() != GameRoom.GameStatus.PLAYING) {
+                return Result.error("游戏未开始或已结束");
+            }
+
+            // 检查是否是当前玩家的回合
+            if (!playerId.equals(room.getCurrentPlayerId())) {
+                return Result.error("现在不是你的回合");
+            }
 
             boolean success = gameLogicService.playCards(playerId, cards);
             if (!success) {
