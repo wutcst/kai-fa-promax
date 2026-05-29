@@ -258,7 +258,7 @@ public class SessionManager {
     }
 
     /**
-     * 获取房间内的所有玩家
+     * 获取房间内的所有玩家（包括离线的）
      */
     public ConcurrentHashMap<String, Boolean> getRoomPlayers(String roomId) {
         return roomPlayers.get(roomId);
@@ -269,6 +269,29 @@ public class SessionManager {
      */
     public int getOnlineCount() {
         return onlineCount.get();
+    }
+
+    /**
+     * 获取会话统计信息
+     */
+    public SessionStats getStats() {
+        SessionStats stats = new SessionStats();
+        stats.setOnlineCount(onlineCount.get());
+        stats.setTotalSessions(sessions.size());
+        stats.setRoomCount(roomPlayers.size());
+
+        int offlineCount = 0;
+        int reconnectCount = 0;
+        for (SessionInfo info : sessions.values()) {
+            if (!info.isOnline()) {
+                offlineCount++;
+            }
+            reconnectCount += info.getReconnectCount();
+        }
+
+        stats.setOfflineCount(offlineCount);
+        stats.setTotalReconnects(reconnectCount);
+        return stats;
     }
 
     /**
