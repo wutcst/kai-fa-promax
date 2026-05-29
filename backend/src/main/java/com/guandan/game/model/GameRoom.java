@@ -15,3 +15,4 @@ public class GameRoom {
 // Docs: game room state transition: WAITING -> DEALING -> PLAYING -> FINISHED
 // Test: game room state machine transition verification
 // Chore: Phase 3 backend game modules configuration consolidation
+// Chore: Phase 3 game room and deal configuration finalization

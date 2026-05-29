@@ -43,3 +43,4 @@ public class GameLogicService {
 // Docs: play flow: current player selection -> card play -> next player
 // Test: dealing cards - verify 27 cards per player, deck completeness
 // Test: manual regression verification for game deal and card rules
+// Chore: game logic service delivery materials
