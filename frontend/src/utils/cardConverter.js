@@ -3,6 +3,25 @@
  * 实现前后端卡牌格式的互转
  * 后端使用数字ID (0-107) 表示卡牌
  * 前端使用对象格式 {suit: 'hearts', rank: 1} 表示卡牌
+ *
+ * @module cardConverter
+ *
+ * @example
+ * // 后端ID转前端对象
+ * const card = idToCard(0);
+ * // => { suit: 'diamonds', rank: 2, deck: 0 }
+ *
+ * @example
+ * // 前端对象转后端ID
+ * const id = cardToId({ suit: 'hearts', rank: 1, deck: 0 });
+ * // => 40
+ *
+ * @example
+ * // 批量转换
+ * const cards = idsToCards([0, 1, 2]);
+ * const ids = cardsToIds(cards);
+ *
+ * @since 1.0.0
  */
 
 // 花色映射：后端索引 -> 前端花色名称
@@ -158,8 +177,12 @@ export function sortHandCards(cards, levelCardRank = null) {
 /**
  * 获取卡牌的可读名称
  * @param {Object} card 前端卡牌对象
- * @param {number} levelCardRank 级牌点数 (0-12对应2-A)
- * @returns {string} 可读名称
+ * @param {number} [levelCardRank=null] 级牌点数 (0-12对应2-A)
+ * @returns {string} 可读名称，如 "红桃A"、"小王"、"红桃2(级)(逢人配)"
+ *
+ * @example
+ * getCardName({ suit: 'hearts', rank: 1 }); // => "红桃A"
+ * getCardName({ suit: 'jokers', rank: 14 }); // => "小王"
  */
 export function getCardName(card, levelCardRank = null) {
   if (card.suit === 'jokers') {
@@ -203,6 +226,10 @@ export function getCardName(card, levelCardRank = null) {
  * @param {Object} card 前端卡牌对象
  * @param {number} levelCardRank 级牌点数 (0-12对应2-A)
  * @returns {boolean} 是否为级牌
+ *
+ * @example
+ * isLevelCard({ suit: 'hearts', rank: 4 }, 2); // => true (级牌点数为2时，rank=4对应级牌)
+ * isLevelCard({ suit: 'jokers', rank: 14 }, 2); // => false (大小王不是级牌)
  */
 export function isLevelCard(card, levelCardRank) {
   if (!card || card.suit === 'jokers') {
@@ -213,9 +240,16 @@ export function isLevelCard(card, levelCardRank) {
 
 /**
  * 判断卡牌是否为逢人配（万能牌）
+ * 逢人配是红桃的级牌，可以作为任意牌使用。
+ * 前置条件：先调用 isLevelCard 判断是否为级牌。
+ *
  * @param {Object} card 前端卡牌对象
  * @param {number} levelCardRank 级牌点数 (0-12对应2-A)
  * @returns {boolean} 是否为逢人配
+ *
+ * @example
+ * isWildCard({ suit: 'hearts', rank: 4 }, 2); // => true (红桃级牌)
+ * isWildCard({ suit: 'spades', rank: 4 }, 2); // => false (黑桃级牌不是逢人配)
  */
 export function isWildCard(card, levelCardRank) {
   if (!card || card.suit === 'jokers') {
