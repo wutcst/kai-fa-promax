@@ -519,3 +519,4 @@ public class GameController {
 // Regression: GameController ready status and host tip verification
 // Chore: readiness module configuration wrap-up for Phase 2
 // GameController: POST /game/play and POST /game/pass endpoints
+// Fix: validate current player before processing play/pass

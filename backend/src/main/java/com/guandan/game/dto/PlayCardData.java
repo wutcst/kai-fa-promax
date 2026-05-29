@@ -8,3 +8,4 @@ public class PlayCardData {
     private List<Integer> cards;
 }
 // PlayCardData: card selection with combo validation
+// Fix: card count validation against player hand

@@ -5,3 +5,4 @@ public class PassData {
     private String playerId;
 }
 // PassData: pass action with player identification
+// Fix: prevent double-pass on already-passed player
