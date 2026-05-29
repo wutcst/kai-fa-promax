@@ -9,3 +9,4 @@ public class PlayCardData {
 }
 // PlayCardData: card selection with combo validation
 // Fix: card count validation against player hand
+// Refactor: add builder pattern for PlayCardData
