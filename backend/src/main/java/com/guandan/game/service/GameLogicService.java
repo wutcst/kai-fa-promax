@@ -827,6 +827,15 @@ public class GameLogicService {
     }
 
     /**
+     * 获取玩家所在房间ID（避免创建GameRoom对象引用，性能优化）
+     * @param playerId 玩家ID
+     * @return 房间ID，如果不存在则返回null
+     */
+    public String getPlayerRoomId(String playerId) {
+        return playerToRoom.get(playerId);
+    }
+
+    /**
      * 获取房间内的玩家ID列表
      * @param roomId 房间ID
      * @return 玩家ID列表
