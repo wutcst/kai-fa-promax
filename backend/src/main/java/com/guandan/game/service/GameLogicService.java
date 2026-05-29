@@ -25,6 +25,25 @@ import java.util.concurrent.ConcurrentHashMap;
  * 负责游戏房间管理、发牌、出牌验证等核心逻辑
  * 注意：这里的房间管理是内存级别的（用于游戏进行中）
  * 数据库层面的房间管理由成员B的 RoomService 负责
+ *
+ * 【测试验证点】
+ * [GameLogic-1] joinRoom 玩家加入正常房间 -> 返回 GameRoom 对象，playerToRoom 映射正确
+ * [GameLogic-2] joinRoom 重复加入同一房间 -> addPlayer 返回 false，房间人数不变
+ * [GameLogic-3] startGame 正常发牌 -> 每人 27 张，总牌数 108 张，状态变为 PLAYING
+ * [GameLogic-4] startGame 玩家不足 -> 自动补齐 AI 到 4 人
+ * [GameLogic-5] playCards 正常出牌 -> 手牌扣减正确，lastHandCards 更新，passCount 重置
+ * [GameLogic-6] playCards 过牌（空列表）-> incrementPassCount，passCount 增加
+ * [GameLogic-7] playCards 连续 3 人过牌 -> clearLastHandCards 被调用，tableCleared 置 true
+ * [GameLogic-8] playCards 非法牌型 -> 返回 false，手牌不变
+ * [GameLogic-9] playCards 非当前玩家出牌 -> 返回 false
+ * [GameLogic-10] nextTurn 正常切换 -> currentPlayerIndex 递增
+ * [GameLogic-11] nextTurn 跳过已出完牌的玩家 -> 索引指向下一个未完成的玩家
+ * [GameLogic-12] checkGameEnd 3 人出完 -> winnerId 为头游，保存游戏记录
+ * [GameLogic-13] removePlayer 移除真人玩家后仍有真人 -> 广播房间更新
+ * [GameLogic-14] removePlayer 移除后无真人 -> 房间状态设为已结束
+ * [GameLogic-15] getGameState 返回完整状态快照（含手牌数量、上一手牌、排名）
+ * [GameLogic-16] resetRoom 清空手牌并恢复 WAITING 状态
+ */
  */
 @Slf4j
 @Service

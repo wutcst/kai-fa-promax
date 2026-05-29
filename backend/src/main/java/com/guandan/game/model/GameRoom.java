@@ -25,6 +25,24 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>查询 null 玩家手牌 → 返回空列表而非 NPE</li>
  *   <li>currentPlayerIndex 越界 → 自动重置为 0</li>
  * </ul>
+ *
+ * 【测试验证点】
+ * [GameRoom-1] 构造函数初始化后所有字段应为默认值（roomId正确、status=WAITING、playerIds空、handCards空）
+ * [GameRoom-2] addPlayer 加入正常玩家 -> playerIds 包含该玩家、handCards 包含对应空列表、返回 true
+ * [GameRoom-3] addPlayer 加入重复ID -> 返回 false，playerIds 不变
+ * [GameRoom-4] addPlayer 满员（4人）后加入 -> 返回 false
+ * [GameRoom-5] removeCards 扣掉手牌中存在的牌 -> 牌被移除，返回 true
+ * [GameRoom-6] removeCards 扣掉手牌中不存在的牌 -> 返回 false，手牌不变
+ * [GameRoom-7] getCurrentPlayerId 在 playerIds 非空时返回正确索引的玩家ID
+ * [GameRoom-8] nextPlayer 循环切换下一个玩家（索引循环）
+ * [GameRoom-9] consecutivePassCount 初始为0，incrementPassCount 递增，resetPassCount 归零
+ * [GameRoom-10] clearLastHandCards 清空上一手牌并将 tableCleared 置为 true
+ * [GameRoom-11] isFull 在 4 人时返回 true，不到 4 人返回 false
+ * [GameRoom-12] updatePlayerRank 按调用顺序设定一二三游
+ * [GameRoom-13] resetGameState 恢复所有游戏状态字段到初始化值
+ * [GameRoom-14] isPlayerFinished 在手牌为空时返回 true
+ * [GameRoom-15] getActivePlayerCount 排除手牌为空的玩家
+ * [GameRoom-16] canStartGame 在 WAITING 状态且 >= 2 人时返回 true
  */
 @Data
 public class GameRoom {

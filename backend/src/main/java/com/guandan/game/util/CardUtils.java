@@ -16,6 +16,32 @@ import java.util.TreeMap;
  *
  * 将卡牌ID (0-107) 转换为可读字符串，用于调试
  * 卡牌ID范围：0-107 (两副牌，每副54张)
+ *
+ * 【测试验证点】
+ * [CardUtils-1] idToString 合法ID (0-107) -> 返回正确的花色+点数字符串
+ * [CardUtils-2] idToString 越界ID (<0 或 >107) -> 返回 "未知卡牌(ID)"
+ * [CardUtils-3] idToString 大小王 (104-107) -> 返回 "小王"/"大王"
+ * [CardUtils-4] getRank 普通牌 -> 返回 0-12（2-A）
+ * [CardUtils-5] getRank 小王(104-105) -> 返回 13，大王(106-107) -> 返回 14
+ * [CardUtils-6] getRank 越界ID -> 返回 -1
+ * [CardUtils-7] getSuit 大小王 -> 返回 -1，越界 -> 返回 -2
+ * [CardUtils-8] getCardType 单张 -> 返回 "单张"
+ * [CardUtils-9] getCardType 对子（2张同点数）-> 返回 "对子"
+ * [CardUtils-10] getCardType 三张（3张同点数）-> 返回 "三张"
+ * [CardUtils-11] getCardType 5张连续点数 -> 返回 "顺子"
+ * [CardUtils-12] getCardType 5张三带二 -> 返回 "三带二"
+ * [CardUtils-13] getCardType 5张同花顺 -> 返回 "同花顺"
+ * [CardUtils-14] getCardType 6张钢板 -> 返回 "钢板"
+ * [CardUtils-15] getCardType 4张及以上同点数 -> 返回 "炸弹"
+ * [CardUtils-16] getCardType null/空列表 -> 返回 null
+ * [CardUtils-17] getCardValue 各牌型 -> 返回正确的牌值
+ * [CardUtils-18] isLevelCard 级牌匹配时 -> 返回 true
+ * [CardUtils-19] isWildCard 红桃级牌 -> 返回 true
+ * [CardUtils-20] compareHandValues 比较两手牌大小 -> 正/负/零
+ * [CardUtils-21] createNewDeck -> 返回 108 张牌，从 0 到 107
+ * [CardUtils-22] dealCards 发牌 -> 各玩家牌数相等，总牌数不变
+ * [CardUtils-23] sortHandCards 排序后级牌优先
+ * [CardUtils-24] analyzeHand 返回完整的牌型分布统计
  */
 public class CardUtils {
 
