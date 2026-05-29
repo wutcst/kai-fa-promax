@@ -12,3 +12,4 @@ jobs:
         run: |
           echo "Checking websocket server/client files for Phase 3+"
           find backend/src/main/java/com/guandan/game -maxdepth 4 -type f | head || true
+# Test: WS healthcheck template variables and env parameters
