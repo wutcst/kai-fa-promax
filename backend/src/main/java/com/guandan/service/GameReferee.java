@@ -13,6 +13,30 @@ import java.util.List;
 /**
  * 游戏裁判服务
  * 负责比牌逻辑：判断当前手牌是否能管住上一手牌
+ *
+ * <p><b>核心职责：</b>
+ * <ul>
+ *   <li>牌型合法性校验 — 判断一手牌是否符合牌型规则</li>
+ *   <li>管牌判定 — 判断当前出牌是否能管住上一手牌</li>
+ *   <li>卡牌ID前置守卫 — 空值检查、重复提交、边界校验</li>
+ * </ul>
+ *
+ * <p><b>管牌规则：</b>
+ * <ul>
+ *   <li>无上一手牌（首出）→ 任何合法牌型均可出</li>
+ *   <li>同牌型且张数相同 → 比较牌值大小</li>
+ *   <li>炸弹可管非炸弹牌型</li>
+ *   <li>王炸最大</li>
+ * </ul>
+ *
+ * <p><b>异常场景：</b>
+ * <ul>
+ *   <li>currentHand 为 null/空 → 返回 false</li>
+ *   <li>lastHand 为 null/空（首出）→ 验证 currentHand 牌型合法即可</li>
+ *   <li>currentType 为 UNKNOWN → 返回 false</li>
+ *   <li>lastType 为 UNKNOWN → 允许出牌（容错）</li>
+ *   <li>cardIds 包含重复或越界 ID → 返回 false</li>
+ * </ul>
  */
 @Slf4j
 @Service
