@@ -140,4 +140,24 @@ public class GameReferee {
 
         return true;
     }
+
+    // ============================================================
+    //  测试验证点 — 出牌/管牌逻辑回归
+    // ============================================================
+    // [GameReferee-1] canBeat 首出(null lastHand) -> 合法牌型返回 true
+    // [GameReferee-2] canBeat 首出(空 lastHand) -> 合法牌型返回 true
+    // [GameReferee-3] canBeat currentHand 为 null -> 返回 false
+    // [GameReferee-4] canBeat currentHand 为 空列表 -> 返回 false
+    // [GameReferee-5] canBeat currentType 为 UNKNOWN -> 返回 false
+    // [GameReferee-6] canBeat lastType 为 UNKNOWN（容错）-> 返回 true
+    // [GameReferee-7] canBeat 同牌型大管小 -> 返回 true
+    // [GameReferee-8] canBeat 同牌型小管大 -> 返回 false
+    // [GameReferee-9] canBeat 炸弹管非炸弹 -> 返回 true
+    // [GameReferee-10] canBeat 非同牌型互管（非炸弹）-> 返回 false
+    // [GameReferee-11] isValidHand null/空 -> 返回 false
+    // [GameReferee-12] isValidHand 合法牌型 -> 返回 true
+    // [GameReferee-13] isValidHand 非法牌型 -> 返回 false
+    // [GameReferee-14] isValidHand 重复ID -> 返回 false
+    // [GameReferee-15] isValidHand 越界ID -> 返回 false
+    // [GameReferee-16] isValidHand 包含null -> 返回 false
 }

@@ -72,6 +72,20 @@ import java.util.TreeMap;
  * [CardUtils-26] isThreeWithTwo 三带二合法组合 -> true，其他 -> false
  * [CardUtils-23] sortHandCards 排序后级牌优先
  * [CardUtils-24] analyzeHand 返回完整的牌型分布统计
+ * [CardUtils-27] getGameLevel 级牌等级 > 普通牌（不含2）-> 返回 14
+ * [CardUtils-28] getGameLevel 小王 -> 返回 15，大王 -> 返回 16
+ * [CardUtils-29] getGameLevel 越界ID -> 返回 -1
+ * [CardUtils-30] isLevelCard 级牌点数越界(0-12之外) -> 返回 false
+ * [CardUtils-31] isWildCard 非红桃级牌 -> 返回 false
+ * [CardUtils-32] getCardValue 多张同点数炸弹 -> 返回正确点数
+ * [CardUtils-33] getCardValue null -> 返回 null
+ * [CardUtils-34] compareHandValues 同牌型大小比较 -> 正/负/零正确
+ * [CardUtils-35] compareHandValues null -> 返回 0
+ * [CardUtils-36] sortHandCards null -> 返回空列表
+ * [CardUtils-37] shuffleDeck null -> 不抛出异常 (静默返回)
+ * [CardUtils-38] getDisplayName 级牌 -> 标注"(级)"
+ * [CardUtils-39] getDisplayName 逢人配 -> 标注"(逢人配)"
+ * [CardUtils-40] idsToStringList null -> 返回空列表
  */
 public class CardUtils {
 

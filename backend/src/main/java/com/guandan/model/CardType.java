@@ -103,4 +103,23 @@ public enum CardType {
     public boolean isBomb() {
         return this == SMALL_BOMB || this == BIG_BOMB || this == ROCKET;
     }
+
+    // ============================================================
+    //  测试验证点 — 牌型枚举完整性回归
+    // ============================================================
+    // [CardType-1] SINGLE 枚举存在 -> 单张牌型
+    // [CardType-2] PAIR 枚举存在 -> 对子牌型
+    // [CardType-3] TRIPLET 枚举存在 -> 三张牌型
+    // [CardType-4] STRAIGHT 枚举存在 -> 顺子牌型
+    // [CardType-5] TRIPLET_WITH_TWO 枚举存在 -> 三带二牌型
+    // [CardType-6] FLUSH_STRAIGHT 枚举存在 -> 同花顺牌型
+    // [CardType-7] SMALL_BOMB 枚举存在 -> 4-5张炸弹牌型
+    // [CardType-8] BIG_BOMB 枚举存在 -> 6-10张炸弹牌型
+    // [CardType-9] ROCKET 枚举存在 -> 王炸牌型
+    // [CardType-10] UNKNOWN 枚举存在 -> 未知/不合法牌型
+    // [CardType-11] isBomb() 对 SMALL_BOMB 返回 true
+    // [CardType-12] isBomb() 对 BIG_BOMB 返回 true
+    // [CardType-13] isBomb() 对 ROCKET 返回 true
+    // [CardType-14] isBomb() 对 SINGLE/PAIR/TRIPLET 返回 false
+    // [CardType-15] isBomb() 对 UNKNOWN 返回 false
 }
