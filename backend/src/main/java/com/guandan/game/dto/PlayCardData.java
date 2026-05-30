@@ -55,4 +55,14 @@ public class PlayCardData {
     public List<Integer> getSafeCards() {
         return cards != null ? cards : new java.util.ArrayList<>();
     }
+
+    // ============================================================
+    //  回归验证点：出牌/过牌数据
+    // ============================================================
+    //
+    //  1. cards 为空列表  -> isPass() == true, getSafeCards() 返回空列表
+    //  2. cards 为 null   -> isPass() == true, getSafeCards() 返回空列表（防 NPE）
+    //  3. cards 有牌      -> isPass() == false
+    //  4. cards 包含重复 ID -> 服务层 GameReferee 校验拦截
+    //  5. cards 中 ID < 0 或 > 107 -> 服务层 GameReferee 校验拦截
 }
