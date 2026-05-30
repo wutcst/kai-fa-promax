@@ -868,4 +868,32 @@ public class GameController {
     private Long validateAndGetUserId(String token) {
         return getUserIdFromToken(token);
     }
+
+    // ============================================================
+    //  出牌/过牌流程接口说明
+    // ============================================================
+    //
+    //  <b>接口字段说明：</b>
+    //  <ul>
+    //    <li>roomId — 房间ID（字符串），用于定位游戏房间</li>
+    //    <li>cards — 卡牌ID列表（List&lt;Integer&gt;），空列表表示过牌</li>
+    //    <li>playerId — 当前玩家ID，从Token解析</li>
+    //    <li>currentPlayerId — 当前轮到出牌的玩家ID（过牌后更新）</li>
+    //  </ul>
+    //
+    //  <b>异常场景：</b>
+    //  <ul>
+    //    <li>非当前玩家回合 — 返回 error "现在不是你的回合"</li>
+    //    <li>玩家不在任何房间中 — 返回 error "玩家不在任何房间中"</li>
+    //    <li>游戏未开始或已结束 — 返回 error "游戏未开始或已结束"</li>
+    //    <li>出牌失败（牌型不合法/管不住） — 返回 error 提示牌型问题</li>
+    //    <li>过牌处理失败 — 返回 error "过牌处理失败"</li>
+    //  </ul>
+    //
+    //  <b>连续过牌清桌：</b>
+    //  <ul>
+    //    <li>当一轮中除出牌者外所有玩家均过牌时，触发清桌</li>
+    //    <li>清桌后出牌权回到上一手出牌者，可自由出牌</li>
+    //    <li>清桌状态通过 play-state 接口的 tableCleared 字段返回</li>
+    //  </ul>
 }
