@@ -425,9 +425,12 @@ const handStyle = computed(() => {
   if (width <= 1024) {
     // 小屏：牌距紧凑，避免牌挤到屏幕外
     step = Math.max(minStep * 0.9, Math.min(maxStep * 0.85, step))
+    // 小屏手牌底部间距优化
+    console.log('小屏手牌布局: step=', step, 'count=', count, 'width=', width)
   } else if (width >= 1920) {
     // 大屏：牌距自然拉开，视觉更舒适
     step = Math.max(minStep, Math.min(maxStep * 1.08, step))
+    console.log('大屏手牌布局: step=', step, 'count=', count, 'width=', width)
   }
 
   const marginX = (step - cardWidth) / 2

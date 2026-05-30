@@ -71,6 +71,7 @@ class WebSocketService {
     this.heartbeatInterval = 30000
     this.heartbeatTimer = null
     this.reconnectTimer = null
+    this.lastNotReadyToastAt = 0
   }
 
   /**
@@ -204,11 +205,24 @@ class WebSocketService {
   send(type, data = {}) {
     if (!this.socket) {
       console.error('WebSocket未初始化，无法发送消息')
+      ElMessage.error('网络未连接，请稍后重试')
       return false
     }
 
     if (this.socket.readyState !== WebSocket.OPEN) {
       console.error('WebSocket未就绪，当前状态:', this.socket.readyState)
+      const now = Date.now()
+      if (this.socket.readyState === WebSocket.CONNECTING) {
+        if (now - this.lastNotReadyToastAt > 1500) {
+          ElMessage.info('网络连接中，请稍后…')
+          this.lastNotReadyToastAt = now
+        }
+      } else {
+        if (now - this.lastNotReadyToastAt > 1500) {
+          ElMessage.error('网络连接未就绪，请稍后重试')
+          this.lastNotReadyToastAt = now
+        }
+      }
       return false
     }
 
