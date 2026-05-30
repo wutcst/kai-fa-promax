@@ -257,3 +257,41 @@ export function isWildCard(card, levelCardRank) {
   }
   return isLevelCard(card, levelCardRank) && card.suit === 'hearts';
 }
+
+/**
+ * 批量转换卡牌ID到前端对象（含空值过滤优化）
+ * 相比 idsToCards，此方法过滤无效ID避免 throw 中断批量操作
+ * @param {Array<number>} cardIds 后端卡牌ID数组
+ * @returns {Array<Object>} 有效的卡牌对象数组
+ */
+export function bulkIdToCard(cardIds) {
+  if (!cardIds || !Array.isArray(cardIds)) return [];
+  const result = [];
+  for (let i = 0; i < cardIds.length; i++) {
+    const id = cardIds[i];
+    if (id === null || id === undefined) continue;
+    if (id < 0 || id > 107) continue;
+    const card = idToCard(id);
+    if (card) result.push(card);
+  }
+  return result;
+}
+
+/**
+ * 比较两组卡牌是否完全相同（用于虚拟列表 key 生成和 DOM 复用判定）
+ * @param {Array<Object>} a 卡牌数组A
+ * @param {Array<Object>} b 卡牌数组B
+ * @returns {boolean} 两组卡牌是否完全相同
+ */
+export function isSameCards(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const ca = a[i];
+    const cb = b[i];
+    if (!ca || !cb) return false;
+    if (ca.suit !== cb.suit || ca.rank !== cb.rank || ca.deck !== cb.deck) return false;
+  }
+  return true;
+}
