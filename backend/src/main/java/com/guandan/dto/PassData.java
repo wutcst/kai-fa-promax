@@ -58,4 +58,14 @@ public class PassData {
     public boolean hasCompleteTurnInfo() {
         return hasValidPlayer() && currentPlayerId != null && !currentPlayerId.trim().isEmpty();
     }
+
+    // ============================================================
+    //  回归验证点：过牌流程
+    // ============================================================
+    //
+    //  1. playerId 不为空 -> hasValidPlayer() == true
+    //  2. playerId 为 null 或空字符串 -> hasValidPlayer() == false
+    //  3. currentPlayerId 不为空 -> hasCompleteTurnInfo() == true
+    //  4. currentPlayerId 为空但 playerId 有效 -> hasCompleteTurnInfo() == false
+    //  5. 两个字段都为空 -> hasValidPlayer() == false, hasCompleteTurnInfo() == false
 }
