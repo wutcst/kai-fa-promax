@@ -219,6 +219,11 @@ public class GameWebSocketServer {
      */
     @OnMessage
     public void onMessage(String message, Session session, @PathParam("playerId") String playerId) {
+        if (playerId == null || playerId.trim().isEmpty()) {
+            log.warn("消息来源 playerId 为空，忽略处理");
+            return;
+        }
+
         log.debug("收到消息 from {}: {}", playerId, message);
 
         try {
@@ -284,8 +289,13 @@ public class GameWebSocketServer {
      */
     @OnClose
     public void onClose(Session session, CloseReason closeReason, @PathParam("playerId") String playerId) {
+        if (playerId == null || playerId.trim().isEmpty()) {
+            log.warn("关闭连接时 playerId 为空，跳过清理");
+            return;
+        }
+
         log.info("WebSocket连接关闭: playerId={}, sessionId={}, closeReason={}",
-                playerId, session.getId(), closeReason);
+                playerId, session != null ? session.getId() : "null", closeReason);
 
         boolean isNormalClose = false;
         try {
@@ -379,6 +389,10 @@ public class GameWebSocketServer {
      * 处理心跳消息
      */
     private void handleHeartbeat(String playerId) {
+        if (playerId == null || playerId.trim().isEmpty()) {
+            return;
+        }
+
         sessionManager.updateHeartbeat(playerId);
         log.debug("玩家 {} 心跳更新", playerId);
 
@@ -420,11 +434,16 @@ public class GameWebSocketServer {
             if (data instanceof Map) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> dataMap = (Map<String, Object>) data;
-                if (dataMap.containsKey("cards")) {
+                if (dataMap != null && dataMap.containsKey("cards")) {
                     @SuppressWarnings("unchecked")
                     List<Integer> cards = (List<Integer>) dataMap.get("cards");
                     cardIds = cards;
                 }
+            }
+
+            // 空值兜底：null 视为空列表（过牌）
+            if (cardIds == null) {
+                cardIds = new java.util.ArrayList<>();
             }
 
             boolean success = gameLogicService.playCards(playerId, cardIds);
@@ -700,7 +719,7 @@ public class GameWebSocketServer {
      * 广播清空桌面
      */
     public static void broadcastTableClear(String gameRoomId) {
-        if (gameLogicService == null) {
+        if (gameLogicService == null || gameRoomId == null || gameRoomId.trim().isEmpty()) {
             return;
         }
 
@@ -711,8 +730,13 @@ public class GameWebSocketServer {
             }
 
             WebSocketMessage msg = new WebSocketMessage("TABLE_CLEAR", new java.util.HashMap<>());
-            for (String playerId : gameRoom.getPlayerIds()) {
-                sendToPlayer(playerId, msg);
+            List<String> playerIds = gameRoom.getPlayerIds();
+            if (playerIds != null) {
+                for (String playerId : playerIds) {
+                    if (playerId != null) {
+                        sendToPlayer(playerId, msg);
+                    }
+                }
             }
         } catch (Exception e) {
             log.warn("广播清桌面失败: roomId={}", gameRoomId, e);
@@ -731,10 +755,17 @@ public class GameWebSocketServer {
         int successCount = 0;
         int failCount = 0;
 
-        for (int i = 0; i < room.getPlayerIds().size(); i++) {
-            String playerId = room.getPlayerIds().get(i);
+        List<String> playerIds = room.getPlayerIds();
+        for (int i = 0; i < playerIds.size(); i++) {
+            String playerId = playerIds.get(i);
+            if (playerId == null) {
+                failCount++;
+                continue;
+            }
+
             try {
-                List<Integer> myCards = room.getHandCards().get(playerId);
+                Map<String, List<Integer>> handCards = room.getHandCards();
+                List<Integer> myCards = handCards != null ? handCards.get(playerId) : null;
                 if (myCards == null) {
                     log.error("玩家 {} 的手牌数据不存在", playerId);
                     failCount++;
@@ -831,22 +862,27 @@ public class GameWebSocketServer {
      */
     public static void broadcastGameEnd(String gameRoomId, Long winnerId, Integer score,
                                          Integer levelTeamA, Integer levelTeamB) {
-        if (gameLogicService == null) {
-            log.warn("服务未初始化，无法广播游戏结束");
+        if (gameLogicService == null || gameRoomId == null || gameRoomId.trim().isEmpty()) {
+            log.warn("服务未初始化或房间ID为空，无法广播游戏结束");
             return;
         }
 
         try {
             Map<String, Object> endData = new java.util.HashMap<>();
             endData.put("winnerId", winnerId);
-            endData.put("score", score);
+            endData.put("score", score != null ? score : 0);
             endData.put("roomId", gameRoomId);
             endData.put("levelTeamA", levelTeamA);
             endData.put("levelTeamB", levelTeamB);
 
             WebSocketMessage endMessage = new WebSocketMessage("GAME_END", endData);
-            for (String playerId : gameLogicService.getPlayerIdsInRoom(gameRoomId)) {
-                sendToPlayer(playerId, endMessage);
+            List<String> playerIds = gameLogicService.getPlayerIdsInRoom(gameRoomId);
+            if (playerIds != null) {
+                for (String playerId : playerIds) {
+                    if (playerId != null) {
+                        sendToPlayer(playerId, endMessage);
+                    }
+                }
             }
 
             log.info("房间 {} 游戏结束已广播：获胜者={}, 分数={}", gameRoomId, winnerId, score);

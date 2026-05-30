@@ -97,6 +97,11 @@ public class SessionManager {
      * 添加会话
      */
     public void addSession(String playerId, String roomId) {
+        if (playerId == null || playerId.trim().isEmpty()) {
+            log.warn("addSession: playerId 为空，跳过");
+            return;
+        }
+
         SessionInfo sessionInfo = new SessionInfo();
         sessionInfo.setPlayerId(playerId);
         sessionInfo.setRoomId(roomId);
@@ -130,6 +135,10 @@ public class SessionManager {
      * 标记会话为离线（不删除数据，支持重连）
      */
     public void markOffline(String playerId) {
+        if (playerId == null || playerId.trim().isEmpty()) {
+            return;
+        }
+
         SessionInfo sessionInfo = sessions.get(playerId);
         if (sessionInfo != null && sessionInfo.isOnline()) {
             sessionInfo.setOnline(false);
