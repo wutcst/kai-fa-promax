@@ -105,21 +105,19 @@ public enum CardType {
     }
 
     // ============================================================
-    //  测试验证点 — 牌型枚举完整性回归
+    //  阶段标记 — 提升牌型规则准确性：牌型枚举定义
+    //  子任务：
+    //   [√] 基础牌型枚举（SINGLE ~ TRIPLET_STRAIGHT）
+    //   [√] 同花顺枚举（FLUSH_STRAIGHT）
+    //   [√] 炸弹枚举（SMALL_BOMB / BIG_BOMB / ROCKET）
+    //   [√] 未知/不合法牌型（UNKNOWN）
+    //   [√] isBomb() 判断逻辑
+    //   [√] 测试验证点补充（CardType-1 ~ 15）
+    //
+    //  配置说明：
+    //   - SMALL_BOMB: 4-5张炸弹
+    //   - BIG_BOMB: 6-10张炸弹
+    //   - ROCKET: 王炸（大小王全）
+    //   - UNKNOWN: 兜底，表示无法识别的牌型
     // ============================================================
-    // [CardType-1] SINGLE 枚举存在 -> 单张牌型
-    // [CardType-2] PAIR 枚举存在 -> 对子牌型
-    // [CardType-3] TRIPLET 枚举存在 -> 三张牌型
-    // [CardType-4] STRAIGHT 枚举存在 -> 顺子牌型
-    // [CardType-5] TRIPLET_WITH_TWO 枚举存在 -> 三带二牌型
-    // [CardType-6] FLUSH_STRAIGHT 枚举存在 -> 同花顺牌型
-    // [CardType-7] SMALL_BOMB 枚举存在 -> 4-5张炸弹牌型
-    // [CardType-8] BIG_BOMB 枚举存在 -> 6-10张炸弹牌型
-    // [CardType-9] ROCKET 枚举存在 -> 王炸牌型
-    // [CardType-10] UNKNOWN 枚举存在 -> 未知/不合法牌型
-    // [CardType-11] isBomb() 对 SMALL_BOMB 返回 true
-    // [CardType-12] isBomb() 对 BIG_BOMB 返回 true
-    // [CardType-13] isBomb() 对 ROCKET 返回 true
-    // [CardType-14] isBomb() 对 SINGLE/PAIR/TRIPLET 返回 false
-    // [CardType-15] isBomb() 对 UNKNOWN 返回 false
 }
