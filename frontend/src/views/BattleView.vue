@@ -32,3 +32,4 @@ function pass() {}
 // Style: card deal animation - staggered entry with CSS transitions
 // Feat: drag-and-drop card selection mechanism
 // Fix: rapid tap selection race condition on mobile
+// Style: 4-player card display with rotation for opponents
