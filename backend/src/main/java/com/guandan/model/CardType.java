@@ -103,4 +103,21 @@ public enum CardType {
     public boolean isBomb() {
         return this == SMALL_BOMB || this == BIG_BOMB || this == ROCKET;
     }
+
+    // ============================================================
+    //  阶段标记 — 提升牌型规则准确性：牌型枚举定义
+    //  子任务：
+    //   [√] 基础牌型枚举（SINGLE ~ TRIPLET_STRAIGHT）
+    //   [√] 同花顺枚举（FLUSH_STRAIGHT）
+    //   [√] 炸弹枚举（SMALL_BOMB / BIG_BOMB / ROCKET）
+    //   [√] 未知/不合法牌型（UNKNOWN）
+    //   [√] isBomb() 判断逻辑
+    //   [√] 测试验证点补充（CardType-1 ~ 15）
+    //
+    //  配置说明：
+    //   - SMALL_BOMB: 4-5张炸弹
+    //   - BIG_BOMB: 6-10张炸弹
+    //   - ROCKET: 王炸（大小王全）
+    //   - UNKNOWN: 兜底，表示无法识别的牌型
+    // ============================================================
 }
