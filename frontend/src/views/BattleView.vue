@@ -1944,10 +1944,10 @@ const handleError = (data) => {
   justify-content: center;
   font-size: 18px;
   font-weight: bold;
-  animation: pulse 1s infinite;
+  animation: pulse-scale 1s infinite;
 }
 
-@keyframes pulse {
+@keyframes pulse-scale {
   0% { transform: scale(1); }
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
