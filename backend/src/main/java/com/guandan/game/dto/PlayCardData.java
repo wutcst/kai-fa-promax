@@ -11,3 +11,4 @@ public class PlayCardData {
 // Fix: card count validation against player hand
 // Refactor: add builder pattern for PlayCardData
 // Docs: PlayCardData.cardIds: list of selected card indices
+// Test: PlayCardData validation - empty cards, invalid indices
