@@ -65,7 +65,7 @@ jobs:
       websocket-server:
         image: jmalloc/echo-server:latest
         ports:
-          - 8080
+          - 8080:8080
 
     steps:
       - name: Checkout Repository
@@ -77,6 +77,14 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Cache Maven Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
       - name: Compile Backend
         run: mvn compile -f backend/pom.xml --no-transfer-progress
 
@@ -86,14 +94,16 @@ jobs:
           APP_PID=$!
           echo "APP_PID=$APP_PID" >> $GITHUB_ENV
           echo "WS_URL=$WS_CHECK_URL" >> $GITHUB_ENV
-          # 等待应用启动
+          # 等待应用启动，最多30次检测
           for i in $(seq 1 30); do
-            if curl -s http://localhost:${{ env.BACKEND_PORT || 8080 }} > /dev/null 2>&1; then
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:${BACKEND_PORT:-8080} 2>/dev/null | grep -qE '^(200|302)$'; then
               echo "应用已启动"
               break
             fi
             sleep 2
           done
+          echo "等待WebSocket服务就绪..."
+          sleep 5
 
       - name: Install WebSocket Test Tools
         run: |
@@ -105,7 +115,10 @@ jobs:
           echo "Testing WebSocket connection..."
           echo "URL: $WS_CHECK_URL"
           echo "Timeout: $WS_CHECK_TIMEOUT"
-          timeout $WS_CHECK_TIMEOUT wscat -c "$WS_CHECK_URL" -w 3 -x '{"type":"ping"}' || echo "WebSocket连接测试完成（非必成功，仅记录）"
+          # 先检查服务端口是否监听
+          timeout 5 bash -c 'while ! curl -s -o /dev/null http://localhost:${BACKEND_PORT:-8080}; do sleep 1; done' 2>/dev/null || echo "HTTP服务未就绪，跳过HTTP检查"
+          # 测试WebSocket连接
+          timeout $WS_CHECK_TIMEOUT wscat -c "$WS_CHECK_URL" -w 3 -x '{"type":"ping"}' 2>&1 || echo "WebSocket连接测试完成（非必成功，仅记录）"
 
       - name: Cleanup
         if: always()
