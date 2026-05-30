@@ -22,3 +22,4 @@ export function disconnectWebSocket() {
 // Docs: WebSocket message handling for real-time game state
 // Test: manual test case - WebSocket reconnect on disconnect
 // Refactor: extract WebSocket hook from BattleView
+// Test: WebSocket message serialization and deserialization
