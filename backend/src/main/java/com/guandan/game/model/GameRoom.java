@@ -66,6 +66,21 @@ public class GameRoom {
     private Map<String, List<Integer>> handCards;
 
     /**
+     * 玩家手牌数量缓存（避免频繁访问 handCards.size()）
+     */
+    private transient Map<String, Integer> handCardCountCache;
+
+    /**
+     * 活跃玩家列表缓存（手牌非空的玩家）
+     */
+    private transient List<String> activePlayerIdsCache;
+
+    /**
+     * 缓存是否过期
+     */
+    private transient boolean cacheDirty;
+
+    /**
      * 游戏状态
      * WAITING: 等待玩家加入
      * PLAYING: 游戏中
@@ -153,6 +168,9 @@ public class GameRoom {
         this.roomId = roomId;
         this.playerIds = new ArrayList<>();
         this.handCards = new ConcurrentHashMap<>();
+        this.handCardCountCache = new ConcurrentHashMap<>();
+        this.activePlayerIdsCache = new ArrayList<>();
+        this.cacheDirty = true;
         this.status = GameStatus.WAITING;
         this.currentPlayerIndex = 0;
         this.levelCardRank = 0; // 0对应2，表示打2级
@@ -229,6 +247,8 @@ public class GameRoom {
         }
         playerIds.add(playerId);
         handCards.put(playerId, new ArrayList<>());
+        handCardCountCache.put(playerId, 0);
+        cacheDirty = true;
         return true;
     }
 
@@ -416,6 +436,7 @@ public class GameRoom {
         this.thirdFinishPlayerId = null;
         this.levelTeamA = 2;
         this.levelTeamB = 2;
+        this.cacheDirty = true;
     }
 
     /**
@@ -423,14 +444,10 @@ public class GameRoom {
      * @return 手牌非空的玩家数量
      */
     public int getActivePlayerCount() {
-        int count = 0;
-        for (String pid : playerIds) {
-            List<Integer> hand = handCards.get(pid);
-            if (hand != null && !hand.isEmpty()) {
-                count++;
-            }
+        if (cacheDirty) {
+            refreshCache();
         }
-        return count;
+        return activePlayerIdsCache.size();
     }
 
     /**
@@ -448,14 +465,27 @@ public class GameRoom {
      * @return 活跃玩家ID列表
      */
     public List<String> getActivePlayerIds() {
-        List<String> active = new ArrayList<>();
+        if (cacheDirty) {
+            refreshCache();
+        }
+        return new ArrayList<>(activePlayerIdsCache);
+    }
+
+    /**
+     * 刷新内部缓存（手牌数量、活跃玩家列表）
+     */
+    private void refreshCache() {
+        if (!cacheDirty) return;
+        activePlayerIdsCache = new ArrayList<>();
         for (String pid : playerIds) {
             List<Integer> hand = handCards.get(pid);
-            if (hand != null && !hand.isEmpty()) {
-                active.add(pid);
+            int count = (hand != null) ? hand.size() : 0;
+            handCardCountCache.put(pid, count);
+            if (count > 0) {
+                activePlayerIdsCache.add(pid);
             }
         }
-        return active;
+        cacheDirty = false;
     }
 
     /**

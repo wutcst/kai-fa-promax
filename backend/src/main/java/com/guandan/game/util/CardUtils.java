@@ -85,10 +85,22 @@ public class CardUtils {
     // 缓存映射，提高性能
     private static final Map<Integer, String> CARD_CACHE = new HashMap<>();
 
+    // 缓存点数名称查找（避免数组越界和重复访问）
+    private static final Map<Integer, String> RANK_NAME_CACHE = new HashMap<>();
+
+    // 缓存花色名称查找
+    private static final Map<Integer, String> SUIT_NAME_CACHE = new HashMap<>();
+
     static {
         // 初始化缓存
         for (int i = 0; i < 108; i++) {
             CARD_CACHE.put(i, convertIdToString(i));
+        }
+        for (int i = 0; i < RANKS.length; i++) {
+            RANK_NAME_CACHE.put(i, RANKS[i]);
+        }
+        for (int i = 0; i < SUITS.length; i++) {
+            SUIT_NAME_CACHE.put(i, SUITS[i]);
         }
     }
 
@@ -154,10 +166,8 @@ public class CardUtils {
      * @return 点数名称
      */
     public static String getRankName(int rankIndex) {
-        if (rankIndex >= 0 && rankIndex < RANKS.length) {
-            return RANKS[rankIndex];
-        }
-        return "未知点数";
+        String name = RANK_NAME_CACHE.get(rankIndex);
+        return name != null ? name : "未知点数";
     }
 
     /**
