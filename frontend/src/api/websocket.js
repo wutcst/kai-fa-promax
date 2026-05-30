@@ -338,6 +338,64 @@ class WebSocketService {
     }
     return 'disconnected'
   }
+
+  // ============================================================
+  //  测试验证点：WebSocket 消息序列化和反序列化
+  // ============================================================
+
+  /**
+   * 序列化待发送消息（供测试验证用）
+   * @param {string} type - 消息类型
+   * @param {object} data - 消息数据
+   * @returns {string} 序列化后的 JSON 字符串
+   */
+  serializeMessage(type, data = {}) {
+    return JSON.stringify({ type, data, playerId: this.playerId })
+  }
+
+  /**
+   * 反序列化收到的消息（供测试验证用）
+   * @param {string} json - 收到的 JSON 字符串
+   * @returns {{type: string, data: object}|null} 解析后的消息对象，解析失败返回 null
+   */
+  deserializeMessage(json) {
+    try {
+      const parsed = JSON.parse(json)
+      if (!parsed || typeof parsed !== 'object') return null
+      if (!parsed.type || typeof parsed.type !== 'string') return null
+      return { type: parsed.type, data: parsed.data || parsed }
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * 验证消息结构完整性（供测试验证用）
+   * @param {object} message - 消息对象
+   * @returns {{valid: boolean, errors: string[]}}
+   */
+  validateMessage(message) {
+    const errors = []
+    if (!message || typeof message !== 'object') {
+      errors.push('消息必须是非空对象')
+      return { valid: false, errors }
+    }
+    if (!message.type || typeof message.type !== 'string') {
+      errors.push('消息类型(type)必须是非空字符串')
+    }
+    if (message.type && message.type.length > 50) {
+      errors.push('消息类型(type)长度不能超过50个字符')
+    }
+    if (message.data !== undefined && message.data !== null
+        && typeof message.data !== 'object') {
+      errors.push('消息数据(data)必须是对象类型')
+    }
+    if (message.playerId !== undefined && message.playerId !== null
+        && typeof message.playerId !== 'string') {
+      errors.push('玩家ID(playerId)必须是字符串')
+    }
+    return { valid: errors.length === 0, errors }
+  }
 }
 
 // 创建单例实例
