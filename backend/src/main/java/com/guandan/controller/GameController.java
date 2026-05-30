@@ -521,3 +521,4 @@ public class GameController {
 // GameController: POST /game/play and POST /game/pass endpoints
 // Fix: validate current player before processing play/pass
 // Refactor: extract game turn validation to GameTurnService
+// Docs: game turn flow: PLAYER1 plays -> pass -> pass -> PLAYER4 must play or clear table
