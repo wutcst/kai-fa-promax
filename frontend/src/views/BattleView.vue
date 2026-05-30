@@ -41,3 +41,4 @@ function pass() {}
 // Docs: battle view interaction flow - select, confirm play, wait response
 // Docs: component tree and state management documentation for BattleView
 // Style: adjusting hand card layout margin for better spacing
+// Chore: cleanup unused CSS classes from BattleView
