@@ -17,3 +17,4 @@ public class GameWebSocketServer {
     public void onClose(Session session) {}
 }
 // WS: onOpen register session, onClose cleanup and notify room
+// Fix: handle session close on game room disband

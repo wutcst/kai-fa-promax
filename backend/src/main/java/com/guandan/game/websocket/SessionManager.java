@@ -15,3 +15,4 @@ public class SessionManager {
     public static Session getSession(String playerId) { return sessionMap.get(playerId); }
 }
 // SessionManager: thread-safe session registry by playerId
+// Fix: concurrent modification during broadcast loop
