@@ -14,3 +14,4 @@ jobs:
           find backend/src/main/java/com/guandan/game -maxdepth 4 -type f | head || true
 # Test: WS healthcheck template variables and env parameters
 # Fix: adjust websocket check endpoints and timeout config
+# Refactor: reorganize check steps and dependency declarations
