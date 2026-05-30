@@ -19,3 +19,4 @@ public class GameReferee {
 // Refactor: extract card combo validator to separate class
 // Docs: card combo hierarchy and comparison rules reference
 // Test: GameReferee validate card combo for all card types
+// Chore: GameReferee card rule configuration wrap-up
