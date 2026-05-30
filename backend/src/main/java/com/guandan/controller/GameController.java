@@ -735,21 +735,21 @@ public class GameController {
             @RequestHeader("Authorization") String token,
             @RequestBody PlayCardData request) {
         try {
-            Long userId = getUserIdFromToken(token);
+            // ========== 前置校验 ==========
+            Long userId = validateAndGetUserId(token);
             if (userId == null) {
                 return Result.error("用户未登录或Token已过期");
             }
 
-            // 空值保护：检查请求对象
             if (request == null) {
                 return Result.error("请求数据不能为空");
             }
 
             String playerId = String.valueOf(userId);
-            List<Integer> cards = request.getCards();
-            boolean isPass = cards == null || cards.isEmpty();
+            List<Integer> cards = request.getSafeCards();
+            boolean isPass = request.isPass();
 
-            // 检查当前玩家状态一致性
+            // ========== 房间与状态校验 ==========
             String roomId = gameLogicService.getPlayerRoomId(playerId);
             if (roomId == null) {
                 return Result.error("玩家不在任何房间中");
@@ -760,23 +760,22 @@ public class GameController {
                 return Result.error("游戏房间不存在");
             }
 
-            // 状态一致性判断：检查房间是否在游戏中
             if (room.getStatus() != GameRoom.GameStatus.PLAYING) {
                 return Result.error("游戏未开始或已结束");
             }
 
-            // 检查是否是当前玩家的回合
             if (!playerId.equals(room.getCurrentPlayerId())) {
                 return Result.error("现在不是你的回合");
             }
 
+            // ========== 执行业务逻辑 ==========
             boolean success = gameLogicService.playCards(playerId, cards);
             if (!success) {
                 return Result.error(isPass ? "过牌处理失败" : "出牌失败，请检查牌型或回合");
             }
 
-            // 获取当前房间和玩家信息
-            GameRoom room = gameLogicService.getPlayerRoom(playerId);
+            // ========== 构建响应 ==========
+            room = gameLogicService.getPlayerRoom(playerId); // 刷新状态
             String currentPlayerId = room != null ? room.getCurrentPlayerId() : null;
 
             Map<String, Object> data = new HashMap<>();
@@ -861,5 +860,12 @@ public class GameController {
             token = token.substring(7);
         }
         return authService.validateToken(token);
+    }
+
+    /**
+     * 验证Token并获取用户ID（别名方法，提升可读性）
+     */
+    private Long validateAndGetUserId(String token) {
+        return getUserIdFromToken(token);
     }
 }
