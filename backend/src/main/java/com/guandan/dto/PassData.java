@@ -11,8 +11,22 @@ import lombok.NoArgsConstructor;
  *
  * <p>职责边界：
  * <ul>
- *   <li>playerId - 过牌玩家ID，不可为空</li>
- *   <li>currentPlayerId - 过牌后的下一个回合玩家</li>
+ *   <li>playerId — 过牌玩家ID，不可为空</li>
+ *   <li>currentPlayerId — 过牌后的下一个回合玩家</li>
+ * </ul>
+ *
+ * <p><b>过牌流程说明：</b>
+ * <ul>
+ *   <li>玩家选择过牌时，服务端广播 PassData 给房间内所有玩家</li>
+ *   <li>currentPlayerId 为过牌后的下一个出牌玩家</li>
+ *   <li>若连续过牌导致清桌，则通过 TABLE_CLEAR 事件通知客户端</li>
+ * </ul>
+ *
+ * <p><b>异常场景：</b>
+ * <ul>
+ *   <li>playerId 为空（null/空字符串）— hasValidPlayer() 返回 false</li>
+ *   <li>currentPlayerId 为空 — hasCompleteTurnInfo() 返回 false</li>
+ *   <li>后端校验不通过时返回错误消息，不广播 PassData</li>
  * </ul>
  */
 @Data
