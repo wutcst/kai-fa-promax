@@ -94,12 +94,15 @@ jobs:
           APP_PID=$!
           echo "APP_PID=$APP_PID" >> $GITHUB_ENV
           echo "WS_URL=$WS_CHECK_URL" >> $GITHUB_ENV
-          # 等待应用启动，最多30次检测
+          # 等待应用启动
+          echo "等待后端应用启动..."
           for i in $(seq 1 30); do
-            if curl -s -o /dev/null -w "%{http_code}" http://localhost:${BACKEND_PORT:-8080} 2>/dev/null | grep -qE '^(200|302)$'; then
-              echo "应用已启动"
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${BACKEND_PORT:-8080} 2>/dev/null || echo "000")
+            if echo "$HTTP_CODE" | grep -qE '^(200|302)$'; then
+              echo "后端应用已启动 (HTTP $HTTP_CODE)"
               break
             fi
+            echo "等待中... ($i/30)"
             sleep 2
           done
           echo "等待WebSocket服务就绪..."
@@ -111,12 +114,15 @@ jobs:
 
       - name: Test WebSocket Connection
         run: |
-          # 测试WebSocket连接是否正常
-          echo "Testing WebSocket connection..."
-          echo "URL: $WS_CHECK_URL"
-          echo "Timeout: $WS_CHECK_TIMEOUT"
+          echo "开始WebSocket连接测试..."
+          echo "目标URL: $WS_CHECK_URL"
+          echo "超时设定: ${WS_CHECK_TIMEOUT}秒"
+          echo "日志级别: $WS_CHECK_LOG_LEVEL"
+          if [ "$WS_CHECK_LOG_LEVEL" = "debug" ]; then
+            echo "调试模式：详细输出已启用"
+          fi
           # 先检查服务端口是否监听
-          timeout 5 bash -c 'while ! curl -s -o /dev/null http://localhost:${BACKEND_PORT:-8080}; do sleep 1; done' 2>/dev/null || echo "HTTP服务未就绪，跳过HTTP检查"
+          timeout 5 bash -c 'while ! curl -s -o /dev/null http://localhost:${BACKEND_PORT:-8080} 2>/dev/null; do sleep 1; done' 2>/dev/null || echo "HTTP服务未就绪，跳过HTTP检查"
           # 测试WebSocket连接
           timeout $WS_CHECK_TIMEOUT wscat -c "$WS_CHECK_URL" -w 3 -x '{"type":"ping"}' 2>&1 || echo "WebSocket连接测试完成（非必成功，仅记录）"
 
@@ -124,5 +130,6 @@ jobs:
         if: always()
         run: |
           if [ -n "$APP_PID" ]; then
+            echo "清理后端进程 PID=$APP_PID"
             kill $APP_PID 2>/dev/null || true
           fi
