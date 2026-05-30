@@ -216,11 +216,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import '../assets/card.css'
-import { idToCard, cardsToIds } from '../utils/cardConverter'
+import { idToCard, cardsToIds, bulkIdToCard, isSameCards } from '../utils/cardConverter'
 import webSocketService, { WS_MESSAGE_TYPES } from '../api/websocket'
 import { getRoomDetail, ready, exitRoom } from '../api/game'
 import soundManager from '../utils/soundManager'
@@ -339,6 +339,65 @@ const isDragging = ref(false)
 const dragType = ref(true)
 const mouseDownX = ref(0)
 const mouseDownY = ref(0)
+// 快速点选防抖：在短时间内防止同一张卡被反复选中/取消
+const lastTapTime = ref(0)
+const tapDebounceMs = 150
+
+// ============================================================
+//  虚拟列表和 DOM 复用 —— 避免大数量手牌全量重新渲染
+// ============================================================
+
+/**
+ * 手牌缓存 key：用于 v-for 的 :key 绑定，减少 DOM 重建
+ */
+const cardKeyCache = ref(0)
+let cardKeyCacheVersion = 0
+
+watch(myCards, () => {
+  cardKeyCacheVersion++
+  cardKeyCache.value = cardKeyCacheVersion
+}, { deep: false })
+
+/**
+ * 仅渲染可见范围内的手牌（窗口裁剪策略）
+ * 手牌数量超过阈值时启用虚拟裁剪
+ */
+const VIRTUAL_THRESHOLD = 18
+const visibleStart = ref(0)
+const visibleEnd = ref(0)
+
+const enableVirtualScroll = computed(() => myCards.value.length > VIRTUAL_THRESHOLD)
+
+/** 可见手牌切片 */
+const visibleCards = computed(() => {
+  if (!enableVirtualScroll.value) {
+    visibleStart.value = 0
+    visibleEnd.value = myCards.value.length
+    return myCards.value
+  }
+  const len = myCards.value.length
+  const windowSize = Math.min(VIRTUAL_THRESHOLD, len)
+  const halfWindow = Math.floor(windowSize / 2)
+  const center = Math.min(Math.max(halfWindow, visibleStart.value + halfWindow), len - halfWindow)
+  const start = Math.max(0, center - halfWindow)
+  const end = Math.min(len, start + windowSize)
+  visibleStart.value = start
+  visibleEnd.value = end
+  return myCards.value.slice(start, end)
+})
+
+/** 可见手牌的 key 列表（用于 :key 绑定） */
+const visibleCardKeys = computed(() => {
+  const k = cardKeyCache.value
+  const cards = visibleCards.value
+  const keys = []
+  for (let i = 0; i < cards.length; i++) {
+    const c = cards[i]
+    keys.push(`${k}-${c.suit}-${c.rank}-${c.deck}`)
+  }
+  return keys
+})
+
 const deskDisplay = ref({
   '我': [], '右对手': [], '队友': [], '左对手': []
 })
@@ -855,6 +914,14 @@ const startDragging = () => { isDragging.value = true }
 const stopDragging = () => { isDragging.value = false }
 const handleCardMousedown = (index, event) => {
   if (currentPlayer.value !== '我') return
+
+  // 快速点选防御：如果距离上次点击时间过短，忽略本次操作
+  const now = Date.now()
+  if (now - lastTapTime.value < tapDebounceMs) {
+    return
+  }
+  lastTapTime.value = now
+
   mouseDownX.value = event.clientX
   mouseDownY.value = event.clientY
   isDragging.value = true
