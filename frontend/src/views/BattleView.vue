@@ -2472,17 +2472,6 @@ const handleError = (data) => {
   }
 }
 
-/* 超大屏手牌间距优化 */
-@media (min-width: 1920px) {
-  .my-hand {
-    padding: 4px 32px 0 !important;
-  }
-
-  .my-hand .card {
-    margin: 0 calc(var(--my-card-margin-x, -20px) * 1.2) !important;
-  }
-}
-
 /* ========== BRO 来财：顶部玩家卡牌重叠显示 V8 ========== */
 .player-section.top {
   width: min(78vw, 980px) !important;
