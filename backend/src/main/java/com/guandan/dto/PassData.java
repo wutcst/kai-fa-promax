@@ -60,6 +60,7 @@ public class PassData {
     }
 
     // ============================================================
+    //  阶段标记 — devel/phase-3-flow-stage3: 过牌流程
     //  回归验证点：过牌流程
     // ============================================================
     //
@@ -68,4 +69,10 @@ public class PassData {
     //  3. currentPlayerId 不为空 -> hasCompleteTurnInfo() == true
     //  4. currentPlayerId 为空但 playerId 有效 -> hasCompleteTurnInfo() == false
     //  5. 两个字段都为空 -> hasValidPlayer() == false, hasCompleteTurnInfo() == false
+    //
+    //  配置说明：
+    //   - hasValidPlayer: 仅校验 playerId 字段
+    //   - hasCompleteTurnInfo: 同时校验 playerId + currentPlayerId
+    //   - 后端校验不通过时返回错误消息，不广播 PassData
+    // ============================================================
 }
