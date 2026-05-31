@@ -205,7 +205,11 @@ class WebSocketService {
   send(type, data = {}) {
     if (!this.socket) {
       console.error('WebSocket未初始化，无法发送消息')
-      ElMessage.error('网络未连接，请稍后重试')
+      // 空状态防御：socket 不存在时不弹重复 toast
+      if (this.lastNotReadyToastAt === 0 || Date.now() - this.lastNotReadyToastAt > 5000) {
+        ElMessage.error('网络未连接，请稍后重试')
+        this.lastNotReadyToastAt = Date.now()
+      }
       return false
     }
 

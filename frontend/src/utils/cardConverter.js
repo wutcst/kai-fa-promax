@@ -26,7 +26,11 @@ const RANK_MAP = [
  */
 export function idToCard(cardId) {
   // 验证输入
-  if (cardId < 0 || cardId > 107) {
+  if (cardId === null || cardId === undefined) {
+    console.error('idToCard: 收到 null 或 undefined 的 cardId')
+    return { suit: 'unknown', rank: -1, deck: -1 }
+  }
+  if (!Number.isInteger(cardId) || cardId < 0 || cardId > 107) {
     throw new Error(`无效的卡牌ID: ${cardId}`);
   }
 

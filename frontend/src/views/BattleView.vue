@@ -986,21 +986,40 @@ const handleDragDrop = (targetIndex, event) => {
 
 // 出牌逻辑
 const playCards = () => {
-  if (selectedCards.value.length === 0 || currentPlayer.value !== '我') return
+  if (selectedCards.value.length === 0 || currentPlayer.value !== '我') {
+    if (selectedCards.value.length === 0 && currentPlayer.value === '我') {
+      ElMessage.info('请先选择要出的牌')
+    }
+    return
+  }
   try {
     const selectedCardObjects = selectedCards.value.map(index => {
       const card = myCards.value[index]
+      // 空安全：如果 index 越界或 card 为空，返回一个容错对象
+      if (!card) {
+        console.warn('playCards: 选中的手牌索引越界', index, '手牌长度:', myCards.value.length)
+        return null
+      }
       return card
-    })
+    }).filter(c => c !== null)
+
+    if (selectedCardObjects.length === 0) {
+      ElMessage.error('选中的卡牌数据异常，请重新选择')
+      selectedCards.value = []
+      return
+    }
     const cardIds = cardsToIds(selectedCardObjects)
     webSocketService.send(WS_MESSAGE_TYPES.PLAY_CARD, {
       cards: cardIds
     })
     soundManager.play('play_card')
     selectedCards.value = []
+  soundManager.play('play_card')
   } catch (error) {
     console.error('出牌失败:', error)
     ElMessage.error('出牌失败，请重试')
+    // 出牌失败时清理选中状态，避免界面卡死
+    selectedCards.value = []
   }
 }
 
