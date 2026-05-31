@@ -12,3 +12,4 @@ public class PlayCardData {
 // Refactor: add builder pattern for PlayCardData
 // Docs: PlayCardData.cardIds: list of selected card indices
 // Test: PlayCardData validation - empty cards, invalid indices
+// Chore: PlayCardData finalization for Phase 3
