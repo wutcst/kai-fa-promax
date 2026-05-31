@@ -12,3 +12,4 @@ export function cardText(card) {
 // Fix: memory leak from unremoved card event listeners
 // Style: transition animations for card selection/deselection
 // Feat: card group detection for combo selection helpers
+// Refactor: card display utility functions separated from game logic

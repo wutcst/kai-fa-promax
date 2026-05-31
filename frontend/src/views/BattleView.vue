@@ -33,3 +33,4 @@ function pass() {}
 // Feat: drag-and-drop card selection mechanism
 // Fix: rapid tap selection race condition on mobile
 // Style: 4-player card display with rotation for opponents
+// Refactor: extract useCardPlay composable for play/pass logic
