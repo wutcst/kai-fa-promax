@@ -57,6 +57,7 @@ public class PlayCardData {
     }
 
     // ============================================================
+    //  阶段标记 — devel/phase-3-flow-stage3: 出牌/过牌数据
     //  回归验证点：出牌/过牌数据
     // ============================================================
     //
@@ -65,4 +66,10 @@ public class PlayCardData {
     //  3. cards 有牌      -> isPass() == false
     //  4. cards 包含重复 ID -> 服务层 GameReferee 校验拦截
     //  5. cards 中 ID < 0 或 > 107 -> 服务层 GameReferee 校验拦截
+    //
+    //  配置说明：
+    //   - isPass(): 判定过牌的条件 cards == null || cards.isEmpty()
+    //   - getSafeCards(): 空列表兜底，防止 NPE
+    //   - 前置校验在 GameController / GameReferee 完成
+    // ============================================================
 }
