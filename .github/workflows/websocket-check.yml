@@ -15,3 +15,4 @@ jobs:
 # Test: WS healthcheck template variables and env parameters
 # Fix: adjust websocket check endpoints and timeout config
 # Refactor: reorganize check steps and dependency declarations
+# Test: CI verification - websocket check workflow validated
