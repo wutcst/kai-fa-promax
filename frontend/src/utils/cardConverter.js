@@ -5,3 +5,4 @@ export function cardText(card) {
   return { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' }[rank] || String(rank)
 }
 // cardConverter: map server card format to display data (rank, suit, color)
+// Fix: card display order consistency after sort toggle
