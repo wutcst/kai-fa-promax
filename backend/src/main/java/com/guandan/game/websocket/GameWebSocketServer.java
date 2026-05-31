@@ -314,50 +314,15 @@ public class GameWebSocketServer {
         }
 
         if (isNormalClose) {
-            // 正常关闭：视为主动离开房间（删除房间玩家记录，避免房间一直显示"游戏中"）
-            try {
-                gameLogicService.removePlayer(playerId);
-            } catch (Exception ignored) {
-            }
-            try {
-                sessionManager.removeSession(playerId);
-            } catch (Exception ignored) {
-            }
+            // 正常关闭：视为主动离开房间
+            executeCleanDisconnect(playerId, room);
         } else {
             // 异常断线：标记离线，保留数据支持重连
             sessionManager.markOffline(playerId);
         }
 
-        // 通知房间内其他玩家
-        if (room != null) {
-            Map<String, Object> disconnectData = new java.util.HashMap<>();
-            disconnectData.put("playerId", playerId);
-            disconnectData.put("reason", isNormalClose ? "玩家离开" : "玩家掉线");
-            WebSocketMessage message = new WebSocketMessage("PLAYER_DISCONNECT", disconnectData);
-            broadcastToRoom(room, playerId, message);
-
-            // 广播房间信息更新
-            try {
-                broadcastRoomInfoUpdate(room.getRoomId());
-            } catch (Exception ignored) {
-            }
-
-            // 房间没人了 / 或者游戏中有人离开：把数据库房间状态置为结束，避免大厅一直显示"游戏中"
-            try {
-                String roomNo = room.getRoomId().replace("room_", "");
-                com.guandan.entity.Room dbRoom = com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
-                        .getRoomByRoomNo(roomNo);
-                if (dbRoom != null) {
-                    int cnt = com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
-                            .getPlayerCount(dbRoom.getId());
-                    if (cnt <= 0 || dbRoom.getStatus() == 1) {
-                        com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
-                                .updateRoomStatus(dbRoom.getId(), 2);
-                    }
-                }
-            } catch (Exception ignored) {
-            }
-        }
+        // 通知房间内其他玩家并更新房间状态
+        notifyRoomOnPlayerDisconnect(room, playerId, isNormalClose);
     }
 
     /**
@@ -1065,6 +1030,69 @@ public class GameWebSocketServer {
 
         public static WebSocketMessage error(String message) {
             return new WebSocketMessage("ERROR", java.util.Map.of("message", message));
+        }
+    }
+
+    // ============================================================
+    //  断线清理方法
+    // ============================================================
+
+    /**
+     * 执行干净断线清理：移除玩家和会话
+     */
+    private void executeCleanDisconnect(String playerId, GameRoom room) {
+        try {
+            gameLogicService.removePlayer(playerId);
+        } catch (Exception ignored) {
+        }
+        try {
+            sessionManager.removeSession(playerId);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * 通知房间其他玩家断线并更新数据库房间状态
+     */
+    private void notifyRoomOnPlayerDisconnect(GameRoom room, String playerId, boolean isNormalClose) {
+        if (room == null) {
+            return;
+        }
+
+        // 广播断线通知
+        Map<String, Object> disconnectData = new java.util.HashMap<>();
+        disconnectData.put("playerId", playerId);
+        disconnectData.put("reason", isNormalClose ? "玩家离开" : "玩家掉线");
+        WebSocketMessage message = new WebSocketMessage("PLAYER_DISCONNECT", disconnectData);
+        broadcastToRoom(room, playerId, message);
+
+        // 广播房间信息更新
+        try {
+            broadcastRoomInfoUpdate(room.getRoomId());
+        } catch (Exception ignored) {
+        }
+
+        // 房间没人了或者游戏中有人离开：把数据库房间状态置为结束
+        updateRoomStatusOnDisconnect(room);
+    }
+
+    /**
+     * 断线后更新数据库房间状态
+     */
+    private void updateRoomStatusOnDisconnect(GameRoom room) {
+        try {
+            String roomNo = room.getRoomId().replace("room_", "");
+            com.guandan.entity.Room dbRoom = com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
+                    .getRoomByRoomNo(roomNo);
+            if (dbRoom != null) {
+                int cnt = com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
+                        .getPlayerCount(dbRoom.getId());
+                if (cnt <= 0 || dbRoom.getStatus() == 1) {
+                    com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
+                            .updateRoomStatus(dbRoom.getId(), 2);
+                }
+            }
+        } catch (Exception ignored) {
         }
     }
 }

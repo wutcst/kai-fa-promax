@@ -376,6 +376,77 @@ public class SessionManager {
         log.info("SessionManager已关闭");
     }
 
+    // ============================================================
+    //  连接管理方法
+    // ============================================================
+
+    /**
+     * 建立连接：保存会话并设置在线
+     */
+    public void establishConnection(String playerId, Session session, String roomId) {
+        saveSession(playerId, session);
+        addSession(playerId, roomId);
+    }
+
+    /**
+     * 断开连接：标记离线并保留数据（支持重连）
+     */
+    public boolean disconnectSession(String playerId) {
+        markOffline(playerId);
+        removeWebSocketSession(playerId);
+        return true;
+    }
+
+    /**
+     * 完全清理连接：移除所有引用和数据
+     */
+    public boolean cleanSession(String playerId) {
+        removeSession(playerId);
+        removeWebSocketSession(playerId);
+        return true;
+    }
+
+    // ============================================================
+    //  广播管理方法
+    // ============================================================
+
+    /**
+     * 向指定玩家发送消息（在 Session 有效时）
+     */
+    public boolean sendMessage(String playerId, String message) {
+        Session session = getWebSocketSession(playerId);
+        if (session == null || !session.isOpen()) {
+            log.warn("sendMessage: 玩家 {} 的 Session 不可用", playerId);
+            return false;
+        }
+        try {
+            session.getBasicRemote().sendText(message);
+            return true;
+        } catch (IOException e) {
+            log.warn("sendMessage: 向玩家 {} 发送消息失败", playerId, e);
+            return false;
+        }
+    }
+
+    /**
+     * 向房间内所有在线玩家广播消息
+     */
+    public boolean broadcastToOnlinePlayers(String roomId, String message) {
+        ConcurrentHashMap<String, Boolean> players = roomPlayers.get(roomId);
+        if (players == null || players.isEmpty()) {
+            log.warn("broadcastToOnlinePlayers: 房间 {} 无玩家", roomId);
+            return false;
+        }
+        int successCount = 0;
+        for (String playerId : players.keySet()) {
+            if (isOnline(playerId) && sendMessage(playerId, message)) {
+                successCount++;
+            }
+        }
+        log.debug("broadcastToOnlinePlayers: 房间 {}, 成功发送给 {} 人", roomId, successCount);
+        return successCount > 0;
+    }
+
     /**
      * 会话信息
      */
