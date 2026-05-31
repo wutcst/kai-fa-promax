@@ -161,11 +161,11 @@
                 <div class="countdown-circle">{{ countdown }}</div>
               </div>
               <div class="action-buttons" v-show="currentPlayer === '我'">
-                <button class="btn btn-pass" @click="pass">不出</button>
-                <button class="btn btn-hint" @click="hint">提示</button>
-                <button class="btn btn-play" @click="playCards" :disabled="selectedCards.length === 0">出牌</button>
+                <button class="btn btn-pass" @click="pass" title="跳过本轮出牌">不出</button>
+                <button class="btn btn-hint" @click="hint" title="获取出牌建议">提示</button>
+                <button class="btn btn-play" @click="playCards" :disabled="selectedCards.length === 0" title="出所选牌">出牌</button>
               </div>
-              <div class="current-player" v-if="currentPlayer !== '我'">{{ currentPlayer }}的回合</div>
+              <div class="current-player" v-if="currentPlayer !== '我'">{{ currentPlayer }} 的回合</div>
             </div>
           </div>
         </div>
@@ -187,9 +187,9 @@
             <div class="quick-texts">
               <div class="quick-texts-title">快捷文字</div>
               <div class="quick-text-buttons">
-                <button class="quick-text-btn" @click="sendQuickText('快点出牌')">快点出牌</button>
-                <button class="quick-text-btn" @click="sendQuickText('这牌怎么打')">这牌怎么打</button>
-                <button class="quick-text-btn" @click="sendQuickText('我走了')">我走了</button>
+                <button class="quick-text-btn" @click="sendQuickText('快点出牌')" title="催促当前玩家">快点出牌</button>
+                <button class="quick-text-btn" @click="sendQuickText('这牌怎么打')" title="询问队友建议">这牌怎么打</button>
+                <button class="quick-text-btn" @click="sendQuickText('我走了')" title="告知队友即将走完">我走了</button>
               </div>
             </div>
           </div>

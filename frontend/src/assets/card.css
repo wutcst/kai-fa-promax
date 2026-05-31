@@ -146,6 +146,48 @@
     opacity: 0;
 }
 
+/* 出牌按钮显眼反馈：hover 时放大和变色 */
+.btn-play {
+    background-color: #4CAF50 !important;
+    color: white !important;
+    border-color: #45a049 !important;
+    font-size: 16px !important;
+    padding: 10px 22px !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4) !important;
+}
+.btn-play:hover:not(:disabled) {
+    background-color: #45a049 !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 14px rgba(76, 175, 80, 0.6) !important;
+}
+.btn-play:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 过牌按钮反馈 */
+.btn-pass {
+    background-color: #ff9800 !important;
+    color: white !important;
+    border-color: #e68900 !important;
+}
+.btn-pass:hover {
+    background-color: #e68900 !important;
+    transform: scale(1.05) !important;
+}
+
+/* 提示按钮反馈 */
+.btn-hint {
+    background-color: #2196F3 !important;
+    color: white !important;
+    border-color: #1976D2 !important;
+}
+.btn-hint:hover {
+    background-color: #1976D2 !important;
+    transform: scale(1.05) !important;
+}
+
 /* 不要指示器样式 */
 .pass-indicator {
     background-color: rgba(255, 255, 255, 0.9);
@@ -160,6 +202,7 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     animation: fadeIn 0.3s ease-in-out;
     margin: 0 5px;
+    letter-spacing: 2px;
 }
 
 @keyframes fadeIn {
