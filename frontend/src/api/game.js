@@ -1,5 +1,86 @@
 import axiosInstance from './axiosInstance'
 
+// ============================================================
+//  API 响应缓存模块（减少重复请求）
+// ============================================================
+
+/** 内存缓存存储 */
+const cacheStore = new Map()
+
+/** 默认缓存 TTL（毫秒） */
+const DEFAULT_TTL = 30000 // 30 秒
+
+/**
+ * 生成缓存键
+ * @param {string} url - 请求 URL
+ * @param {Object} [params] - 请求参数
+ * @returns {string} 缓存键
+ */
+const buildCacheKey = (url, params) => {
+  return params ? `${url}::${JSON.stringify(params)}` : url
+}
+
+/**
+ * 从缓存中获取
+ * @param {string} key - 缓存键
+ * @returns {*|null} 缓存数据或 null
+ */
+const cacheGet = (key) => {
+  const entry = cacheStore.get(key)
+  if (!entry) return null
+  if (Date.now() > entry.expiresAt) {
+    cacheStore.delete(key)
+    return null
+  }
+  return entry.data
+}
+
+/**
+ * 写入缓存
+ * @param {string} key - 缓存键
+ * @param {*} data - 数据
+ * @param {number} [ttl] - 存活时间（毫秒）
+ */
+const cacheSet = (key, data, ttl = DEFAULT_TTL) => {
+  cacheStore.set(key, { data, expiresAt: Date.now() + ttl })
+}
+
+/**
+ * 清除指定前缀的所有缓存
+ * @param {string} [prefix] - URL 前缀，不传则清除所有
+ */
+export const clearCache = (prefix) => {
+  if (!prefix) {
+    cacheStore.clear()
+    return
+  }
+  for (const key of cacheStore.keys()) {
+    if (key.startsWith(prefix)) {
+      cacheStore.delete(key)
+    }
+  }
+}
+
+/**
+ * 带缓存的 GET 请求
+ * @param {string} url - 请求 URL
+ * @param {Object} [params] - 请求参数
+ * @param {number} [ttl] - 缓存 TTL
+ * @returns {Promise} 响应数据
+ */
+const cachedGet = async (url, params, ttl = DEFAULT_TTL) => {
+  const cacheKey = buildCacheKey(url, params)
+  const cached = cacheGet(cacheKey)
+  if (cached !== null) {
+    return cached
+  }
+  const response = await (params
+    ? axiosInstance.get(url, { params })
+    : axiosInstance.get(url))
+  cacheSet(cacheKey, response, ttl)
+  return response
+}
+
 /**
  * ── 联调说明 ──────────────────────────────────────────
  * 本文件封装前端与后端的所有 API 交互方法，涉及大厅交互的
@@ -58,12 +139,13 @@ export const exitRoom = (roomId) => {
  * 获取房间详细信息
  *
  * 空值保护：roomNo 为空时直接拒绝。
+ * 缓存：30 秒 TTL，GET 请求缓存避免重复查询。
  */
 export const getRoomDetail = (roomNo) => {
   if (!roomNo) {
     return Promise.reject(new Error('房间号不能为空'))
   }
-  return axiosInstance.get(`/room/${roomNo}/detail`)
+  return cachedGet(`/room/${roomNo}/detail`)
 }
 
 /**
@@ -88,9 +170,9 @@ export const startGame = (roomId) => {
   return axiosInstance.post('/game/start', { roomId })
 }
 
-// 获取游戏状态
+// 获取游戏状态（缓存 10 秒，轮询场景下减少重复请求）
 export const getGameState = (roomId) => {
-  return axiosInstance.get(`/game/${roomId}/state`)
+  return cachedGet(`/game/${roomId}/state`, null, 10000)
 }
 
 // 创建房间
@@ -98,18 +180,18 @@ export const createRoom = (request) => {
   return axiosInstance.post('/new-game', request)
 }
 
-// 获取房间列表
+// 获取房间列表（缓存 10 秒）
 export const getRooms = () => {
-  return axiosInstance.get('/rooms').catch(error => {
+  return cachedGet('/rooms', null, 10000).catch(error => {
     console.error('获取房间列表失败:', error)
     // 网络错误时返回空列表，便于调用方统一处理空状态
     return { data: [] }
   })
 }
 
-// 获取用户当前所在房间
+// 获取用户当前所在房间（缓存 5 秒）
 export const getCurrentRoom = () => {
-  return axiosInstance.get('/room/current')
+  return cachedGet('/room/current', null, 5000)
 }
 
 // ========== 快速匹配模块 ==========
@@ -136,14 +218,14 @@ export const getMatchResult = () => {
 
 // ========== 玩家信息模块 ==========
 
-// 获取玩家统计信息
+// 获取玩家统计信息（缓存 60 秒）
 export const getPlayerStatistics = () => {
-  return axiosInstance.get('/player/statistics')
+  return cachedGet('/player/statistics', null, 60000)
 }
 
-// 获取玩家战绩记录
+// 获取玩家战绩记录（缓存 30 秒）
 export const getPlayerRecords = (params) => {
-  return axiosInstance.get('/player/records', { params })
+  return cachedGet('/player/records', params, 30000)
 }
 
 // ========== 大厅交互模块 ==========
@@ -172,9 +254,10 @@ const clearRoomState = (keys) => {
 /**
  * 获取大厅完整数据（房间列表 + 用户状态）
  * 用于优化大厅交互体验，减少前端多次调用的开销
+ * 缓存：10 秒 TTL，轮询场景下减少重复请求
  */
 export const getLobbyData = () => {
-  return axiosInstance.get('/lobby/data')
+  return cachedGet('/lobby/data', null, 10000)
 }
 
 /**
