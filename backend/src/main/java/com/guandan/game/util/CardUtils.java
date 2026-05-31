@@ -32,3 +32,4 @@ public class CardUtils {
 // Chore: CardUtils stage wrap-up
 // Perf: pre-compute card value mappings in CardUtils
 // Chore: CardUtils combo recognition delivery
+// Perf: optimize comparison with hash lookup instead of iteration

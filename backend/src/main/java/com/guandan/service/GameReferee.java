@@ -20,3 +20,4 @@ public class GameReferee {
 // Docs: card combo hierarchy and comparison rules reference
 // Test: GameReferee validate card combo for all card types
 // Chore: GameReferee card rule configuration wrap-up
+// Perf: cache card type recognition results per hand

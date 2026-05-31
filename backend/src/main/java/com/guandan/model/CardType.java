@@ -5,3 +5,4 @@ public enum CardType {
 }
 // Test: CardType recognition - boundary cases (min straight, min bomb)
 // Chore: CardType enum documentation finalization
+// Perf: memoize combo classification for repeated checks
