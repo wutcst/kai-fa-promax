@@ -20,3 +20,4 @@
 ## Test: boundary test points and exception paths for Phase 2 APIs
 ## Docs: Phase 2 API acceptance examples and notes for room/match endpoints
 ### Example: POST /rooms/create -> {code: 'ABC123', status: 'waiting'}
+## Test: GameRecord save/query test points and boundary scenarios
