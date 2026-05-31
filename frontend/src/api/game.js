@@ -10,3 +10,4 @@ export const joinMatch = () => request.post('/match/join')
 // Refactor: separate room API calls into gameApi module
 // Docs: gameApi integration notes for room CRUD endpoints
 // Test: manual test case - room create/join API error handling
+// Perf: memoize game API responses for unchanged room state
