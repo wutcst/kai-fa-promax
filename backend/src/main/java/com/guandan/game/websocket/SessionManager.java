@@ -17,3 +17,4 @@ public class SessionManager {
 // SessionManager: thread-safe session registry by playerId
 // Fix: concurrent modification during broadcast loop
 // Refactor: use ConcurrentHashMap for thread-safe session store
+// Docs: session lifecycle: register on @OnOpen, unregister on @OnClose, cleanup on disconnect
