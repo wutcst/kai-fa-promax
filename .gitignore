@@ -1,9 +1,36 @@
+# Maven
 target/
 *.jar
 *.war
+
+# IDE
 .idea/
 *.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# Node
 node_modules/
 dist/
+*.log
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Env
 .env
+.env.local
+application-local.yml
+
+# Docker
+docker-compose.override.yml
+
+# Temp
+*.tmp
+*.bak
+*.swp
+~*
+# IDE config grouping - refined ignore rules for consistent dev environment

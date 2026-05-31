@@ -1,0 +1,22 @@
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(32) NOT NULL UNIQUE,
+  password_hash VARCHAR(128) NOT NULL,
+  nickname VARCHAR(32) NOT NULL,
+  avatar_url VARCHAR(255),
+  status VARCHAR(20) DEFAULT 'ONLINE',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_stats (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL UNIQUE,
+  total_games INT DEFAULT 0,
+  win_games INT DEFAULT 0,
+  score INT DEFAULT 0
+);
+
+ALTER TABLE users ADD INDEX idx_username (username);
+ALTER TABLE user_stats ADD FOREIGN KEY (user_id) REFERENCES users(id);
+-- Regression check: schema constraint verification point
+-- Chore: schema finalization for stage delivery
