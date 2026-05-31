@@ -1052,6 +1052,36 @@ GET /api/match/status
 | 联调测试检查清单可独立执行验证 | ✅ 通过 | 何涛 | 2026-05-25 |
 | 验收示例包含请求/响应完整交互过程 | ✅ 通过 | 何涛 | 2026-05-25 |
 
+### 战绩记录 API 测试点与异常路径
+
+> 以下内容补充战绩记录接口和相关实体的测试验证点。
+
+#### GameRecord 实体验证点
+
+| 验证点 | 说明 | 正常场景 | 异常场景 |
+|--------|------|---------|---------|
+| TC-GR-001 | 创建 GameRecord | 所有必填字段非空 | - |
+| TC-GR-002 | roomId 关联 | 对应合法房间记录 | 房间不存在仍可插入 |
+| TC-GR-003 | winnerId 关联 | 必须是房间中的玩家 | null winnerId → 插入成功（预留） |
+| TC-GR-004 | score 验证 | 允许 0（平局兜底） | null score → 插入 null |
+| TC-GR-005 | createTime | 自动填充当前时间 | - |
+
+#### GameRecordService 验证点
+
+| 验证点 | 说明 | 正常场景 | 异常场景 |
+|--------|------|---------|---------|
+| TC-GRS-001 | saveGameRecord | 入库后 id 自增非空 | - |
+| TC-GRS-002 | 重复调用 | 同 roomId 允许多条记录 | - |
+| TC-GRS-003 | 赢家统计 | winGames 自增 | - |
+| TC-GRS-004 | 输家降级 | level 减少 1，最低为 2 | - |
+| TC-GRS-005 | 已存在 UserStats | updateById | - |
+| TC-GRS-006 | 不存在 UserStats | 自动 insert 新行 | - |
+| TC-GRS-007 | 异常：空玩家列表 | 走兜底逻辑 | - |
+| TC-GRS-008 | 异常：updatePlayerStats | 不影响主流程 | - |
+| TC-GRS-009 | 异常：updateRoomStatus | 不影响主流程 | - |
+| TC-GRS-010 | 边界：score=null | 兜底为 0 | - |
+| TC-GRS-011 | 边界：level=null | 不更新等级 | - |
+
 ### API 测试点与异常路径补充
 
 > 以下内容补充各 API 接口的测试点和异常路径，用于设计和执行联调测试。
