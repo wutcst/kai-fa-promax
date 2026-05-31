@@ -18,3 +18,4 @@ public class GameWebSocketServer {
 }
 // WS: onOpen register session, onClose cleanup and notify room
 // Fix: handle session close on game room disband
+// Refactor: extract message handler from WebSocket server
