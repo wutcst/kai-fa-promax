@@ -8,3 +8,4 @@ export function cardText(card) {
 // Fix: card display order consistency after sort toggle
 // Refactor: separate card sort and group utilities
 // Perf: DOM node reuse for card elements
+// Refactor: extract card rendering to CardRenderer component

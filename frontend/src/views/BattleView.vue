@@ -27,3 +27,4 @@ function pass() {}
 // Style: card arrangement - fan layout with overlap for compact display
 // Refactor: extract card selection logic to useCardSelection composable
 // Perf: virtual scroll for large hand - render only visible cards
+// Refactor: separate card state management from display logic
