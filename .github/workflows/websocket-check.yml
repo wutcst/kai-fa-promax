@@ -115,6 +115,14 @@ jobs:
       - name: Test WebSocket Connection
         run: |
           echo "开始WebSocket连接测试..."
+          # ============================================================
+          #  测试验证点：回归基础验证
+          # ============================================================
+          # [验证点-1] 环境变量加载：WS_CHECK_URL / WS_CHECK_TIMEOUT / WS_CHECK_LOG_LEVEL
+          # [验证点-2] HTTP 服务端口检测：curl http://localhost:${BACKEND_PORT:-8080}
+          # [验证点-3] WebSocket 连接握手：wscat -c "$WS_CHECK_URL"
+          # [验证点-4] 消息收发：发送 {"type":"ping"} 并检查 pong 响应
+          # [验证点-5] 超时自动断开：timeout $WS_CHECK_TIMEOUT 后连接关闭
           echo "目标URL: $WS_CHECK_URL"
           echo "超时设定: ${WS_CHECK_TIMEOUT}秒"
           echo "日志级别: $WS_CHECK_LOG_LEVEL"
