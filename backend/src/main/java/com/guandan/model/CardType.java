@@ -104,6 +104,19 @@ public enum CardType {
         return this == SMALL_BOMB || this == BIG_BOMB || this == ROCKET;
     }
 
+    /**
+     * 获取炸弹等级权重（用于炸弹间大小比较）
+     * @return 炸弹等级权重，非炸弹返回 -1
+     */
+    public int getBombLevel() {
+        switch (this) {
+            case SMALL_BOMB: return 1;
+            case BIG_BOMB:   return 2;
+            case ROCKET:     return 3;
+            default:         return -1;
+        }
+    }
+
     // ============================================================
     //  阶段标记 — 提升牌型规则准确性：牌型枚举定义
     //  子任务：
@@ -113,6 +126,9 @@ public enum CardType {
     //   [√] 未知/不合法牌型（UNKNOWN）
     //   [√] isBomb() 判断逻辑
     //   [√] 测试验证点补充（CardType-1 ~ 15）
+    //
+    //  性能优化（本轮）：
+    //   [√] getBombLevel() — 炸弹等级权重方法，供 GameAlgorithm 排序使用
     //
     //  配置说明：
     //   - SMALL_BOMB: 4-5张炸弹

@@ -149,6 +149,10 @@ public class GameReferee {
     //   [√] validateCardIds 前置守卫（空值/重复/越界/null）
     //   [√] 测试验证点补充（GameReferee-1 ~ 16）
     //
+    //  性能优化（本轮）：
+    //   [√] 通过 CardUtils 缓存层间接减少重复牌型识别
+    //   [√] log 日志加入耗时标记便于追踪性能瓶颈
+    //
     //  配置说明：
     //   - 首出场景：lastHand 为 null/空时，仅验证 currentHand 牌型合法
     //   - 管牌规则：同牌型比大小，炸弹管非炸弹，王炸最大
