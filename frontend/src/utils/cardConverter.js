@@ -110,7 +110,29 @@ export function cardToId(card, defaultDeck = 0) {
  * @returns {Array<Object>} 前端卡牌对象数组
  */
 export function idsToCards(cardIds) {
-  return cardIds.map(idToCard);
+  if (!cardIds || !Array.isArray(cardIds)) return []
+  return cardIds.map(id => {
+    try { return idToCard(id) } catch { return null }
+  }).filter(Boolean);
+}
+
+/**
+ * 批量转换前端卡牌对象数组为后端卡牌ID数组（性能优化版）
+ * 使用 for 循环代替 map 减少函数调用开销
+ * @param {Array<Object>} cardObjects 前端卡牌对象数组
+ * @returns {Array<number>} 后端卡牌ID数组
+ */
+export function bulkCardsToIds(cardObjects) {
+  if (!cardObjects || !Array.isArray(cardObjects)) return []
+  const result = []
+  for (let i = 0; i < cardObjects.length; i++) {
+    try {
+      result.push(cardToId(cardObjects[i], cardObjects[i].deck))
+    } catch (e) {
+      console.warn('bulkCardsToIds: 跳过无效卡牌', cardObjects[i], e)
+    }
+  }
+  return result
 }
 
 /**
@@ -191,4 +213,16 @@ export function isWildCard(card, levelCardRank) {
     return false;
   }
   return isLevelCard(card, levelCardRank) && card.suit === 'hearts';
+}
+
+/**
+ * 判断两张卡牌是否相同（按 suit + rank + deck 比较）
+ * 用于手牌渲染时去重和对比
+ * @param {Object} a 卡牌A
+ * @param {Object} b 卡牌B
+ * @returns {boolean}
+ */
+export function isSameCards(a, b) {
+  if (!a || !b) return false
+  return a.suit === b.suit && a.rank === b.rank && a.deck === b.deck
 }

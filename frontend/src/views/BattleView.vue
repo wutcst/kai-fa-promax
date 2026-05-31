@@ -344,7 +344,7 @@ const lastTapTime = ref(0)
 const tapDebounceMs = 150
 
 // ============================================================
-//  虚拟列表和 DOM 复用 —— 避免大数量手牌全量重新渲染
+//  手牌缓存与渲染性能优化
 // ============================================================
 
 /**
@@ -357,6 +357,20 @@ watch(myCards, () => {
   cardKeyCacheVersion++
   cardKeyCache.value = cardKeyCacheVersion
 }, { deep: false })
+
+/**
+ * 计算手牌缓存 key 列表（减少 computed 内重复计算）
+ */
+const visibleCardKeys = computed(() => {
+  const k = cardKeyCache.value
+  const cards = visibleCards.value
+  const keys = []
+  for (let i = 0; i < cards.length; i++) {
+    const c = cards[i]
+    keys.push(`${k}-${c.suit}-${c.rank}-${c.deck}`)
+  }
+  return keys
+})
 
 /**
  * 仅渲染可见范围内的手牌（窗口裁剪策略）
@@ -384,18 +398,6 @@ const visibleCards = computed(() => {
   visibleStart.value = start
   visibleEnd.value = end
   return myCards.value.slice(start, end)
-})
-
-/** 可见手牌的 key 列表（用于 :key 绑定） */
-const visibleCardKeys = computed(() => {
-  const k = cardKeyCache.value
-  const cards = visibleCards.value
-  const keys = []
-  for (let i = 0; i < cards.length; i++) {
-    const c = cards[i]
-    keys.push(`${k}-${c.suit}-${c.rank}-${c.deck}`)
-  }
-  return keys
 })
 
 const deskDisplay = ref({
@@ -898,13 +900,16 @@ const getCardName = (card) => {
 const sortCards = () => {
   const suitPriority = { spades: 4, hearts: 3, clubs: 2, diamonds: 1, jokers: 0 }
   const order = [15, 14, 2, 1, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
-  const rankOrderValue = (rank) => {
-    const idx = order.indexOf(Number(rank))
-    return idx === -1 ? order.length : idx
+  // 使用 Map 缓存 rank 排序值，避免每次比较重复 indexOf
+  const orderMap = new Map()
+  order.forEach((r, i) => orderMap.set(r, i))
+  const getRankOrder = (rank) => {
+    const v = orderMap.get(Number(rank))
+    return v !== undefined ? v : order.length
   }
   myCards.value = [...myCards.value].sort((a, b) => {
-    const ra = rankOrderValue(a.rank)
-    const rb = rankOrderValue(b.rank)
+    const ra = getRankOrder(a.rank)
+    const rb = getRankOrder(b.rank)
     if (ra !== rb) return ra - rb
     return (suitPriority[b.suit] || 0) - (suitPriority[a.suit] || 0)
   })
