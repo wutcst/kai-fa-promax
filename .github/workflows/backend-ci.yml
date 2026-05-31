@@ -28,6 +28,8 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          # cache: maven  # removed: no root pom.xml present, causes CI failure
 
+      # Compile backend module only -- skip root pom
       - name: Compile Backend
         run: mvn compile -f backend/pom.xml --no-transfer-progress
