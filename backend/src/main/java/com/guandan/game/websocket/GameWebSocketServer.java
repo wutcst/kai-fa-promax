@@ -157,18 +157,50 @@ public class GameWebSocketServer {
 
             // 如果玩家之前在房间中，恢复房间信息
             if (roomId != null && !roomId.isEmpty()) {
+                // 检查房间是否还存在
                 GameRoom room = gameLogicService.getRoom(roomId);
                 if (room != null) {
+                    // 恢复玩家到房间
                     gameLogicService.joinRoom(playerId, roomId);
                     sessionManager.reconnect(playerId);
 
-                    // 发送重连成功消息
+                    // 发送重连成功消息（包含完整房间状态）
                     Map<String, Object> reconnectData = new java.util.HashMap<>();
                     reconnectData.put("status", "reconnected");
                     reconnectData.put("roomId", roomId);
+
+                    // 补充重连状态：手牌、当前玩家、游戏状态
+                    try {
+                        if (room.getStatus() == GameRoom.GameStatus.PLAYING) {
+                            List<Integer> myCards = room.getHandCards().get(playerId);
+                            reconnectData.put("myCards", myCards != null ? myCards : new java.util.ArrayList<>());
+                            reconnectData.put("currentPlayerId", room.getCurrentPlayerId());
+                            reconnectData.put("gameStatus", "PLAYING");
+                            reconnectData.put("lastHandCards", room.getLastHandCards());
+                            reconnectData.put("consecutivePassCount", room.getConsecutivePassCount());
+                        }
+                    } catch (Exception e) {
+                        log.warn("补充重连状态信息失败", e);
+                    }
+
                     sendToPlayer(playerId, new WebSocketMessage("RECONNECT_SUCCESS", reconnectData));
+
+                    // 广播其他玩家该玩家已重连
+                    try {
+                        Map<String, Object> reconnectNotice = new java.util.HashMap<>();
+                        reconnectNotice.put("playerId", playerId);
+                        reconnectNotice.put("message", "玩家已重连");
+                        for (String pid : room.getPlayerIds()) {
+                            if (!pid.equals(playerId)) {
+                                sendToPlayer(pid, new WebSocketMessage("PLAYER_RECONNECTED", reconnectNotice));
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("广播重连通知失败", e);
+                    }
                 } else {
                     log.warn("玩家 {} 重连失败，房间 {} 不存在", playerId, roomId);
+                    // 房间不存在，清除房间信息
                     sessionManager.addSession(playerId, null);
                 }
             } else {
@@ -187,6 +219,11 @@ public class GameWebSocketServer {
      */
     @OnMessage
     public void onMessage(String message, Session session, @PathParam("playerId") String playerId) {
+        if (playerId == null || playerId.trim().isEmpty()) {
+            log.warn("消息来源 playerId 为空，忽略处理");
+            return;
+        }
+
         log.debug("收到消息 from {}: {}", playerId, message);
 
         try {
@@ -252,13 +289,19 @@ public class GameWebSocketServer {
      */
     @OnClose
     public void onClose(Session session, CloseReason closeReason, @PathParam("playerId") String playerId) {
+        if (playerId == null || playerId.trim().isEmpty()) {
+            log.warn("关闭连接时 playerId 为空，跳过清理");
+            return;
+        }
+
         log.info("WebSocket连接关闭: playerId={}, sessionId={}, closeReason={}",
-                playerId, session.getId(), closeReason);
+                playerId, session != null ? session.getId() : "null", closeReason);
 
         boolean isNormalClose = false;
         try {
             if (closeReason != null && closeReason.getCloseCode() != null) {
                 int code = closeReason.getCloseCode().getCode();
+                // 1000 Normal closure / 1001 Going away（关闭页面/刷新常见）
                 isNormalClose = (code == 1000 || code == 1001);
             }
         } catch (Exception ignored) {
@@ -271,6 +314,7 @@ public class GameWebSocketServer {
         }
 
         if (isNormalClose) {
+            // 正常关闭：视为主动离开房间（删除房间玩家记录，避免房间一直显示"游戏中"）
             try {
                 gameLogicService.removePlayer(playerId);
             } catch (Exception ignored) {
@@ -280,15 +324,39 @@ public class GameWebSocketServer {
             } catch (Exception ignored) {
             }
         } else {
+            // 异常断线：标记离线，保留数据支持重连
             sessionManager.markOffline(playerId);
         }
 
+        // 通知房间内其他玩家
         if (room != null) {
             Map<String, Object> disconnectData = new java.util.HashMap<>();
             disconnectData.put("playerId", playerId);
             disconnectData.put("reason", isNormalClose ? "玩家离开" : "玩家掉线");
             WebSocketMessage message = new WebSocketMessage("PLAYER_DISCONNECT", disconnectData);
             broadcastToRoom(room, playerId, message);
+
+            // 广播房间信息更新
+            try {
+                broadcastRoomInfoUpdate(room.getRoomId());
+            } catch (Exception ignored) {
+            }
+
+            // 房间没人了 / 或者游戏中有人离开：把数据库房间状态置为结束，避免大厅一直显示"游戏中"
+            try {
+                String roomNo = room.getRoomId().replace("room_", "");
+                com.guandan.entity.Room dbRoom = com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
+                        .getRoomByRoomNo(roomNo);
+                if (dbRoom != null) {
+                    int cnt = com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
+                            .getPlayerCount(dbRoom.getId());
+                    if (cnt <= 0 || dbRoom.getStatus() == 1) {
+                        com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
+                                .updateRoomStatus(dbRoom.getId(), 2);
+                    }
+                }
+            } catch (Exception ignored) {
+            }
         }
     }
 
@@ -321,6 +389,10 @@ public class GameWebSocketServer {
      * 处理心跳消息
      */
     private void handleHeartbeat(String playerId) {
+        if (playerId == null || playerId.trim().isEmpty()) {
+            return;
+        }
+
         sessionManager.updateHeartbeat(playerId);
         log.debug("玩家 {} 心跳更新", playerId);
 
@@ -362,11 +434,16 @@ public class GameWebSocketServer {
             if (data instanceof Map) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> dataMap = (Map<String, Object>) data;
-                if (dataMap.containsKey("cards")) {
+                if (dataMap != null && dataMap.containsKey("cards")) {
                     @SuppressWarnings("unchecked")
                     List<Integer> cards = (List<Integer>) dataMap.get("cards");
                     cardIds = cards;
                 }
+            }
+
+            // 空值兜底：null 视为空列表（过牌）
+            if (cardIds == null) {
+                cardIds = new java.util.ArrayList<>();
             }
 
             boolean success = gameLogicService.playCards(playerId, cardIds);
@@ -397,6 +474,7 @@ public class GameWebSocketServer {
                     }
                 }
             } else {
+                // 获取详细的错误原因提示
                 GameRoom room = gameLogicService.getPlayerRoom(playerId);
                 if (room != null) {
                     String currentPlayerId = room.getCurrentPlayerId();
@@ -404,7 +482,24 @@ public class GameWebSocketServer {
                         sendToPlayer(playerId, WebSocketMessage.error("现在不是你的回合！"));
                         return;
                     }
-                    sendToPlayer(playerId, WebSocketMessage.error("出牌失败，请检查牌型或牌面大小"));
+
+                    // 判断具体错误类型
+                    List<Integer> hand = room.getPlayerHandCards(playerId);
+                    List<Integer> lastHand = room.getLastHandCards();
+                    int levelCardRank = room.getLevelCardRank();
+
+                    if (cardIds == null) {
+                        sendToPlayer(playerId, WebSocketMessage.error("请选择要出的牌"));
+                    } else if (hand == null || !hand.containsAll(cardIds)) {
+                        sendToPlayer(playerId, WebSocketMessage.error("手牌中不包含指定的卡牌"));
+                    } else if (gameReferee != null && !gameReferee.isValidHand(cardIds, levelCardRank)) {
+                        sendToPlayer(playerId, WebSocketMessage.error("牌型不合法，请检查出牌规则"));
+                    } else if (lastHand != null && !lastHand.isEmpty() && gameReferee != null
+                            && !gameReferee.canBeat(lastHand, cardIds, levelCardRank)) {
+                        sendToPlayer(playerId, WebSocketMessage.error("牌太小，无法管住上一手牌"));
+                    } else {
+                        sendToPlayer(playerId, WebSocketMessage.error("出牌失败，请重试"));
+                    }
                 } else {
                     sendToPlayer(playerId, WebSocketMessage.error("出牌失败：房间不存在"));
                 }
@@ -624,7 +719,7 @@ public class GameWebSocketServer {
      * 广播清空桌面
      */
     public static void broadcastTableClear(String gameRoomId) {
-        if (gameLogicService == null) {
+        if (gameLogicService == null || gameRoomId == null || gameRoomId.trim().isEmpty()) {
             return;
         }
 
@@ -635,8 +730,13 @@ public class GameWebSocketServer {
             }
 
             WebSocketMessage msg = new WebSocketMessage("TABLE_CLEAR", new java.util.HashMap<>());
-            for (String playerId : gameRoom.getPlayerIds()) {
-                sendToPlayer(playerId, msg);
+            List<String> playerIds = gameRoom.getPlayerIds();
+            if (playerIds != null) {
+                for (String playerId : playerIds) {
+                    if (playerId != null) {
+                        sendToPlayer(playerId, msg);
+                    }
+                }
             }
         } catch (Exception e) {
             log.warn("广播清桌面失败: roomId={}", gameRoomId, e);
@@ -655,10 +755,17 @@ public class GameWebSocketServer {
         int successCount = 0;
         int failCount = 0;
 
-        for (int i = 0; i < room.getPlayerIds().size(); i++) {
-            String playerId = room.getPlayerIds().get(i);
+        List<String> playerIds = room.getPlayerIds();
+        for (int i = 0; i < playerIds.size(); i++) {
+            String playerId = playerIds.get(i);
+            if (playerId == null) {
+                failCount++;
+                continue;
+            }
+
             try {
-                List<Integer> myCards = room.getHandCards().get(playerId);
+                Map<String, List<Integer>> handCards = room.getHandCards();
+                List<Integer> myCards = handCards != null ? handCards.get(playerId) : null;
                 if (myCards == null) {
                     log.error("玩家 {} 的手牌数据不存在", playerId);
                     failCount++;
@@ -755,22 +862,27 @@ public class GameWebSocketServer {
      */
     public static void broadcastGameEnd(String gameRoomId, Long winnerId, Integer score,
                                          Integer levelTeamA, Integer levelTeamB) {
-        if (gameLogicService == null) {
-            log.warn("服务未初始化，无法广播游戏结束");
+        if (gameLogicService == null || gameRoomId == null || gameRoomId.trim().isEmpty()) {
+            log.warn("服务未初始化或房间ID为空，无法广播游戏结束");
             return;
         }
 
         try {
             Map<String, Object> endData = new java.util.HashMap<>();
             endData.put("winnerId", winnerId);
-            endData.put("score", score);
+            endData.put("score", score != null ? score : 0);
             endData.put("roomId", gameRoomId);
             endData.put("levelTeamA", levelTeamA);
             endData.put("levelTeamB", levelTeamB);
 
             WebSocketMessage endMessage = new WebSocketMessage("GAME_END", endData);
-            for (String playerId : gameLogicService.getPlayerIdsInRoom(gameRoomId)) {
-                sendToPlayer(playerId, endMessage);
+            List<String> playerIds = gameLogicService.getPlayerIdsInRoom(gameRoomId);
+            if (playerIds != null) {
+                for (String playerId : playerIds) {
+                    if (playerId != null) {
+                        sendToPlayer(playerId, endMessage);
+                    }
+                }
             }
 
             log.info("房间 {} 游戏结束已广播：获胜者={}, 分数={}", gameRoomId, winnerId, score);
