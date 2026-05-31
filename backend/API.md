@@ -21,3 +21,4 @@
 ## Docs: Phase 2 API acceptance examples and notes for room/match endpoints
 ### Example: POST /rooms/create -> {code: 'ABC123', status: 'waiting'}
 ## Test: GameRecord save/query test points and boundary scenarios
+## Fix: verified game record save boundary - duplicate game, missing player IDs
