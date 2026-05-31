@@ -224,6 +224,7 @@ import { idToCard, cardsToIds, bulkIdToCard, isSameCards } from '../utils/cardCo
 import webSocketService, { WS_MESSAGE_TYPES } from '../api/websocket'
 import { getRoomDetail, ready, exitRoom } from '../api/game'
 import soundManager from '../utils/soundManager'
+import { usePlayCard } from '../composables/usePlayCard'
 
 // 路由实例
 const router = useRouter()
@@ -989,69 +990,22 @@ const handleDragDrop = (targetIndex, event) => {
   draggedCardIndex.value = null
 }
 
-// 出牌逻辑
-const playCards = () => {
-  if (selectedCards.value.length === 0 || currentPlayer.value !== '我') {
-    if (selectedCards.value.length === 0 && currentPlayer.value === '我') {
-      ElMessage.info('请先选择要出的牌')
-    }
-    return
-  }
-  try {
-    const selectedCardObjects = selectedCards.value.map(index => {
-      const card = myCards.value[index]
-      // 空安全：如果 index 越界或 card 为空，返回一个容错对象
-      if (!card) {
-        console.warn('playCards: 选中的手牌索引越界', index, '手牌长度:', myCards.value.length)
-        return null
-      }
-      return card
-    }).filter(c => c !== null)
-
-    if (selectedCardObjects.length === 0) {
-      ElMessage.error('选中的卡牌数据异常，请重新选择')
-      selectedCards.value = []
-      return
-    }
-    const cardIds = cardsToIds(selectedCardObjects)
-    webSocketService.send(WS_MESSAGE_TYPES.PLAY_CARD, {
-      cards: cardIds
-    })
-    soundManager.play('play_card')
-    selectedCards.value = []
-  soundManager.play('play_card')
-  } catch (error) {
-    console.error('出牌失败:', error)
-    ElMessage.error('出牌失败，请重试')
-    // 出牌失败时清理选中状态，避免界面卡死
-    selectedCards.value = []
-  }
-}
-
-// 检查是否为顺子（点数连续）
-const isStraightHand = (cards) => {
-  if (cards.length < 5) return false
-  const validCards = cards.filter(card => card.rank < 14)
-  if (validCards.length !== cards.length) return false
-  const ranks = validCards.map(card => card.rank).sort((a, b) => a - b)
-  for (let i = 1; i < ranks.length; i++) {
-    if (ranks[i] !== ranks[i - 1] + 1) {
-      return false
-    }
-  }
-  return true
-}
-
-// 不出
-const pass = () => {
-  if (currentPlayer.value !== '我') {
-    ElMessage.info('现在不是你的回合！')
-    return
-  }
-  webSocketService.send(WS_MESSAGE_TYPES.PLAY_CARD, {
-    cards: []
-  })
-}
+// 使用 usePlayCard composable 替代内联出牌逻辑
+const {
+  playCards,
+  pass,
+  toggleSelectCard,
+  clearSelection,
+  isStraightHand: checkStraight
+} = usePlayCard({
+  selectedCards,
+  myCards,
+  currentPlayer,
+  webSocketService,
+  WS_MESSAGE_TYPES,
+  soundManager,
+  ElMessage
+})
 
 // 提示
 const hint = () => {
@@ -1243,7 +1197,7 @@ const handlePlayerAction = (data) => {
     } else if (position === '我') {
       const cardIds = cards
       const cardsToPlay = cardIds.map(id => idToCard(id))
-      if (cardsToPlay.length >= 5 && isStraightHand(cardsToPlay)) {
+      if (cardsToPlay.length >= 5 && checkStraight(cardsToPlay)) {
         cardsToPlay.sort((a, b) => {
           if (a.rank !== b.rank) {
             return a.rank - b.rank
