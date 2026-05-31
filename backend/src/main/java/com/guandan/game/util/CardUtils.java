@@ -105,6 +105,22 @@ public class CardUtils {
     // 缓存花色名称查找
     private static final Map<Integer, String> SUIT_NAME_CACHE = new HashMap<>();
 
+    // ============================================================
+    //  性能优化：牌型识别结果缓存，减少重复计算
+    // ============================================================
+
+    /** 牌型识别结果缓存（key = cardIds.toString + "|" + levelCardRank） */
+    private static final Map<String, String> CARD_TYPE_CACHE = new HashMap<>();
+
+    /** 牌值计算结果缓存 */
+    private static final Map<String, Integer> CARD_VALUE_CACHE = new HashMap<>();
+
+    /** 顺子判定缓存 */
+    private static final Map<String, Boolean> STRAIGHT_CACHE = new HashMap<>();
+
+    /** 同花顺判定缓存 */
+    private static final Map<String, Boolean> FLUSH_CACHE = new HashMap<>();
+
     static {
         // 初始化缓存
         for (int i = 0; i < 108; i++) {
@@ -219,14 +235,27 @@ public class CardUtils {
     }
 
     /**
-     * 获取牌型
-     * @param cardIds 卡牌ID列表
+     * 获取牌型（含缓存，含空值保护）
+     * @param cardIds 卡牌ID列表（可为 null）
      * @param levelCardRank 级牌点数 (0-12对应2-A)
-     * @return 牌型字符串
+     * @return 牌型字符串，null/空列表返回 null
      */
     public static String getCardType(List<Integer> cardIds, int levelCardRank) {
         if (cardIds == null || cardIds.isEmpty()) {
             return null;
+        }
+
+        // 缓存键构建
+        StringBuilder sb = new StringBuilder();
+        for (int id : cardIds) {
+            sb.append(id).append(',');
+        }
+        sb.append('|').append(levelCardRank);
+        String cacheKey = sb.toString();
+
+        String cached = CARD_TYPE_CACHE.get(cacheKey);
+        if (cached != null) {
+            return cached;
         }
 
         // 统计每个点数的数量
@@ -234,50 +263,64 @@ public class CardUtils {
 
         // 检查是否为炸弹（4张及以上同点数）
         if (rankCount.values().stream().anyMatch(count -> count >= 4)) {
+            CARD_TYPE_CACHE.put(cacheKey, "炸弹");
             return "炸弹";
         }
 
         // 检查牌的数量
+        String result;
         switch (cardIds.size()) {
             case 1:
-                return "单张";
+                result = "单张";
+                break;
             case 2:
                 // 检查是否为对子
                 if (rankCount.size() == 1) {
-                    return "对子";
+                    result = "对子";
+                } else {
+                    result = "无法识别";
                 }
-                return "无法识别";
+                break;
             case 3:
                 // 检查是否为三张
                 if (rankCount.size() == 1) {
-                    return "三张";
+                    result = "三张";
+                } else {
+                    result = "无法识别";
                 }
-                return "无法识别";
+                break;
             case 5:
                 // 检查是否为顺子、三带二、同花顺
                 if (isStraight(cardIds)) {
-                    return "顺子";
+                    result = "顺子";
+                } else if (isThreeWithTwo(cardIds)) {
+                    result = "三带二";
+                } else if (isStraightFlush(cardIds)) {
+                    result = "同花顺";
+                } else {
+                    result = "无法识别";
                 }
-                if (isThreeWithTwo(cardIds)) {
-                    return "三带二";
-                }
-                if (isStraightFlush(cardIds)) {
-                    return "同花顺";
-                }
-                return "无法识别";
+                break;
             case 6:
                 // 检查是否为钢板（连续三张）
                 if (isSteelPlate(cardIds)) {
-                    return "钢板";
+                    result = "钢板";
+                } else {
+                    result = "无法识别";
                 }
-                return "无法识别";
+                break;
             default:
                 // 检查是否为顺子（5张以上）
                 if (cardIds.size() >= 5 && isStraight(cardIds)) {
-                    return "顺子";
+                    result = "顺子";
+                } else {
+                    result = "无法识别";
                 }
-                return "无法识别";
+                break;
         }
+
+        CARD_TYPE_CACHE.put(cacheKey, result);
+        return result;
     }
 
     /**
@@ -305,7 +348,7 @@ public class CardUtils {
     }
 
     /**
-     * 获取牌值（用于比较大小）
+     * 获取牌值（用于比较大小，含缓存）
      * @param cardIds 卡牌ID列表
      * @return 牌值
      */
@@ -314,38 +357,61 @@ public class CardUtils {
             return null;
         }
 
+        // 缓存键构建
+        StringBuilder sb = new StringBuilder();
+        for (int id : cardIds) {
+            sb.append(id).append(',');
+        }
+        String cacheKey = sb.toString();
+
+        Integer cached = CARD_VALUE_CACHE.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         // 统计每个点数的数量
         Map<Integer, Integer> rankCount = countRanks(cardIds);
 
         // 炸弹：返回最大点数
         if (rankCount.values().stream().anyMatch(count -> count >= 4)) {
-            return rankCount.keySet().stream().max(Integer::compare).orElse(null);
+            Integer val = rankCount.keySet().stream().max(Integer::compare).orElse(null);
+            if (val != null) CARD_VALUE_CACHE.put(cacheKey, val);
+            return val;
         }
 
         // 单张：返回点数
         if (cardIds.size() == 1) {
-            return getRank(cardIds.get(0));
+            Integer val = getRank(cardIds.get(0));
+            CARD_VALUE_CACHE.put(cacheKey, val);
+            return val;
         }
 
         // 对子：返回点数
         if (cardIds.size() == 2 && rankCount.size() == 1) {
-            return rankCount.keySet().iterator().next();
+            Integer val = rankCount.keySet().iterator().next();
+            CARD_VALUE_CACHE.put(cacheKey, val);
+            return val;
         }
 
         // 三张：返回点数
         if (cardIds.size() == 3 && rankCount.size() == 1) {
-            return rankCount.keySet().iterator().next();
+            Integer val = rankCount.keySet().iterator().next();
+            CARD_VALUE_CACHE.put(cacheKey, val);
+            return val;
         }
 
         // 顺子：返回最大点数
         if (isStraight(cardIds)) {
-            return cardIds.stream().mapToInt(CardUtils::getRank).max().orElse(-1);
+            Integer val = cardIds.stream().mapToInt(CardUtils::getRank).max().orElse(-1);
+            CARD_VALUE_CACHE.put(cacheKey, val);
+            return val;
         }
 
         // 三带二：返回三张的点数
         if (isThreeWithTwo(cardIds)) {
             for (Map.Entry<Integer, Integer> entry : rankCount.entrySet()) {
                 if (entry.getValue() == 3) {
+                    CARD_VALUE_CACHE.put(cacheKey, entry.getKey());
                     return entry.getKey();
                 }
             }
@@ -353,14 +419,19 @@ public class CardUtils {
 
         // 钢板：返回最大点数
         if (isSteelPlate(cardIds)) {
-            return cardIds.stream().mapToInt(CardUtils::getRank).max().orElse(-1);
+            Integer val = cardIds.stream().mapToInt(CardUtils::getRank).max().orElse(-1);
+            CARD_VALUE_CACHE.put(cacheKey, val);
+            return val;
         }
 
         // 同花顺：返回最大点数
         if (isStraightFlush(cardIds)) {
-            return cardIds.stream().mapToInt(CardUtils::getRank).max().orElse(-1);
+            Integer val = cardIds.stream().mapToInt(CardUtils::getRank).max().orElse(-1);
+            CARD_VALUE_CACHE.put(cacheKey, val);
+            return val;
         }
 
+        CARD_VALUE_CACHE.put(cacheKey, null);
         return null;
     }
 
@@ -405,13 +476,25 @@ public class CardUtils {
     }
 
     /**
-     * 检查是否为顺子
+     * 检查是否为顺子（含缓存）
      * @param cardIds 卡牌ID列表
      * @return 是否为顺子
      */
     private static boolean isStraight(List<Integer> cardIds) {
         if (cardIds.size() < 5) {
             return false;
+        }
+
+        // 缓存键
+        StringBuilder sb = new StringBuilder("S:");
+        for (int id : cardIds) {
+            sb.append(id).append(',');
+        }
+        String cacheKey = sb.toString();
+
+        Boolean cached = STRAIGHT_CACHE.get(cacheKey);
+        if (cached != null) {
+            return cached;
         }
 
         // 获取所有点数并排序
@@ -423,16 +506,19 @@ public class CardUtils {
 
         // 顺子不能包含大小王，也不能包含2
         if (ranks.stream().anyMatch(r -> r >= 13 || r == 12)) {
+            STRAIGHT_CACHE.put(cacheKey, false);
             return false;
         }
 
         // 检查点数是否连续
         for (int i = 1; i < ranks.size(); i++) {
             if (ranks.get(i) != ranks.get(i - 1) + 1) {
+                STRAIGHT_CACHE.put(cacheKey, false);
                 return false;
             }
         }
 
+        STRAIGHT_CACHE.put(cacheKey, true);
         return true;
     }
 
@@ -491,7 +577,7 @@ public class CardUtils {
     }
 
     /**
-     * 检查是否为同花顺
+     * 检查是否为同花顺（含缓存）
      * @param cardIds 卡牌ID列表
      * @return 是否为同花顺
      */
@@ -500,23 +586,39 @@ public class CardUtils {
             return false;
         }
 
+        // 缓存键
+        StringBuilder sb = new StringBuilder("F:");
+        for (int id : cardIds) {
+            sb.append(id).append(',');
+        }
+        String cacheKey = sb.toString();
+
+        Boolean cached = FLUSH_CACHE.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         // 检查是否为顺子
         if (!isStraight(cardIds)) {
+            FLUSH_CACHE.put(cacheKey, false);
             return false;
         }
 
         // 检查是否为同一花色
         int suit = getSuit(cardIds.get(0));
         if (suit == -1) {
+            FLUSH_CACHE.put(cacheKey, false);
             return false; // 包含大小王，不是同花顺
         }
 
         for (Integer cardId : cardIds) {
             if (getSuit(cardId) != suit) {
+                FLUSH_CACHE.put(cacheKey, false);
                 return false;
             }
         }
 
+        FLUSH_CACHE.put(cacheKey, true);
         return true;
     }
 
@@ -830,5 +932,12 @@ public class CardUtils {
     //   [√] 大小比较逻辑（getCardValue / compareHandValues）
     //   [√] 非法牌拦截（越界/重复/null/空列表守卫）
     //   [√] 测试验证点补充（CardUtils-1 ~ 40）
+    //
+    //  性能优化（本轮）：
+    //   [√] CARD_TYPE_CACHE — 牌型字符串缓存（key = cardIds + levelCardRank）
+    //   [√] CARD_VALUE_CACHE — 牌值计算结果缓存
+    //   [√] STRAIGHT_CACHE — 顺子判定缓存
+    //   [√] FLUSH_CACHE — 同花顺判定缓存
+    //   [√] 所有高频路径优先查缓存，避免重复遍历和计算
     // ============================================================
 }
