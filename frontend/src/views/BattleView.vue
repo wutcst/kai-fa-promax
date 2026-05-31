@@ -224,6 +224,7 @@ import { idToCard, cardsToIds, bulkIdToCard, isSameCards } from '../utils/cardCo
 import webSocketService, { WS_MESSAGE_TYPES } from '../api/websocket'
 import { getRoomDetail, ready, exitRoom } from '../api/game'
 import soundManager from '../utils/soundManager'
+import { usePlayCard } from '../composables/usePlayCard'
 
 // 路由实例
 const router = useRouter()
@@ -344,7 +345,7 @@ const lastTapTime = ref(0)
 const tapDebounceMs = 150
 
 // ============================================================
-//  虚拟列表和 DOM 复用 —— 避免大数量手牌全量重新渲染
+//  手牌缓存与渲染性能优化
 // ============================================================
 
 /**
@@ -357,6 +358,20 @@ watch(myCards, () => {
   cardKeyCacheVersion++
   cardKeyCache.value = cardKeyCacheVersion
 }, { deep: false })
+
+/**
+ * 计算手牌缓存 key 列表（减少 computed 内重复计算）
+ */
+const visibleCardKeys = computed(() => {
+  const k = cardKeyCache.value
+  const cards = visibleCards.value
+  const keys = []
+  for (let i = 0; i < cards.length; i++) {
+    const c = cards[i]
+    keys.push(`${k}-${c.suit}-${c.rank}-${c.deck}`)
+  }
+  return keys
+})
 
 /**
  * 仅渲染可见范围内的手牌（窗口裁剪策略）
@@ -384,18 +399,6 @@ const visibleCards = computed(() => {
   visibleStart.value = start
   visibleEnd.value = end
   return myCards.value.slice(start, end)
-})
-
-/** 可见手牌的 key 列表（用于 :key 绑定） */
-const visibleCardKeys = computed(() => {
-  const k = cardKeyCache.value
-  const cards = visibleCards.value
-  const keys = []
-  for (let i = 0; i < cards.length; i++) {
-    const c = cards[i]
-    keys.push(`${k}-${c.suit}-${c.rank}-${c.deck}`)
-  }
-  return keys
 })
 
 const deskDisplay = ref({
@@ -898,13 +901,16 @@ const getCardName = (card) => {
 const sortCards = () => {
   const suitPriority = { spades: 4, hearts: 3, clubs: 2, diamonds: 1, jokers: 0 }
   const order = [15, 14, 2, 1, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
-  const rankOrderValue = (rank) => {
-    const idx = order.indexOf(Number(rank))
-    return idx === -1 ? order.length : idx
+  // 使用 Map 缓存 rank 排序值，避免每次比较重复 indexOf
+  const orderMap = new Map()
+  order.forEach((r, i) => orderMap.set(r, i))
+  const getRankOrder = (rank) => {
+    const v = orderMap.get(Number(rank))
+    return v !== undefined ? v : order.length
   }
   myCards.value = [...myCards.value].sort((a, b) => {
-    const ra = rankOrderValue(a.rank)
-    const rb = rankOrderValue(b.rank)
+    const ra = getRankOrder(a.rank)
+    const rb = getRankOrder(b.rank)
     if (ra !== rb) return ra - rb
     return (suitPriority[b.suit] || 0) - (suitPriority[a.suit] || 0)
   })
@@ -984,50 +990,22 @@ const handleDragDrop = (targetIndex, event) => {
   draggedCardIndex.value = null
 }
 
-// 出牌逻辑
-const playCards = () => {
-  if (selectedCards.value.length === 0 || currentPlayer.value !== '我') return
-  try {
-    const selectedCardObjects = selectedCards.value.map(index => {
-      const card = myCards.value[index]
-      return card
-    })
-    const cardIds = cardsToIds(selectedCardObjects)
-    webSocketService.send(WS_MESSAGE_TYPES.PLAY_CARD, {
-      cards: cardIds
-    })
-    soundManager.play('play_card')
-    selectedCards.value = []
-  } catch (error) {
-    console.error('出牌失败:', error)
-    ElMessage.error('出牌失败，请重试')
-  }
-}
-
-// 检查是否为顺子（点数连续）
-const isStraightHand = (cards) => {
-  if (cards.length < 5) return false
-  const validCards = cards.filter(card => card.rank < 14)
-  if (validCards.length !== cards.length) return false
-  const ranks = validCards.map(card => card.rank).sort((a, b) => a - b)
-  for (let i = 1; i < ranks.length; i++) {
-    if (ranks[i] !== ranks[i - 1] + 1) {
-      return false
-    }
-  }
-  return true
-}
-
-// 不出
-const pass = () => {
-  if (currentPlayer.value !== '我') {
-    ElMessage.info('现在不是你的回合！')
-    return
-  }
-  webSocketService.send(WS_MESSAGE_TYPES.PLAY_CARD, {
-    cards: []
-  })
-}
+// 使用 usePlayCard composable 替代内联出牌逻辑
+const {
+  playCards,
+  pass,
+  toggleSelectCard,
+  clearSelection,
+  isStraightHand: checkStraight
+} = usePlayCard({
+  selectedCards,
+  myCards,
+  currentPlayer,
+  webSocketService,
+  WS_MESSAGE_TYPES,
+  soundManager,
+  ElMessage
+})
 
 // 提示
 const hint = () => {
@@ -1219,7 +1197,7 @@ const handlePlayerAction = (data) => {
     } else if (position === '我') {
       const cardIds = cards
       const cardsToPlay = cardIds.map(id => idToCard(id))
-      if (cardsToPlay.length >= 5 && isStraightHand(cardsToPlay)) {
+      if (cardsToPlay.length >= 5 && checkStraight(cardsToPlay)) {
         cardsToPlay.sort((a, b) => {
           if (a.rank !== b.rank) {
             return a.rank - b.rank
