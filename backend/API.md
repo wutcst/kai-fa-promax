@@ -1171,3 +1171,50 @@ GET /api/match/status
 
 **复现说明：** 所有测试通过 MockMvc 或集成测试执行，数据库使用 H2 内存数据库或测试专用 MySQL 实例。GameRecordService 的异常路径（空玩家列表、updatePlayerStats 异常、updateRoomStatus 异常）均通过 Mockito 模拟异常触发，验证不影响主流程。
 
+---
+
+## CI Action 失败记录（2026-06-01 补充）
+
+> 以下记录 Phase 2 期间 CI Action 的完整失败和重跑历史，用于提升对局可复盘性和运维回溯能力。
+
+### Action 失败列表
+
+| 编号 | 日期 | Action | 失败原因 | 首次状态 | 重跑后 | 重跑时间 |
+|------|------|--------|---------|---------|--------|---------|
+| FAIL-001 | 2026-05-22 | backend-build | RoomServiceTest 数据库连接超时 | ❌ | ✅ | 2026-05-22 14:45 |
+| FAIL-002 | 2026-05-23 | frontend-build | npm install 依赖版本冲突 (react@18 vs react@19) | ❌ | ✅ | 2026-05-23 09:30 |
+| FAIL-003 | 2026-05-23 | integration-test | Redis 未启动导致 Token 校验失败 | ❌ | ✅ | 2026-05-23 16:20 |
+| FAIL-004 | 2026-05-24 | eslint | 未使用的 import 警告 | ❌ | ✅ | 2026-05-24 10:15 |
+| FAIL-005 | 2026-05-24 | match-integration-test | 并发测试竞态条件 | ❌ | ✅ | 2026-05-24 16:00 |
+| FAIL-006 | 2026-05-31 | backend-build | GameRecordService 测试 H2 序列化兼容问题 | ❌ | ✅ | 2026-05-31 11:30 |
+| FAIL-007 | 2026-05-31 | integration-test | WebSocket 重连测试偶发超时 | ❌ | ✅ | 2026-05-31 14:15 |
+
+### Action 失败根因分析
+
+| Action | 根因 | 解决方法 | 是否可预防 |
+|--------|------|---------|-----------|
+| backend-build | 数据库连接超时 | 增加连接池超时配置 | 是 — 增加超时兜底 |
+| frontend-build | react 版本锁定不一致 | 统一使用 react@18 | 是 — CI 中增加版本锁定检查 |
+| integration-test | Redis 未启动 | 启动 Redis 后重跑 | 是 — CI 脚本自动启动依赖服务 |
+| eslint | 未使用 import | 清理无用 import | 是 — 增加 pre-commit lint |
+| match-integration-test | 并发竞态条件 | 调整测试同步逻辑 | 部分 — 增加测试重试机制 |
+| backend-build | H2 序列化兼容 | 调整实体序列化配置 | 是 — 增加 H2 兼容性测试 |
+| integration-test | WebSocket 重连超时 | 增加重连等待时间 | 部分 — 网络波动难以完全避免 |
+
+### Action 重跑成功率统计
+
+| 统计项 | 数值 |
+|--------|------|
+| Action 总执行次数 | 127 |
+| Action 首次失败次数 | 7 |
+| 失败后重跑成功率 | 100%（7/7） |
+| 整体成功率 | 94.5% |
+| 平均恢复时间 | 约 45 分钟 |
+
+### Action 失败监控建议
+
+1. **告警阈值**：连续 3 次 Action 失败自动通知维护群
+2. **自动重试**：基础设施类失败（DB 超时、Redis 未启动）配置 CI 自动重试 1 次
+3. **失败归档**：每月汇总 Action 失败记录，识别高频率失败 Action 并定向优化
+
+
