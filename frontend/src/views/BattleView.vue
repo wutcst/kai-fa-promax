@@ -161,11 +161,11 @@
                 <div class="countdown-circle">{{ countdown }}</div>
               </div>
               <div class="action-buttons" v-show="currentPlayer === '我'">
-                <button class="btn btn-pass" @click="pass">不出</button>
-                <button class="btn btn-hint" @click="hint">提示</button>
-                <button class="btn btn-play" @click="playCards" :disabled="selectedCards.length === 0">出牌</button>
+                <button class="btn btn-pass" @click="pass" title="跳过本轮出牌">不出</button>
+                <button class="btn btn-hint" @click="hint" title="获取出牌建议">提示</button>
+                <button class="btn btn-play" @click="playCards" :disabled="selectedCards.length === 0" title="出所选牌">出牌</button>
               </div>
-              <div class="current-player" v-if="currentPlayer !== '我'">{{ currentPlayer }}的回合</div>
+              <div class="current-player" v-if="currentPlayer !== '我'">{{ currentPlayer }} 的回合</div>
             </div>
           </div>
         </div>
@@ -187,9 +187,9 @@
             <div class="quick-texts">
               <div class="quick-texts-title">快捷文字</div>
               <div class="quick-text-buttons">
-                <button class="quick-text-btn" @click="sendQuickText('快点出牌')">快点出牌</button>
-                <button class="quick-text-btn" @click="sendQuickText('这牌怎么打')">这牌怎么打</button>
-                <button class="quick-text-btn" @click="sendQuickText('我走了')">我走了</button>
+                <button class="quick-text-btn" @click="sendQuickText('快点出牌')" title="催促当前玩家">快点出牌</button>
+                <button class="quick-text-btn" @click="sendQuickText('这牌怎么打')" title="询问队友建议">这牌怎么打</button>
+                <button class="quick-text-btn" @click="sendQuickText('我走了')" title="告知队友即将走完">我走了</button>
               </div>
             </div>
           </div>
@@ -216,6 +216,27 @@
 </template>
 
 <script setup>
+// ============================================================
+// 联调说明（提升对战页操作体验）
+// ============================================================
+// 手牌展示：
+//   - GAME_START 时从 data.myCards 获取后端 cardIds → idsToCards → sortCards 排序渲染
+//   - 级牌显示框从 levelCard.rankIndex 计算，通过 getLevelCardName 映射为 2-A
+//   - 多人布局：队友(顶)、左对手(左)、右对手(右)、自己(底)，各区域使用 CSS Grid 定位
+// 选牌交互：
+//   - 点击：handleCardMousedown → toggleCardLogic 切换 selectedCards 索引
+//   - 拖拽选牌：mousedown → mouseenter 连续选中/取消，mouseup 停止
+//   - 快速点选防抖：lastTapTime + tapDebounceMs(150ms) 防止误触
+//   - 选中效果：CSS .selected 类 → translateY(-10px) + box-shadow 提升
+// 出牌反馈：
+//   - playCards() 调 usePlayCard composable → 选中的 cardIds → PLAY_CARD 发送
+//   - handlePlayerAction 接收广播 → 从我方 myCards 中移除已出牌 → deskDisplay 渲染桌面
+//   - 出牌后 TURN_CHANGE 广播切换回合，countdown 倒计时重置
+// 过牌反馈：
+//   - pass() 调 usePlayCard composable → 空数组 PLAY_CARD 发送
+//   - 服务端广播 PLAYER_ACTION 带 pass 标记 → deskDisplay 对应槽位显示"不要"指示器
+//   - 倒计时归零自动过牌：autoPlaySmallestCard 或 pass（非自由出牌时）
+// ============================================================
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
