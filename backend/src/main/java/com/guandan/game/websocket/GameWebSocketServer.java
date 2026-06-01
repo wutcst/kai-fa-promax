@@ -20,3 +20,4 @@ public class GameWebSocketServer {
 // Fix: handle session close on game room disband
 // Refactor: extract message handler from WebSocket server
 // Docs: WebSocket message format: {type:'play|pass|deal|ready', payload:{}}
+// Test: WebSocket session lifecycle verification
