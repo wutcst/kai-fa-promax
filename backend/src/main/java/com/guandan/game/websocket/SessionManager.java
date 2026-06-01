@@ -376,6 +376,145 @@ public class SessionManager {
         log.info("SessionManager已关闭");
     }
 
+    // ============================================================
+    //  连接管理方法
+    // ============================================================
+
+    /**
+     * 建立连接：保存会话并设置在线
+     *
+     * <p>此方法合并保存 WebSocket Session 引用和添加会话信息两步操作，
+     * 确保连接建立时两个数据源始终保持一致。
+     *
+     * @param playerId 玩家标识
+     * @param session  WebSocket Session 对象
+     * @param roomId   玩家所属房间 ID（可为 null）
+     *
+     * <p><b>异常场景：</b><ul>
+     *   <li>playerId 为空 → addSession 内部跳过，Session 引用仍保存</li>
+     *   <li>session 为 null → 仅保存会话信息，不保存 Session 引用</li>
+     * </ul>
+     */
+    public void establishConnection(String playerId, Session session, String roomId) {
+        saveSession(playerId, session);
+        addSession(playerId, roomId);
+    }
+
+    /**
+     * 断开连接：标记离线并保留数据（支持重连）
+     *
+     * <p>此方法执行业务层面的"断开"操作，与 {@link #cleanSession(String)} 不同：
+     * 断开后玩家的会话数据（房间位置、手牌等）仍然保留，
+     * 以便在 {@link SessionManager#DISCONNECTED_RETENTION_TIME} 内支持重连。
+     *
+     * @param playerId 玩家标识
+     * @return 始终返回 true
+     *
+     * <p><b>异常场景：</b><ul>
+     *   <li>playerId 不存在 → markOffline 和 removeWebSocketSession 均幂等</li>
+     *   <li>已离线的玩家再次调用 → 幂等，不重复扣减在线计数</li>
+     * </ul>
+     */
+    public boolean disconnectSession(String playerId) {
+        markOffline(playerId);
+        removeWebSocketSession(playerId);
+        return true;
+    }
+
+    /**
+     * 完全清理连接：移除所有引用和数据
+     *
+     * <p>与 {@link #disconnectSession(String)} 不同，此方法执行彻底的资源清理：
+     * <ol>
+     *   <li>从 {@link #sessions} 中移除 {@link SessionInfo}</li>
+     *   <li>从 {@link #roomPlayers} 中移除玩家所在房间记录</li>
+     *   <li>从 {@link #webSocketSessions} 中移除 Session 引用</li>
+     *   <li>如果玩家在线，同步递减 {@link #onlineCount}</li>
+     * </ol>
+     * 调用后玩家数据完全丢失，不支持重连。
+     *
+     * @param playerId 玩家标识
+     * @return 始终返回 true
+     *
+     * <p><b>异常场景：</b><ul>
+     *   <li>playerId 不存在 → 各移除操作幂等，不抛异常</li>
+     *   <li>roomId 对应的房间已不存在 → roomPlayers.remove 幂等</li>
+     * </ul>
+     */
+    public boolean cleanSession(String playerId) {
+        removeSession(playerId);
+        removeWebSocketSession(playerId);
+        return true;
+    }
+
+    // ============================================================
+    //  广播管理方法
+    // ============================================================
+
+    /**
+     * 向指定玩家发送消息（在 Session 有效时）
+     *
+     * <p>通过 {@link #getWebSocketSession(String)} 获取 Session 引用，
+     * 该方法会自动清理已关闭的 Session，因此调用方无需额外检查。
+     *
+     * @param playerId 玩家标识
+     * @param message  待发送的文本消息（JSON 格式）
+     * @return 发送成功返回 true；Session 不可用或 IO 异常返回 false
+     *
+     * <p><b>异常场景：</b><ul>
+     *   <li>playerId 无对应 Session → 返回 false，记录 warn 日志</li>
+     *   <li>Session 已关闭 → getWebSocketSession 清理后返回 null → 返回 false</li>
+     *   <li>IO 写入失败 → 捕获 IOException，记录 warn 日志，返回 false</li>
+     * </ul>
+     */
+    public boolean sendMessage(String playerId, String message) {
+        Session session = getWebSocketSession(playerId);
+        if (session == null || !session.isOpen()) {
+            log.warn("sendMessage: 玩家 {} 的 Session 不可用", playerId);
+            return false;
+        }
+        try {
+            session.getBasicRemote().sendText(message);
+            return true;
+        } catch (IOException e) {
+            log.warn("sendMessage: 向玩家 {} 发送消息失败", playerId, e);
+            return false;
+        }
+    }
+
+    /**
+     * 向房间内所有在线玩家广播消息
+     *
+     * <p>遍历 {@link #roomPlayers} 中指定房间的所有玩家，
+     * 仅向 {@link #isOnline(String)} 返回 true 的玩家发送消息。
+     * 离线玩家不会收到广播消息，但其会话数据仍保留以支持后续重连。
+     *
+     * @param roomId  目标房间 ID
+     * @param message 待广播的文本消息（JSON 格式）
+     * @return 至少发送给一个玩家则返回 true；房间无玩家或全部发送失败返回 false
+     *
+     * <p><b>异常场景：</b><ul>
+     *   <li>roomId 无对应房间 → 返回 false，记录 warn 日志</li>
+     *   <li>部分玩家发送失败 → 累计成功计数，至少一个成功即返回 true</li>
+     *   <li>房间内所有玩家均离线 → 返回 false（无在线玩家可接收）</li>
+     * </ul>
+     */
+    public boolean broadcastToOnlinePlayers(String roomId, String message) {
+        ConcurrentHashMap<String, Boolean> players = roomPlayers.get(roomId);
+        if (players == null || players.isEmpty()) {
+            log.warn("broadcastToOnlinePlayers: 房间 {} 无玩家", roomId);
+            return false;
+        }
+        int successCount = 0;
+        for (String playerId : players.keySet()) {
+            if (isOnline(playerId) && sendMessage(playerId, message)) {
+                successCount++;
+            }
+        }
+        log.debug("broadcastToOnlinePlayers: 房间 {}, 成功发送给 {} 人", roomId, successCount);
+        return successCount > 0;
+    }
+
     /**
      * 会话信息
      */

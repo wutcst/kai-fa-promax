@@ -314,50 +314,15 @@ public class GameWebSocketServer {
         }
 
         if (isNormalClose) {
-            // 正常关闭：视为主动离开房间（删除房间玩家记录，避免房间一直显示"游戏中"）
-            try {
-                gameLogicService.removePlayer(playerId);
-            } catch (Exception ignored) {
-            }
-            try {
-                sessionManager.removeSession(playerId);
-            } catch (Exception ignored) {
-            }
+            // 正常关闭：视为主动离开房间
+            executeCleanDisconnect(playerId, room);
         } else {
             // 异常断线：标记离线，保留数据支持重连
             sessionManager.markOffline(playerId);
         }
 
-        // 通知房间内其他玩家
-        if (room != null) {
-            Map<String, Object> disconnectData = new java.util.HashMap<>();
-            disconnectData.put("playerId", playerId);
-            disconnectData.put("reason", isNormalClose ? "玩家离开" : "玩家掉线");
-            WebSocketMessage message = new WebSocketMessage("PLAYER_DISCONNECT", disconnectData);
-            broadcastToRoom(room, playerId, message);
-
-            // 广播房间信息更新
-            try {
-                broadcastRoomInfoUpdate(room.getRoomId());
-            } catch (Exception ignored) {
-            }
-
-            // 房间没人了 / 或者游戏中有人离开：把数据库房间状态置为结束，避免大厅一直显示"游戏中"
-            try {
-                String roomNo = room.getRoomId().replace("room_", "");
-                com.guandan.entity.Room dbRoom = com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
-                        .getRoomByRoomNo(roomNo);
-                if (dbRoom != null) {
-                    int cnt = com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
-                            .getPlayerCount(dbRoom.getId());
-                    if (cnt <= 0 || dbRoom.getStatus() == 1) {
-                        com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
-                                .updateRoomStatus(dbRoom.getId(), 2);
-                    }
-                }
-            } catch (Exception ignored) {
-            }
-        }
+        // 通知房间内其他玩家并更新房间状态
+        notifyRoomOnPlayerDisconnect(room, playerId, isNormalClose);
     }
 
     /**
@@ -1016,6 +981,19 @@ public class GameWebSocketServer {
 
     /**
      * 向房间内所有玩家广播消息
+     *
+     * <p>通过 {@link GameLogicService#getRoom(String)} 获取房间实例后，
+     * 遍历房间内所有玩家的 ID，逐个调用 {@link #sendToPlayer(String, WebSocketMessage)}。
+     * 该方法不区分玩家在线/离线状态，会向所有记录的玩家发送。
+     *
+     * @param roomId  目标房间 ID（不能为 null）
+     * @param message 待广播的消息对象
+     *
+     * <p><b>异常场景：</b><ul>
+     *   <li>roomId 为 null → 记录 warn 日志，直接返回</li>
+     *   <li>roomId 无对应房间 → 记录 warn 日志，直接返回</li>
+     *   <li>房间中某玩家 Session 已关闭 → sendToPlayer 内部自动清理，不影响其他玩家</li>
+     * </ul>
      */
     private void broadcastToRoom(String roomId, WebSocketMessage message) {
         if (roomId == null) {
@@ -1036,6 +1014,20 @@ public class GameWebSocketServer {
 
     /**
      * 向房间内除指定玩家外的所有玩家广播消息
+     *
+     * <p>遍历房间内所有玩家的 ID，跳过 {@code excludePlayerId} 指定的玩家，
+     * 向其余玩家逐个发送消息。常用于玩家断线通知、玩家离开通知等场景，
+     * 避免给触发事件的玩家自身发送冗余消息。
+     *
+     * @param room            目标房间对象
+     * @param excludePlayerId 需要排除的玩家 ID（不接收此消息）
+     * @param message         待广播的消息对象
+     *
+     * <p><b>异常场景：</b><ul>
+     *   <li>room 为 null 或 room.getPlayerIds() 为 null → 直接返回</li>
+     *   <li>excludePlayerId 不在房间中 → 等同于向所有人广播</li>
+     *   <li>排除的玩家 Session 已关闭 → 不影响其他玩家接收</li>
+     * </ul>
      */
     private void broadcastToRoom(GameRoom room, String excludePlayerId, WebSocketMessage message) {
         if (room == null || room.getPlayerIds() == null) {
@@ -1065,6 +1057,103 @@ public class GameWebSocketServer {
 
         public static WebSocketMessage error(String message) {
             return new WebSocketMessage("ERROR", java.util.Map.of("message", message));
+        }
+    }
+
+    // ============================================================
+    //  断线清理方法
+    // ============================================================
+
+    /**
+     * 执行干净断线清理：移除玩家和会话
+     *
+     * <p>当玩家正常关闭连接（CloseCode 1000/1001）时调用此方法。
+     * 依次执行：
+     * <ol>
+     *   <li>从 {@link GameLogicService} 中移除玩家（释放房间位置）</li>
+     *   <li>从 {@link SessionManager} 中完全移除会话（释放内存引用）</li>
+     * </ol>
+     * 此操作不可逆，玩家断线后无法通过 RECONNECT 恢复。
+     *
+     * @param playerId 玩家标识
+     * @param room     玩家所在房间（用于后续通知，可为 null）
+     *
+     * <p><b>异常场景：</b><ul>
+     *   <li>playerId 不存在 → removePlayer/removeSession 幂等</li>
+     *   <li>room 为 null → 仅清理会话，不触发房间通知</li>
+     * </ul>
+     */
+    private void executeCleanDisconnect(String playerId, GameRoom room) {
+        try {
+            gameLogicService.removePlayer(playerId);
+        } catch (Exception ignored) {
+        }
+        try {
+            sessionManager.removeSession(playerId);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * 通知房间其他玩家断线并更新数据库房间状态
+     *
+     * <p>当玩家连接关闭（无论正常还是异常）时调用此方法。
+     * 执行以下操作：
+     * <ol>
+     *   <li>向房间内其他玩家广播 {@code PLAYER_DISCONNECT} 消息（含原因：离开/掉线）</li>
+     *   <li>广播房间信息更新（人数变化）</li>
+     *   <li>检查并更新数据库中的房间状态（无人时置为已结束）</li>
+     * </ol>
+     *
+     * @param room          玩家所在房间对象
+     * @param playerId      断线玩家标识
+     * @param isNormalClose true=正常关闭（玩家主动离开），false=异常断线（掉线）
+     *
+     * <p><b>异常场景：</b><ul>
+     *   <li>room 为 null → 直接返回，不执行任何操作</li>
+     *   <li>广播 ROOM_UPDATE 失败 → 捕获异常，不影响断线通知</li>
+     *   <li>更新数据库房间状态失败 → 捕获异常，不影响客户端流程</li>
+     * </ul>
+     */
+    private void notifyRoomOnPlayerDisconnect(GameRoom room, String playerId, boolean isNormalClose) {
+        if (room == null) {
+            return;
+        }
+
+        // 广播断线通知
+        Map<String, Object> disconnectData = new java.util.HashMap<>();
+        disconnectData.put("playerId", playerId);
+        disconnectData.put("reason", isNormalClose ? "玩家离开" : "玩家掉线");
+        WebSocketMessage message = new WebSocketMessage("PLAYER_DISCONNECT", disconnectData);
+        broadcastToRoom(room, playerId, message);
+
+        // 广播房间信息更新
+        try {
+            broadcastRoomInfoUpdate(room.getRoomId());
+        } catch (Exception ignored) {
+        }
+
+        // 房间没人了或者游戏中有人离开：把数据库房间状态置为结束
+        updateRoomStatusOnDisconnect(room);
+    }
+
+    /**
+     * 断线后更新数据库房间状态
+     */
+    private void updateRoomStatusOnDisconnect(GameRoom room) {
+        try {
+            String roomNo = room.getRoomId().replace("room_", "");
+            com.guandan.entity.Room dbRoom = com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
+                    .getRoomByRoomNo(roomNo);
+            if (dbRoom != null) {
+                int cnt = com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
+                        .getPlayerCount(dbRoom.getId());
+                if (cnt <= 0 || dbRoom.getStatus() == 1) {
+                    com.guandan.spring.SpringContextHolder.getBean(com.guandan.service.RoomService.class)
+                            .updateRoomStatus(dbRoom.getId(), 2);
+                }
+            }
+        } catch (Exception ignored) {
         }
     }
 }
