@@ -65,6 +65,22 @@ import java.util.Map;
  *   <li>ClosedChannelException → 正常关闭不记录错误</li>
  *   <li>重连时房间不存在 → 清除房间信息</li>
  * </ul>
+ *
+ * <p><b>回归验证点：</b>
+ * <ul>
+ *   <li>[RV-WS-001] 连接建立：onOpen 保存 Session 且通过 sessionManager 记录在线</li>
+ *   <li>[RV-WS-002] 消息路由：onMessage 按 type 分发到对应 handle 方法</li>
+ *   <li>[RV-WS-003] 空消息防御：message 为 null 或空串时跳过处理</li>
+ *   <li>[RV-WS-004] 未知消息类型：返回 ERROR 消息</li>
+ *   <li>[RV-WS-005] 正常关闭：executeCleanDisconnect 移除玩家和会话</li>
+ *   <li>[RV-WS-006] 异常断线：markOffline 保留数据支持重连</li>
+ *   <li>[RV-WS-007] 广播机制：broadcastToRoom 遍历所有玩家发送消息</li>
+ *   <li>[RV-WS-008] 排除广播：broadcastToRoom(room, excludePlayerId) 排除指定玩家</li>
+ *   <li>[RV-WS-009] 出牌校验失败：返回具体错误原因（回合/手牌/牌型/大小）</li>
+ *   <li>[RV-WS-010] AI出牌广播：handleAIPlayCard 只向在线玩家发送</li>
+ *   <li>[RV-WS-011] 断线通知：notifyRoomOnPlayerDisconnect 广播 PLAYER_DISCONNECT</li>
+ *   <li>[RV-WS-012] 房间状态清理：updateRoomStatusOnDisconnect 无人时置为结束</li>
+ * </ul>
  */
 @Slf4j
 @Component

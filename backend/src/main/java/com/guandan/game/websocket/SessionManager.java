@@ -39,6 +39,22 @@ import java.util.concurrent.atomic.AtomicInteger;
  *   <li>房间不存在 → 对应房间玩家映射为空</li>
  *   <li>心跳检测中超时 → 自动清理，无需外部干预</li>
  * </ul>
+ *
+ * <p><b>回归验证点：</b>
+ * <ul>
+ *   <li>[RV-SM-001] 添加会话：addSession 创建 SessionInfo 并设置 online=true</li>
+ *   <li>[RV-SM-002] 心跳更新：updateHeartbeat 更新 lastHeartbeatTime</li>
+ *   <li>[RV-SM-003] 标记离线：markOffline 设置 online=false 并记录 disconnectTime</li>
+ *   <li>[RV-SM-004] 重连恢复：reconnect 将 offline → online，reconnectCount 递增</li>
+ *   <li>[RV-SM-005] 完全移除：removeSession 清理 sessions、roomPlayers、webSocketSessions</li>
+ *   <li>[RV-SM-006] 心跳超时检测：heartbeatCheck 发现超时 60 秒 → markOffline</li>
+ *   <li>[RV-SM-007] 离线清理：heartbeatCheck 发现离线超 5 分钟 → removeSession</li>
+ *   <li>[RV-SM-008] 保存 Session：saveSession 保存 WebSocket Session 引用</li>
+ *   <li>[RV-SM-009] 建立连接：establishConnection 合并 saveSession + addSession</li>
+ *   <li>[RV-SM-010] 断开连接：disconnectSession 合并 markOffline + removeWebSocketSession</li>
+ *   <li>[RV-SM-011] 完全清理：cleanSession 合并 removeSession + removeWebSocketSession</li>
+ *   <li>[RV-SM-012] 房间广播：broadcastToOnlinePlayers 只向 isOnline 玩家发送</li>
+ * </ul>
  */
 @Slf4j
 @Component
