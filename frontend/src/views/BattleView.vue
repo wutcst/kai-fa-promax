@@ -161,7 +161,10 @@
                 <div class="countdown-circle">{{ countdown }}</div>
               </div>
               <div class="action-buttons" v-show="currentPlayer === '我'">
-                <button class="btn btn-pass" @click="pass" title="跳过本轮出牌">不出</button>
+                <button class="btn btn-pass" @click="pass" title="跳过本轮出牌">
+                  <span class="btn-label">不出</span>
+                  <span class="btn-countdown" v-if="countdown <= 10">{{ countdown }}s</span>
+                </button>
                 <button class="btn btn-hint" @click="hint" title="获取出牌建议">提示</button>
                 <button class="btn btn-play" @click="playCards" :disabled="selectedCards.length === 0" title="出所选牌">出牌</button>
               </div>
@@ -1967,6 +1970,28 @@ const handleError = (data) => {
 .btn:disabled:hover {
   background-color: rgba(204, 204, 204, 0.5);
   color: rgba(102, 102, 102, 0.7);
+}
+
+/* 按钮倒计时显示 */
+.btn .btn-label {
+  display: inline-block;
+}
+
+.btn .btn-countdown {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 4px;
+  background: rgba(255, 80, 80, 0.85);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 16px;
+  animation: pulse-countdown 1s ease-in-out infinite;
+}
+
+@keyframes pulse-countdown {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 /* 快捷文字样式 */
