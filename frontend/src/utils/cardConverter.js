@@ -9,3 +9,4 @@ export function cardText(card) {
 // Refactor: separate card sort and group utilities
 // Perf: DOM node reuse for card elements
 // Refactor: extract card rendering to CardRenderer component
+// Fix: memory leak from unremoved card event listeners
