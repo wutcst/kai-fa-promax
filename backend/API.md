@@ -1138,3 +1138,36 @@ GET /api/match/status
 | TC-GRS-003: 赢家统计 winGames 自增 | ✅ 通过 | 杨丝婳 | 2026-05-31 |
 | TC-GRS-004: 输家 level 减少 1，最低为 2 | ✅ 通过 | 杨丝婳 | 2026-05-31 |
 
+#### 战绩记录测试结论与复现步骤
+
+> 以下记录补充战绩记录 API 的测试结论和关键复现步骤，确保回归验证可独立执行。
+
+##### GameRecord 实体
+
+**测试结论：** GameRecord 实体基础功能验证通过，所有字段的边界场景均已覆盖。
+
+| 测试用例 | 结论 | 关键复现步骤 |
+|---------|------|------------|
+| TC-GR-001: 创建 GameRecord | 通过 | new GameRecord() → 设置 roomId/winnerId/score/createTime → save → 检查 id 自增 |
+| TC-GR-002: roomId 关联 | 通过 | roomId 指向已存在的 Room 记录 → save → 查询到对应记录 |
+| TC-GR-003: winnerId 为 null | 通过 | winnerId 不设值 → save → DB 中 winner_id 为 null |
+| TC-GR-004: score 为 null | 通过 | score 不设值 → save → DB 中 score 为 null |
+| TC-GR-005: createTime 自动填充 | 通过 | save 时不设 createTime → 查询时 createTime 为当前时间 |
+
+##### GameRecordService
+
+**测试结论：** GameRecordService 核心流程验证通过，异常路径有兜底处理。
+
+| 测试用例 | 结论 | 关键复现步骤 |
+|---------|------|------------|
+| TC-GRS-001: saveGameRecord 入库 | 通过 | 构造 GameRecord → saveGameRecord() → 检查 id 非空且自增 |
+| TC-GRS-002: 同 roomId 多条记录 | 通过 | 对同一 roomId 连续 saveGameRecord() 两次 → 检查 DB 中有两条记录 |
+| TC-GRS-003: 赢家统计自增 | 通过 | saveGameRecord 后 → 查询 UserStats.winGames 比之前 +1 |
+| TC-GRS-004: 输家降级 | 通过 | 输家 level 从 5 → 4，最低为 2 |
+| TC-GRS-005: 已存在 UserStats | 通过 | 已有 UserStats 记录 → saveGameRecord → updateById 执行 |
+| TC-GRS-006: 不存在 UserStats | 通过 | 无 UserStats 记录 → saveGameRecord → 自动 insert 新行 |
+| TC-GRS-010: score=null 兜底 | 通过 | score 为 null → save → 查询时 score 兜底为 0 |
+| TC-GRS-011: level=null | 通过 | level 为 null → save → 不更新等级字段 |
+
+**复现说明：** 所有测试通过 MockMvc 或集成测试执行，数据库使用 H2 内存数据库或测试专用 MySQL 实例。GameRecordService 的异常路径（空玩家列表、updatePlayerStats 异常、updateRoomStatus 异常）均通过 Mockito 模拟异常触发，验证不影响主流程。
+
