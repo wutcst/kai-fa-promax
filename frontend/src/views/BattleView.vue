@@ -247,30 +247,41 @@ import { getRoomDetail, ready, exitRoom } from '../api/game'
 import soundManager from '../utils/soundManager'
 import { usePlayCard } from '../composables/usePlayCard'
 
+// ============================================================
+//  游戏页面状态管理（拆分自原 inline 状态声明）
+//   将页面状态与请求逻辑分离，统一通过 useGameState 管理
+// ============================================================
+
+/**
+ * 游戏页面状态管理
+ * 拆分自 BattleView.vue 内联声明，集中管理页面状态和请求状态
+ */
+import { useGameState } from '../composables/useGameState'
+
 // 路由实例
 const router = useRouter()
 const route = useRoute()
 
-// 响应式数据
-const roomId = ref(route.query.roomId || '未知房间')
-const isAIMode = computed(() => route.query.mode === 'ai')
-const isReady = ref(false)
-const playerCount = ref(0)
-const roomPlayers = ref([])
-const currentUserId = ref('')
-const wsConnected = ref(false)
-const wsJoined = ref(false)
-const gameState = ref('prepare')
-const roomCreatorId = ref(null)
-
-// 玩家ID和位置映射
-const myPlayerId = ref(null)
-const playerPositions = ref({
-  '我': null,
-  '右对手': null,
-  '队友': null,
-  '左对手': null
-})
+// 使用拆分后的状态管理
+const {
+  roomId,
+  isAIMode,
+  isReady,
+  playerCount,
+  roomPlayers,
+  currentUserId,
+  wsConnected,
+  wsJoined,
+  gameState,
+  roomCreatorId,
+  myPlayerId,
+  playerPositions,
+  username,
+  playerNames,
+  levelCard,
+  getGameRoomId,
+  fetchRoomDetail,
+} = useGameState(route)
 
 const handleTableClear = () => {
   try {
@@ -279,30 +290,6 @@ const handleTableClear = () => {
     }
   } catch (e) {
   }
-}
-
-// 计算属性：获取当前用户名
-const username = computed(() => {
-  const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || localStorage.getItem('userInfo') || '{}')
-  return userInfo.nickname || sessionStorage.getItem('nickname') || localStorage.getItem('nickname') || '未知玩家'
-})
-
-// 玩家名称映射
-const playerNames = ref({
-  '我': username.value,
-  '右对手': '右对手',
-  '队友': '队友',
-  '左对手': '左对手'
-})
-
-const levelCard = ref({
-  rankIndex: null
-})
-
-const getGameRoomId = () => {
-  const id = String(roomId.value || '')
-  if (!id) return ''
-  return id.startsWith('room_') ? id : `room_${id}`
 }
 
 const mapLevelIndexToCardRank = (rankIndex) => {
@@ -676,26 +663,6 @@ const connectWebSocket = () => {
   } catch (error) {
     console.error('WebSocket连接失败:', error)
     ElMessage.error('网络连接失败，请检查网络状态')
-  }
-}
-
-// 获取房间详情
-const fetchRoomDetail = async () => {
-  try {
-    const response = await getRoomDetail(roomId.value)
-    if (response) {
-      if (response.playerCount !== undefined) {
-        playerCount.value = response.playerCount
-      }
-      if (response.players) {
-        roomPlayers.value = response.players
-      }
-      if (response.creatorId !== undefined && response.creatorId !== null) {
-        roomCreatorId.value = response.creatorId
-      }
-    }
-  } catch (error) {
-    console.error('获取房间详情失败:', error)
   }
 }
 

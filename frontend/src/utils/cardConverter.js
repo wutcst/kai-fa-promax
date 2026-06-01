@@ -127,6 +127,27 @@ export function idsToCards(cardIds) {
 }
 
 /**
+ * 批量转换后端卡牌ID为前端卡牌对象（for循环性能优化版）
+ * 拆分自 idsToCards，独立用于 gameStart 等高频批量转换场景，
+ * 减少闭包创建和 filter 开销。
+ * @param {Array<number>} cardIds 后端卡牌ID数组
+ * @returns {Array<Object>} 前端卡牌对象数组
+ */
+export function bulkIdToCard(cardIds) {
+  if (!cardIds || !Array.isArray(cardIds)) return []
+  const result = []
+  for (let i = 0; i < cardIds.length; i++) {
+    try {
+      const card = idToCard(cardIds[i])
+      if (card) result.push(card)
+    } catch (e) {
+      console.warn('bulkIdToCard: 跳过无效卡牌ID', cardIds[i], e)
+    }
+  }
+  return result
+}
+
+/**
  * 批量转换前端卡牌对象数组为后端卡牌ID数组（性能优化版）
  * 使用 for 循环代替 map 减少函数调用开销
  * @param {Array<Object>} cardObjects 前端卡牌对象数组
