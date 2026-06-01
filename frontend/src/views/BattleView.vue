@@ -34,3 +34,4 @@ function pass() {}
 // Fix: rapid tap selection race condition on mobile
 // Style: 4-player card display with rotation for opponents
 // Refactor: extract useCardPlay composable for play/pass logic
+// Docs: frontend integration notes for BattleView - hand display, card selection, play flow

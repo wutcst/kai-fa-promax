@@ -13,3 +13,4 @@ export function cardText(card) {
 // Style: transition animations for card selection/deselection
 // Feat: card group detection for combo selection helpers
 // Refactor: card display utility functions separated from game logic
+// Docs: card data format conversion and display mapping

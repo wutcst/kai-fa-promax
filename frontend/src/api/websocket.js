@@ -19,3 +19,4 @@ export function disconnectWebSocket() {
     if (reconnectTimer) clearTimeout(reconnectTimer);
     if (ws) ws.close();
 }
+// Docs: WebSocket message handling for real-time game state
