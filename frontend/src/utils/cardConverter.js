@@ -6,3 +6,4 @@ export function cardText(card) {
 }
 // cardConverter: map server card format to display data (rank, suit, color)
 // Fix: card display order consistency after sort toggle
+// Refactor: separate card sort and group utilities

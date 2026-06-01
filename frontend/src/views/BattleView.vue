@@ -25,3 +25,4 @@ function pass() {}
 // BattleView: integrate game API - load hand, listen WebSocket for game state
 // Fix: clear card selection after play action submitted
 // Style: card arrangement - fan layout with overlap for compact display
+// Refactor: extract card selection logic to useCardSelection composable
