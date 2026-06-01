@@ -3,6 +3,16 @@
  * 实现前后端卡牌格式的互转
  * 后端使用数字ID (0-107) 表示卡牌
  * 前端使用对象格式 {suit: 'hearts', rank: 1} 表示卡牌
+ *
+ * 联调说明（提升对战页操作体验）：
+ * - 手牌展示：BattleView 收到 GAME_START 后调用 idsToCards 批量转换，
+ *   前端按 rank 降序 + suit 优先级排序后渲染，逢人配和级牌用 getCardName 标记。
+ * - 选牌交互：选中卡牌时前端维护 selectedCards 索引，出牌时调用 cardsToIds
+ *   将前端对象数组转回后端 ID 数组后通过 PLAY_CARD 发送。
+ * - 出牌反馈：服务端广播 PLAYER_ACTION 带 cardIds，前端调用 idToCard 逐张转换后
+ *   渲染到桌面对应槽位，并从我方手牌中移除已出卡牌。
+ * - 过牌反馈：服务端广播 PLAYER_ACTION 但 cards 为空，前端在对应槽位显示"不要"指示器。
+ * - 注意：idToCard 和 cardToId 互为逆操作，联调时需验证双向转换的一致性。
  */
 
 // 花色映射：后端索引 -> 前端花色名称

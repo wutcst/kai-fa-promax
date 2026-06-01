@@ -6,6 +6,16 @@ import { ElMessage } from 'element-plus';
  * 从 BattleView.vue 中提取的独立 WebSocket 连接逻辑，
  * 负责建立/断开连接、消息收发、事件注册。
  *
+ * 联调说明（提升对战页操作体验）：
+ * - 手牌展示：服务端通过 GAME_START 消息的 myCards 字段下发手牌 ID 数组，
+ *   前端调用 idToCard 转换为前端对象后按 rank 排序渲染。
+ * - 选牌交互：前端维护 selectedCards 索引数组，点击/拖拽时切换选中状态，
+ *   选中的卡牌通过 CSS .selected 类上移 10px 突出显示。
+ * - 出牌流程：前端通过 PLAY_CARD 消息发送选中的 cardIds 至服务端，
+ *   服务端校验合法性后广播 PLAYER_ACTION 给房间所有玩家。
+ * - 过牌反馈：前端通过 PLAY_CARD 发送空数组表示"不出"，
+ *   服务端处理后广播 PLAYER_ACTION（含 pass 标记）。
+ *
  * 用法：
  *   import webSocketService, { WS_MESSAGE_TYPES } from '../api/websocket'
  *   webSocketService.connect(userId, roomId)
