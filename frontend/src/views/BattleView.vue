@@ -436,12 +436,16 @@ const handStyle = computed(() => {
   if (width <= 1024) {
     // 小屏：牌距紧凑，避免牌挤到屏幕外
     step = Math.max(minStep * 0.9, Math.min(maxStep * 0.85, step))
-    // 小屏手牌底部间距优化
-    console.log('小屏手牌布局: step=', step, 'count=', count, 'width=', width)
+    // 小屏手牌底部间距优化 — debug 日志仅在开发环境输出
+    if (process.env.NODE_ENV === 'development') {
+      console.log('小屏手牌布局: step=', step, 'count=', count, 'width=', width)
+    }
   } else if (width >= 1920) {
     // 大屏：牌距自然拉开，视觉更舒适
     step = Math.max(minStep, Math.min(maxStep * 1.08, step))
-    console.log('大屏手牌布局: step=', step, 'count=', count, 'width=', width)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('大屏手牌布局: step=', step, 'count=', count, 'width=', width)
+    }
   }
 
   const marginX = (step - cardWidth) / 2
@@ -800,6 +804,10 @@ window.addEventListener('beforeunload', handleBeforeUnload)
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateWindowWidth)
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
   try {
     webSocketService.off(WS_MESSAGE_TYPES.CHAT_MESSAGE, handleChatMessage)
   } catch (e) {
@@ -818,6 +826,9 @@ onBeforeUnmount(() => {
   } catch (e) {
   }
   chatBubbles.value = {}
+  myCards.value = []
+  selectedCards.value = []
+  suggestedCards.value = []
   tryExitRoomAndDisconnect()
 })
 
@@ -1799,7 +1810,7 @@ const handleError = (data) => {
   margin: -100px 0;
 }
 
-/* 卡牌样式 */
+/* 卡牌样式 / 动画优化：will-change + contain 减少重排重绘 */
 .card {
   width: 70px;
   height: 100px;
@@ -1808,6 +1819,8 @@ const handleError = (data) => {
   cursor: pointer;
   transition: all 0.2s ease;
   margin: 0 -5px;
+  will-change: transform;
+  contain: layout style;
 }
 
 .card.back {

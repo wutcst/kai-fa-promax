@@ -51,7 +51,10 @@ export function idToCard(cardId) {
       rank: cardId <= 105 ? 14 : 15,  // 104-105:小王(14), 106-107:大王(15)
       deck: (cardId - 104) % 2  // 0或1，表示第几副牌的王
     };
-    console.log(`idToCard: cardId=${cardId} ->`, result, `(deck=${result.deck})`);
+    // debug 日志仅在开发环境输出，避免生产环境内存泄漏
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`idToCard: cardId=${cardId} ->`, result, `(deck=${result.deck})`);
+    }
     return result;
   }
 
@@ -68,7 +71,10 @@ export function idToCard(cardId) {
     rank: RANK_MAP[rankIndex],
     deck: deckIndex // 添加副牌索引，用于正确转换回卡牌ID
   };
-  console.log(`idToCard: cardId=${cardId} ->`, result, `(deck=${result.deck})`);
+  // debug 日志仅在开发环境输出，避免生产环境内存泄漏
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`idToCard: cardId=${cardId} ->`, result, `(deck=${result.deck})`);
+  }
   return result;
 }
 
@@ -173,7 +179,10 @@ export function bulkCardsToIds(cardObjects) {
  */
 export function cardsToIds(cards) {
   const result = cards.map(card => cardToId(card, card.deck));
-  console.log('cardsToIds: cards=', cards, '-> ids=', result);
+  // debug 日志仅在开发环境输出
+  if (process.env.NODE_ENV === 'development') {
+    console.log('cardsToIds: cards=', cards, '-> ids=', result);
+  }
   return result;
 }
 
