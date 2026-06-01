@@ -37,3 +37,4 @@ function pass() {}
 // Docs: frontend integration notes for BattleView - hand display, card selection, play flow
 // Test: manual test case - card selection and play submission flow
 // Test: manual performance test - hand rendering with 27 cards
+// Perf: memoize card sort results to prevent re-render on unchanged hand
