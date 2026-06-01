@@ -15,3 +15,5 @@
 
 ## 比较规则
 同级按点数，炸弹通吃，王炸最大
+## Integration Notes
+Refer to game logic service for play validation flow.
