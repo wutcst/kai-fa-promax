@@ -35,3 +35,4 @@ function pass() {}
 // Style: 4-player card display with rotation for opponents
 // Refactor: extract useCardPlay composable for play/pass logic
 // Docs: frontend integration notes for BattleView - hand display, card selection, play flow
+// Test: manual test case - card selection and play submission flow
