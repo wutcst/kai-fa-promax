@@ -394,6 +394,21 @@ const visibleEnd = ref(0)
 
 const enableVirtualScroll = computed(() => myCards.value.length > VIRTUAL_THRESHOLD)
 
+/**
+ * 手牌排序结果缓存：仅在 myCards 引用变化时重新计算排序 key
+ * 用于手牌渲染的 :key 绑定，减少非必要 DOM 重建
+ */
+const sortedCardKeys = computed(() => {
+  const cards = myCards.value
+  const k = cardKeyCache.value
+  const keys = new Array(cards.length)
+  for (let i = 0; i < cards.length; i++) {
+    const c = cards[i]
+    keys[i] = `${k}-${c.suit}-${c.rank}-${c.deck}`
+  }
+  return keys
+})
+
 /** 可见手牌切片 */
 const visibleCards = computed(() => {
   if (!enableVirtualScroll.value) {
@@ -910,12 +925,18 @@ const sortCards = () => {
     const v = orderMap.get(Number(rank))
     return v !== undefined ? v : order.length
   }
-  myCards.value = [...myCards.value].sort((a, b) => {
+  // 快照比对：若排序前后的 key 串相同则跳过赋值，减少响应式触发和 re-render
+  const before = myCards.value.map(c => `${c.suit}-${c.rank}-${c.deck}`).join('|')
+  const sorted = [...myCards.value].sort((a, b) => {
     const ra = getRankOrder(a.rank)
     const rb = getRankOrder(b.rank)
     if (ra !== rb) return ra - rb
     return (suitPriority[b.suit] || 0) - (suitPriority[a.suit] || 0)
   })
+  const after = sorted.map(c => `${c.suit}-${c.rank}-${c.deck}`).join('|')
+  if (before !== after) {
+    myCards.value = sorted
+  }
   selectedCards.value = []
   suggestedCards.value = []
 }
