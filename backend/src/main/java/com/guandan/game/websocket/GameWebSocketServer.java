@@ -66,6 +66,17 @@ import java.util.Map;
  *   <li>重连时房间不存在 → 清除房间信息</li>
  * </ul>
  *
+ * <p><b>配置说明：</b>
+ * <ul>
+ *   <li>WebSocket 路径：/ws/game/{playerId}（通过 @ServerEndpoint 配置）</li>
+ *   <li>跨域支持：WebSocketServerConfigurator 允许跨域连接</li>
+ *   <li>心跳间隔：30 秒（由 SessionManager 定时任务触发）</li>
+ *   <li>连接超时：60 秒无心跳标记离线</li>
+ *   <li>离线保留：5 分钟（超时后清理会话数据）</li>
+ *   <li>广播策略：broadcastToRoom 遍历所有玩家，handleAIPlayCard 只向在线玩家发送</li>
+ *   <li>断线清理：onClose 区分正常关闭（executeCleanDisconnect）和异常断线（markOffline）</li>
+ * </ul>
+ *
  * <p><b>回归验证点：</b>
  * <ul>
  *   <li>[RV-WS-001] 连接建立：onOpen 保存 Session 且通过 sessionManager 记录在线</li>

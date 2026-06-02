@@ -55,6 +55,22 @@ import java.util.concurrent.atomic.AtomicInteger;
  *   <li>[RV-SM-011] 完全清理：cleanSession 合并 removeSession + removeWebSocketSession</li>
  *   <li>[RV-SM-012] 房间广播：broadcastToOnlinePlayers 只向 isOnline 玩家发送</li>
  * </ul>
+ *
+ * <p><b>配置说明：</b>
+ * <ul>
+ *   <li>心跳检测间隔：30 秒（HEARTBEAT_INTERVAL）</li>
+ *   <li>连接超时阈值：60 秒无心跳自动标记离线（CONNECTION_TIMEOUT）</li>
+ *   <li>离线数据保留：5 分钟（DISCONNECTED_RETENTION_TIME）</li>
+ *   <li>在线计数：AtomicInteger 保证并发安全</li>
+ *   <li>定时线程池：ScheduledExecutorService 单线程调度</li>
+ * </ul>
+ *
+ * <p><b>断线清理策略：</b>
+ * <ul>
+ *   <li>establishConnection：保存 Session + 添加会话信息（原子操作）</li>
+ *   <li>disconnectSession：标记离线 + 移除 Session 引用（保留数据支持重连）</li>
+ *   <li>cleanSession：移除所有引用和数据（彻底清理，不支持重连）</li>
+ * </ul>
  */
 @Slf4j
 @Component
