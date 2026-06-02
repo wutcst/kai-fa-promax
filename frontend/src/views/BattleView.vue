@@ -1,3 +1,77 @@
+<!--
+ * BattleView.vue - 对战页
+ *
+ * 【组件树】
+ * BattleView
+ *   ├── 准备阶段 (prepare)
+ *   │   ├── 房间信息展示
+ *   │   ├── 玩家信息面板 (players-panel)
+ *   │   │   └── PlayerItem (头像 / 昵称 / 准备状态 / 在线状态)
+ *   │   └── 操作按钮区域
+ *   │       ├── 准备/取消准备按钮
+ *   │       ├── 开始游戏按钮 (仅房主)
+ *   │       └── 返回大厅按钮
+ *   ├── 游戏阶段 (playing)
+ *   │   ├── 级牌显示框 (左上角)
+ *   │   ├── 退出房间按钮 (右上角)
+ *   │   ├── 队友区域 (顶部)
+ *   │   │   ├── PlayerAvatar + 完成标记
+ *   │   │   ├── PlayerDetails (名称 / 剩余牌数)
+ *   │   │   └── 手牌背面 (水平排列)
+ *   │   ├── 左对手区域 (左侧)
+ *   │   │   ├── PlayerAvatar + 完成标记
+ *   │   │   ├── PlayerDetails (名称 / 剩余牌数)
+ *   │   │   └── 手牌背面 (垂直排列)
+ *   │   ├── 右对手区域 (右侧)
+ *   │   │   ├── PlayerAvatar + 完成标记
+ *   │   │   ├── PlayerDetails (名称 / 剩余牌数)
+ *   │   │   └── 手牌背面 (垂直排列)
+ *   │   ├── 中央桌面区域
+ *   │   │   ├── 四方出牌槽位 (desk-slots)
+ *   │   │   │   ├── 出牌卡片组 (played-cards-group)
+ *   │   │   │   └── "不要"指示器 (pass-indicator)
+ *   │   │   ├── 倒计时 (countdown)
+ *   │   │   └── 操作按钮 (action-buttons)
+ *   │   │       ├── 不出 (pass)
+ *   │   │       ├── 提示 (hint)
+ *   │   │       └── 出牌 (play)
+ *   │   ├── 我方区域 (底部)
+ *   │   │   ├── PlayerAvatar + 完成标记
+ *   │   │   ├── PlayerDetails (名称 / 剩余牌数)
+ *   │   │   ├── 快捷文字按钮 (quick-texts)
+ *   │   │   └── 手牌 (my-hand, 横向自适应重叠排列)
+ *   │   └── 聊天气泡 (chat-bubble)
+ *   └── 游戏结束阶段 (finished)
+ *
+ * 【状态管理】
+ *   本地状态 (ref):
+ *     - gameState: 'prepare' | 'playing' | 'finished'
+ *     - myCards / teammateCards / leftOpponentCards / rightOpponentCards: 四家手牌
+ *     - selectedCards: 当前选中的手牌索引
+ *     - suggestedCards: 提示高亮的手牌索引
+ *     - currentPlayer: 当前回合玩家
+ *     - countdown: 倒计时秒数
+ *     - deskDisplay: 四方桌面出牌展示
+ *     - finishOrder / finishLabels: 出完牌顺序和头游/二游/三游/末游标记
+ *     - playerPositions / playerNames: 玩家位置映射
+ *     - chatBubbles: 聊天气泡
+ *     - isAIMode: 是否人机房间
+ *
+ *   WebSocket 事件驱动:
+ *     - GAME_START: 初始化手牌、级牌、玩家位置
+ *     - PLAYER_ACTION: 更新桌面出牌和手牌数量
+ *     - TURN_CHANGE: 切换回合玩家并启动倒计时
+ *     - SUGGEST_CARDS_SUCCESS: 处理出牌提示
+ *     - ROOM_UPDATE: 房间人数/准备状态更新
+ *     - CHAT_MESSAGE: 聊天气泡显示
+ *     - GAME_END: 结算展示
+ *
+ * 【设计要点】
+ *   1. 手牌横向自适应: 根据牌数量和屏幕宽度动态计算重叠量 (handStyle computed)
+ *   2. 桌面出牌四方定位: absolute + 百分比保证各方向出牌位置稳定
+ *   3. 自动出牌: 倒计时结束后自动最小牌或过牌
+ *   4. 拖拽选牌/排序: mousedown/mouseenter 拖拽连选 + HTML5 drag 排序
+ -->
 <template>
   <div class="game-container" @mouseup="stopDragging" @mouseleave="stopDragging">
     <!-- 准备阶段（默认显示） -->
