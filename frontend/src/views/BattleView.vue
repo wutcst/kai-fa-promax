@@ -281,6 +281,34 @@ import { usePlayCard } from '../composables/usePlayCard'
  *   前置：非自由出牌 + 我的回合
  *   操作：点击"不出" → 桌面显示"不要" → 回合切换
  *   预期：pass 指示器渲染，倒计时归零自动过牌
+ *
+ * ============================================================
+ * 手动测试用例：手牌渲染性能
+ * ============================================================
+ * TC-BV-005 27 张牌 DOM 渲染耗时：
+ *   前置：myCards 赋值 27 张 mock 牌
+ *   操作：在 Performance 面板录制 sortCards() → nextTick → DOM 更新
+ *   预期：从数据变更到 DOM 渲染完成 < 200ms
+ *
+ * TC-BV-006 选牌状态切换 re-render：
+ *   前置：已有 27 张手牌渲染完成
+ *   操作：切换 3 张牌选中状态，检查 Vue Devtools 组件更新范围
+ *   预期：仅被点击卡牌所在 li/div 触发更新，其它牌不重绘
+ *
+ * TC-BV-007 手牌排序快照比对防重绘：
+ *   前置：myCards 内容不变
+ *   操作：连续调用 sortCards() 3 次
+ *   预期：第 2、3 次不触发 myCards.value 赋值（before === after）
+ *
+ * TC-BV-008 虚拟滚动裁剪正确性：
+ *   前置：手牌 27 张，VIRTUAL_THRESHOLD = 18
+ *   操作：检查 visibleCards.value.length
+ *   预期：< 18 张时不启用裁剪，> 18 张时仅返回 18 张切片
+ *
+ * TC-BV-009 浏览器 resize 布局 recalc：
+ *   前置：在手牌区域
+ *   操作：从 1920px 拖拽缩放到 1024px
+ *   预期：handStyle 中 cardWidth / step 重新计算，底部手牌不溢出
  * ============================================================
  */
 import { useGameState } from '../composables/useGameState'
