@@ -33,3 +33,4 @@ public class CardUtils {
 // Perf: pre-compute card value mappings in CardUtils
 // Chore: CardUtils combo recognition delivery
 // Perf: optimize comparison with hash lookup instead of iteration
+// Test: manual regression verification for deal and play flow
