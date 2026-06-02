@@ -161,7 +161,10 @@
                 <div class="countdown-circle">{{ countdown }}</div>
               </div>
               <div class="action-buttons" v-show="currentPlayer === '我'">
-                <button class="btn btn-pass" @click="pass" title="跳过本轮出牌">不出</button>
+                <button class="btn btn-pass" @click="pass" title="跳过本轮出牌">
+                  <span class="btn-label">不出</span>
+                  <span class="btn-countdown" v-if="countdown <= 10">{{ countdown }}s</span>
+                </button>
                 <button class="btn btn-hint" @click="hint" title="获取出牌建议">提示</button>
                 <button class="btn btn-play" @click="playCards" :disabled="selectedCards.length === 0" title="出所选牌">出牌</button>
               </div>
@@ -247,30 +250,41 @@ import { getRoomDetail, ready, exitRoom } from '../api/game'
 import soundManager from '../utils/soundManager'
 import { usePlayCard } from '../composables/usePlayCard'
 
+// ============================================================
+//  游戏页面状态管理（拆分自原 inline 状态声明）
+//   将页面状态与请求逻辑分离，统一通过 useGameState 管理
+// ============================================================
+
+/**
+ * 游戏页面状态管理
+ * 拆分自 BattleView.vue 内联声明，集中管理页面状态和请求状态
+ */
+import { useGameState } from '../composables/useGameState'
+
 // 路由实例
 const router = useRouter()
 const route = useRoute()
 
-// 响应式数据
-const roomId = ref(route.query.roomId || '未知房间')
-const isAIMode = computed(() => route.query.mode === 'ai')
-const isReady = ref(false)
-const playerCount = ref(0)
-const roomPlayers = ref([])
-const currentUserId = ref('')
-const wsConnected = ref(false)
-const wsJoined = ref(false)
-const gameState = ref('prepare')
-const roomCreatorId = ref(null)
-
-// 玩家ID和位置映射
-const myPlayerId = ref(null)
-const playerPositions = ref({
-  '我': null,
-  '右对手': null,
-  '队友': null,
-  '左对手': null
-})
+// 使用拆分后的状态管理
+const {
+  roomId,
+  isAIMode,
+  isReady,
+  playerCount,
+  roomPlayers,
+  currentUserId,
+  wsConnected,
+  wsJoined,
+  gameState,
+  roomCreatorId,
+  myPlayerId,
+  playerPositions,
+  username,
+  playerNames,
+  levelCard,
+  getGameRoomId,
+  fetchRoomDetail,
+} = useGameState(route)
 
 const handleTableClear = () => {
   try {
@@ -279,30 +293,6 @@ const handleTableClear = () => {
     }
   } catch (e) {
   }
-}
-
-// 计算属性：获取当前用户名
-const username = computed(() => {
-  const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || localStorage.getItem('userInfo') || '{}')
-  return userInfo.nickname || sessionStorage.getItem('nickname') || localStorage.getItem('nickname') || '未知玩家'
-})
-
-// 玩家名称映射
-const playerNames = ref({
-  '我': username.value,
-  '右对手': '右对手',
-  '队友': '队友',
-  '左对手': '左对手'
-})
-
-const levelCard = ref({
-  rankIndex: null
-})
-
-const getGameRoomId = () => {
-  const id = String(roomId.value || '')
-  if (!id) return ''
-  return id.startsWith('room_') ? id : `room_${id}`
 }
 
 const mapLevelIndexToCardRank = (rankIndex) => {
@@ -449,12 +439,16 @@ const handStyle = computed(() => {
   if (width <= 1024) {
     // 小屏：牌距紧凑，避免牌挤到屏幕外
     step = Math.max(minStep * 0.9, Math.min(maxStep * 0.85, step))
-    // 小屏手牌底部间距优化
-    console.log('小屏手牌布局: step=', step, 'count=', count, 'width=', width)
+    // 小屏手牌底部间距优化 — debug 日志仅在开发环境输出
+    if (process.env.NODE_ENV === 'development') {
+      console.log('小屏手牌布局: step=', step, 'count=', count, 'width=', width)
+    }
   } else if (width >= 1920) {
     // 大屏：牌距自然拉开，视觉更舒适
     step = Math.max(minStep, Math.min(maxStep * 1.08, step))
-    console.log('大屏手牌布局: step=', step, 'count=', count, 'width=', width)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('大屏手牌布局: step=', step, 'count=', count, 'width=', width)
+    }
   }
 
   const marginX = (step - cardWidth) / 2
@@ -679,26 +673,6 @@ const connectWebSocket = () => {
   }
 }
 
-// 获取房间详情
-const fetchRoomDetail = async () => {
-  try {
-    const response = await getRoomDetail(roomId.value)
-    if (response) {
-      if (response.playerCount !== undefined) {
-        playerCount.value = response.playerCount
-      }
-      if (response.players) {
-        roomPlayers.value = response.players
-      }
-      if (response.creatorId !== undefined && response.creatorId !== null) {
-        roomCreatorId.value = response.creatorId
-      }
-    }
-  } catch (error) {
-    console.error('获取房间详情失败:', error)
-  }
-}
-
 // 获取玩家昵称
 const getPlayerNickname = (userId) => {
   if (userId && typeof userId === 'object') {
@@ -833,6 +807,10 @@ window.addEventListener('beforeunload', handleBeforeUnload)
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateWindowWidth)
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
   try {
     webSocketService.off(WS_MESSAGE_TYPES.CHAT_MESSAGE, handleChatMessage)
   } catch (e) {
@@ -851,6 +829,9 @@ onBeforeUnmount(() => {
   } catch (e) {
   }
   chatBubbles.value = {}
+  myCards.value = []
+  selectedCards.value = []
+  suggestedCards.value = []
   tryExitRoomAndDisconnect()
 })
 
@@ -1832,7 +1813,7 @@ const handleError = (data) => {
   margin: -100px 0;
 }
 
-/* 卡牌样式 */
+/* 卡牌样式 / 动画优化：will-change + contain 减少重排重绘 */
 .card {
   width: 70px;
   height: 100px;
@@ -1841,6 +1822,8 @@ const handleError = (data) => {
   cursor: pointer;
   transition: all 0.2s ease;
   margin: 0 -5px;
+  will-change: transform;
+  contain: layout style;
 }
 
 .card.back {
@@ -1987,6 +1970,28 @@ const handleError = (data) => {
 .btn:disabled:hover {
   background-color: rgba(204, 204, 204, 0.5);
   color: rgba(102, 102, 102, 0.7);
+}
+
+/* 按钮倒计时显示 */
+.btn .btn-label {
+  display: inline-block;
+}
+
+.btn .btn-countdown {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 4px;
+  background: rgba(255, 80, 80, 0.85);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 16px;
+  animation: pulse-countdown 1s ease-in-out infinite;
+}
+
+@keyframes pulse-countdown {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 /* 快捷文字样式 */
