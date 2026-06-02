@@ -266,3 +266,14 @@ export function isSameCards(a, b) {
   if (!a || !b) return false
   return a.suit === b.suit && a.rank === b.rank && a.deck === b.deck
 }
+
+/**
+ * 卡牌渲染缓存指纹（优化渲染性能）
+ * 为每张卡牌生成唯一字符串 key，减少 BattleView 排序时的对象比较
+ * @param {Object} card 前端卡牌对象
+ * @returns {string} 缓存指纹
+ */
+export function cardFingerprint(card) {
+  if (!card) return ''
+  return `${card.suit}|${card.rank}|${card.deck}`
+}

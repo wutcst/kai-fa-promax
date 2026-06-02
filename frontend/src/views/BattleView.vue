@@ -1859,16 +1859,18 @@ const handleError = (data) => {
 }
 
 /* 卡牌样式 / 动画优化：will-change + contain 减少重排重绘 */
+/* 手牌渲染性能布局优化：使用 transform 驱动动画避免 layout 触发 */
 .card {
   width: 70px;
   height: 100px;
   overflow: hidden;
   position: relative;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
   margin: 0 -5px;
   will-change: transform;
   contain: layout style;
+  backface-visibility: hidden;
 }
 
 .card.back {
