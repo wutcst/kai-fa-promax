@@ -10,3 +10,4 @@ export function cardText(card) {
 // Perf: DOM node reuse for card elements
 // Refactor: extract card rendering to CardRenderer component
 // Fix: memory leak from unremoved card event listeners
+// Style: transition animations for card selection/deselection
