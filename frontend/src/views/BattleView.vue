@@ -311,6 +311,72 @@ import { usePlayCard } from '../composables/usePlayCard'
  *   预期：handStyle 中 cardWidth / step 重新计算，底部手牌不溢出
  * ============================================================
  */
+
+/**
+ * BattleView Interaction Flow Documentation
+ *
+ * === 1. Room Entry & Preparation ===
+ * User enters BattleView via router (room params in query).
+ *   -> onMounted: validate login -> fetchRoomDetail -> connectWebSocket
+ *   -> WebSocket JOIN_ROOM_SUCCESS -> wsJoined=true
+ *   -> User clicks "准备就绪" -> ready(roomId) -> isReady=true
+ *   -> Room owner clicks "开始游戏" -> WS START_GAME -> handleGameStart
+ *
+ * === 2. Game Start ===
+ * handleGameStart(data):
+ *   - Extracts myCards from data.myCards (backend cardIds array)
+ *   - Calls idToCard() for each cardId -> myCards.value
+ *   - Calls sortCards() to sort by rank desc + suit priority
+ *   - Sets playerPositions, levelCard, teammateCards/opponents refs
+ *   - Plays soundManager.play('game_start') + ElMessage.success
+ *
+ * === 3. Card Selecting ===
+ * User clicks/drags on hand cards:
+ *   - handleCardMousedown: records mouseDownX/Y, toggles toggleCardLogic
+ *   - handleCardMouseenter: drag-selection mode, batch selects/unselects
+ *   - toggleCardLogic: adds/removes index from selectedCards ref
+ *   - Debounce: 150ms tapDebounceMs prevents rapid double-tap
+ *   - Selected cards get CSS .selected class -> translateY(-18px) + gold glow
+ *
+ * === 4. Playing Cards ===
+ * User clicks "出牌" button:
+ *   - playCards() from usePlayCard composable
+ *   - Sends WS PLAY_CARD with selected cardIds
+ *   - Server broadcasts PLAYER_ACTION + TURN_CHANGE
+ *   - handlePlayerAction: removes played cards from myCards
+ *   - Renders cards in deskDisplay[position] with idToCard
+ *   - Checks checkWin() if own cards depleted
+ *
+ * === 5. Passing ===
+ * User clicks "不出" button:
+ *   - pass() from usePlayCard composable
+ *   - Sends WS PLAY_CARD with empty array
+ *   - Server broadcasts PLAYER_ACTION with pass flag
+ *   - handlePlayerAction: deskDisplay[position] = [{type: 'pass'}]
+ *   - Countdown auto-passes at 0 via pass() or autoPlaySmallestCard
+ *
+ * === 6. Turn Management ===
+ * handleTurnChange(data):
+ *   - If data.myTurn -> currentPlayer='我', startCountdown(30s)
+ *   - Else currentPlayer=position name, stop countdown
+ *   - Turn advance: server nextTurn() -> broadcasts TURN_CHANGE to all
+ *
+ * === 7. Game End ===
+ * handleGameEnd(data):
+ *   - winnerId check vs currentUserId -> victory/defeat message
+ *   - score/levelTeamA/levelTeamB display
+ *   - soundManager.play('victory'|'defeat')
+ *   - Room resets to WAITING for next round
+ *
+ * === 8. Disconnect & Reconnect ===
+ * - Normal close: onClose -> executeCleanDisconnect (remove player)
+ * - Abnormal close: onClose -> markOffline (retain data for reconnect)
+ * - Reconnect: onOpen with existing session -> RECONNECT_SUCCESS
+ *   -> send myCards + currentPlayerId + gameStatus back to client
+ *
+ * Note: All card format conversions use cardConverter.js utility.
+ * Images are loaded dynamically via getCardImage() using Vite import.meta.url.
+ */
 import { useGameState } from '../composables/useGameState'
 
 // 路由实例
