@@ -940,4 +940,34 @@ public class CardUtils {
     //   [√] FLUSH_CACHE — 同花顺判定缓存
     //   [√] 所有高频路径优先查缓存，避免重复遍历和计算
     // ============================================================
+    //
+    // ============================================================
+    //  [RV] 回归验证点 — 发牌与出牌流程
+    // ============================================================
+    //  RV-CU-001: createNewDeck 返回 108 张牌，ID 范围 0-107
+    //  RV-CU-002: shuffleDeck 洗牌后牌堆长度不变，内容不变（仅顺序变）
+    //  RV-CU-003: dealCards 4人发牌各27张，总牌数 108
+    //  RV-CU-004: dealCards 空牌堆 → 返回空列表
+    //  RV-CU-005: dealCards playerCount ≤ 0 → 返回空列表
+    //  RV-CU-006: getCardType "单张" → 非 null
+    //  RV-CU-007: getCardType null/空列表 → 返回 null
+    //  RV-CU-008: getCardValue null → 返回 null
+    //  RV-CU-009: getCardValue 合法牌型 → 返回非 null Integer
+    //  RV-CU-010: compareHandValues 同牌型比较 → 正/负/零正确
+    //  RV-CU-011: compareHandValues null → 返回 0
+    //  RV-CU-012: sortHandCards null → 返回空列表
+    //  RV-CU-013: sortHandCards 级牌优先排在前面
+    //  RV-CU-014: sortHandCards 逢人配（红桃级牌）最优先
+    //  RV-CU-015: analyzeHand 空手牌 → totalCards=0
+    //  RV-CU-016: analyzeHand 含大小王 → jokerCount 正确
+    //  RV-CU-017: getLevelCards null → 返回空列表
+    //  RV-CU-018: getWildCards null → 返回空列表
+    //  RV-CU-019: idsToStringList null → 返回空列表
+    //  RV-CU-020: getDisplayName 级牌显示 "(级)" 标记
+    //  RV-CU-021: getDisplayName 逢人配显示 "(逢人配)" 标记
+    //  RV-CU-022: isLevelCard 级牌点数越界 → 返回 false
+    //  RV-CU-023: isWildCard 非红桃级牌 → 返回 false
+    //  RV-CU-024: getGameLevel 大王(16) > 小王(15) > 级牌(14) > 普通牌(0-12)
+    //  RV-CU-025: getGameLevel 越界ID → 返回 -1
+    // ============================================================
 }
