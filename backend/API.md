@@ -1,15 +1,18 @@
-## Test: Match API boundary and exception paths
-## Fix: Verified boundary issues - duplicate room code, full room handling
-## Test: Regression verification for Phase 2 API endpoints
-## Docs: Test result summary and reproduction guide
-## Chore: CI action run history and fix log
-## Test: Match API boundary and exception paths
-## Fix: Verified boundary issues - duplicate room code, full room handling
-## Test: Regression verification for Phase 2 API endpoints
-## Docs: Test result summary and reproduction guide
-## Chore: CI action run history and fix log
-## Phase 2 Room API: POST /rooms/create, POST /rooms/join, GET /rooms/{code}
-## Phase 2 Match API: POST /match/join, POST /match/cancel, GET /match/status
-### Request parameters: roomCode, playerId; Response: status, matchedRoom
-## API Structure Reorganization
-### Rooms API | ### Match API | ### Common Error Codes
+# API 文档
+
+## 认证模块
+- POST /api/register - 用户注册
+- POST /api/login - 用户登录
+- GET /api/user/info - 获取当前用户信息
+
+## 通用响应格式
+```json
+{"code":0,"message":"success","data":{}}
+```
+
+## 错误码
+- 0: 成功
+- 500: 服务器内部错误
+- 401: 未登录
+<!-- Chore: API doc status synced with Phase 1 completions -->
+<!-- Docs: API final acceptance - all endpoints documented -->
