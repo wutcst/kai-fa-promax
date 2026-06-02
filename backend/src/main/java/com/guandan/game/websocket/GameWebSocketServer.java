@@ -22,3 +22,4 @@ public class GameWebSocketServer {
 // Docs: WebSocket message format: {type:'play|pass|deal|ready', payload:{}}
 // Test: WebSocket session lifecycle verification
 // Chore: WebSocket server configuration consolidation
+// Chore: WebSocket server stage delivery materials

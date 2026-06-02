@@ -45,3 +45,4 @@ public class GameLogicService {
 // Test: manual regression verification for game deal and card rules
 // Chore: game logic service delivery materials
 // Perf: optimize player turn calculation in active games
+// Chore: Phase 3 game core and WebSocket modules configuration consolidation
