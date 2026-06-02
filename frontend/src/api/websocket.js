@@ -424,6 +424,56 @@ class WebSocketService {
     }
     return { valid: errors.length === 0, errors }
   }
+
+  // ============================================================
+  //  手动测试用例：提升对战页操作体验
+  // ============================================================
+
+  /**
+   * 测试用例 TC-WS-001：手牌展示
+   * 前置条件：连接 WebSocket 并收到 GAME_START 消息
+   * 操作步骤：
+   *   1. webSocketService.on(WS_MESSAGE_TYPES.GAME_START, handler) 注册监听
+   *   2. 服务端发送 { type: "GAME_START", data: { myCards: [0,1,2,...] } }
+   *   3. handler 调用 idsToCards 转换 → sortCards 排序 → 渲染
+   * 预期结果：手牌区域按 rank 降序正确渲染 27 张牌，无重复或丢失
+   */
+  // TC-WS-001 手牌展示
+
+  /**
+   * 测试用例 TC-WS-002：选牌交互
+   * 前置条件：已进入游戏阶段且 currentPlayer === '我'
+   * 操作步骤：
+   *   1. 点击第一张牌 → handleCardMousedown(0) → toggleCardLogic(0)
+   *   2. 再次点击第一张牌 → toggleCardLogic(0) 取消选中
+   *   3. 拖拽经过多张牌（mousedown → mouseenter 连续选中）
+   * 预期结果：选中牌上移 10px 高亮；快速点选防抖在 150ms 内生效；
+   *          拖拽选牌正确切换选中状态
+   */
+  // TC-WS-002 选牌交互
+
+  /**
+   * 测试用例 TC-WS-003：出牌反馈
+   * 前置条件：已选中至少一张牌
+   * 操作步骤：
+   *   1. 选中卡牌 → 点击"出牌"按钮 → playCards()
+   *   2. playCards 调用 send(PLAY_CARD, { cards: [cardIds] })
+   *   3. 服务端广播 PLAYER_ACTION 和 TURN_CHANGE
+   * 预期结果：手牌中已出牌移除；桌面显示打出的牌；回合切换为下一玩家
+   */
+  // TC-WS-003 出牌反馈
+
+  /**
+   * 测试用例 TC-WS-004：过牌反馈
+   * 前置条件：已进入游戏阶段且 currentPlayer === '我'，非自由出牌
+   * 操作步骤：
+   *   1. 点击"不出"按钮 → pass() → send(PLAY_CARD, { cards: [] })
+   *   2. 服务端广播 PLAYER_ACTION 带空 cards
+   *   3. 倒计时归零自动过牌（autoPlaySmallestCard / pass）
+   * 预期结果：桌面显示"不要"指示器；回合切换到下一玩家；
+   *          倒计时归零后自动触发过牌
+   */
+  // TC-WS-004 过牌反馈
 }
 
 // 创建单例实例
