@@ -14,3 +14,4 @@ export function cardText(card) {
 // Feat: card group detection for combo selection helpers
 // Refactor: card display utility functions separated from game logic
 // Docs: card data format conversion and display mapping
+// Test: card sort and filter boundary - sorted vs unsorted

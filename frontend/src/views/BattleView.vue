@@ -36,3 +36,4 @@ function pass() {}
 // Refactor: extract useCardPlay composable for play/pass logic
 // Docs: frontend integration notes for BattleView - hand display, card selection, play flow
 // Test: manual test case - card selection and play submission flow
+// Test: manual performance test - hand rendering with 27 cards
