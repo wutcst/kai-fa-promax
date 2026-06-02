@@ -21,3 +21,4 @@ public class GameWebSocketServer {
 // Refactor: extract message handler from WebSocket server
 // Docs: WebSocket message format: {type:'play|pass|deal|ready', payload:{}}
 // Test: WebSocket session lifecycle verification
+// Chore: WebSocket server configuration consolidation
