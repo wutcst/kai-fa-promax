@@ -26,3 +26,4 @@
 ## Docs: test conclusion - GameRecord CRUD operations verified, reproduction steps below
 ## Chore: CI action run history and fix log for Phase 3 tests
 ## Test: GameRecord CRUD acceptance verified
+## Test: Boundary scenarios for game record - missing fields, duplicate entry
