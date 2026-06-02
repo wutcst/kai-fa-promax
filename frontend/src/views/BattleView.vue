@@ -2473,6 +2473,18 @@ const handleError = (data) => {
   transform: translateY(-18px) scale(1.035) !important;
   z-index: 200 !important;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.38) !important;
+  border: 2px solid #ffd700 !important;
+  border-radius: 9px !important;
+  animation: glow-pulse 1.2s ease-in-out infinite !important;
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.38), 0 0 6px rgba(255, 215, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.38), 0 0 14px rgba(255, 215, 0, 0.9);
+  }
 }
 
 .my-hand .card.suggested {
