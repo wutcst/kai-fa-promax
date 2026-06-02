@@ -38,3 +38,4 @@ function pass() {}
 // Test: manual test case - card selection and play submission flow
 // Test: manual performance test - hand rendering with 27 cards
 // Perf: memoize card sort results to prevent re-render on unchanged hand
+// Docs: battle view interaction flow - select, confirm play, wait response
