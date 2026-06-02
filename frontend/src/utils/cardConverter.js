@@ -51,7 +51,10 @@ export function idToCard(cardId) {
       rank: cardId <= 105 ? 14 : 15,  // 104-105:小王(14), 106-107:大王(15)
       deck: (cardId - 104) % 2  // 0或1，表示第几副牌的王
     };
-    console.log(`idToCard: cardId=${cardId} ->`, result, `(deck=${result.deck})`);
+    // debug 日志仅在开发环境输出，避免生产环境内存泄漏
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`idToCard: cardId=${cardId} ->`, result, `(deck=${result.deck})`);
+    }
     return result;
   }
 
@@ -68,7 +71,10 @@ export function idToCard(cardId) {
     rank: RANK_MAP[rankIndex],
     deck: deckIndex // 添加副牌索引，用于正确转换回卡牌ID
   };
-  console.log(`idToCard: cardId=${cardId} ->`, result, `(deck=${result.deck})`);
+  // debug 日志仅在开发环境输出，避免生产环境内存泄漏
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`idToCard: cardId=${cardId} ->`, result, `(deck=${result.deck})`);
+  }
   return result;
 }
 
@@ -127,6 +133,27 @@ export function idsToCards(cardIds) {
 }
 
 /**
+ * 批量转换后端卡牌ID为前端卡牌对象（for循环性能优化版）
+ * 拆分自 idsToCards，独立用于 gameStart 等高频批量转换场景，
+ * 减少闭包创建和 filter 开销。
+ * @param {Array<number>} cardIds 后端卡牌ID数组
+ * @returns {Array<Object>} 前端卡牌对象数组
+ */
+export function bulkIdToCard(cardIds) {
+  if (!cardIds || !Array.isArray(cardIds)) return []
+  const result = []
+  for (let i = 0; i < cardIds.length; i++) {
+    try {
+      const card = idToCard(cardIds[i])
+      if (card) result.push(card)
+    } catch (e) {
+      console.warn('bulkIdToCard: 跳过无效卡牌ID', cardIds[i], e)
+    }
+  }
+  return result
+}
+
+/**
  * 批量转换前端卡牌对象数组为后端卡牌ID数组（性能优化版）
  * 使用 for 循环代替 map 减少函数调用开销
  * @param {Array<Object>} cardObjects 前端卡牌对象数组
@@ -152,7 +179,10 @@ export function bulkCardsToIds(cardObjects) {
  */
 export function cardsToIds(cards) {
   const result = cards.map(card => cardToId(card, card.deck));
-  console.log('cardsToIds: cards=', cards, '-> ids=', result);
+  // debug 日志仅在开发环境输出
+  if (process.env.NODE_ENV === 'development') {
+    console.log('cardsToIds: cards=', cards, '-> ids=', result);
+  }
   return result;
 }
 
@@ -235,4 +265,15 @@ export function isWildCard(card, levelCardRank) {
 export function isSameCards(a, b) {
   if (!a || !b) return false
   return a.suit === b.suit && a.rank === b.rank && a.deck === b.deck
+}
+
+/**
+ * 卡牌渲染缓存指纹（优化渲染性能）
+ * 为每张卡牌生成唯一字符串 key，减少 BattleView 排序时的对象比较
+ * @param {Object} card 前端卡牌对象
+ * @returns {string} 缓存指纹
+ */
+export function cardFingerprint(card) {
+  if (!card) return ''
+  return `${card.suit}|${card.rank}|${card.deck}`
 }
