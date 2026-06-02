@@ -1184,3 +1184,19 @@ public class GameWebSocketServer {
         }
     }
 }
+    // ============================================================
+    //  阶段标记 — Phase 3：WebSocket 连接管理与消息路由优化
+    //  负责：连接生命周期（onOpen/onClose/onError）、消息路由
+    //  （PLAY_CARD/JOIN_ROOM/HEARTBEAT/RECONNECT/START_GAME/
+    //   SUGGEST_CARDS/CHAT_MESSAGE）、广播策略（broadcastToRoom/
+    //   handleAIPlayCard/broadcastGameEnd/broadcastTableClear）、
+    //  断线清理（executeCleanDisconnect/notifyRoomOnPlayerDisconnect）、
+    //  重连恢复（重连时同步手牌/回合/清桌状态）
+    //
+    //  子任务：
+    //   [ ] 消息路由增加入参校验守卫（playerId/type/data 空值拦截）
+    //   [ ] handlePlayCard 出牌失败细分错误提示
+    //   [ ] broadcastToRoom 空房间/NPE 防御
+    //   [ ] 断线重连时同步手牌、回合和清桌状态
+    //   [ ] 心跳过期主动清理离线 Session
+    // ============================================================
