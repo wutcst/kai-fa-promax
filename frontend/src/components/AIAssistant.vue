@@ -75,6 +75,7 @@ const chatVisible = ref(false)
 const messages = ref([])
 const inputMessage = ref('')
 const isLoading = ref(false)
+const isSubmitting = ref(false) // 防止重复提交
 const unreadCount = ref(0)
 const messageList = ref(null)
 
@@ -147,7 +148,13 @@ const closeChat = () => {
 // 发送消息
 const sendMessage = async () => {
   const message = inputMessage.value.trim()
-  if (!message || isLoading.value) return
+  if (!message || isLoading.value || isSubmitting.value) return // 重复提交防护
+
+  // 消息长度校验
+  if (message.length > 500) {
+    ElMessage.warning('消息太长，请精简后重试（最多500字）')
+    return
+  }
 
   // 添加用户消息
   addUserMessage(message)
@@ -155,15 +162,21 @@ const sendMessage = async () => {
 
   // 调用AI
   isLoading.value = true
+  isSubmitting.value = true
   try {
     const response = await chatWithAI(message)
-    addAIMessage(response)
+    if (response && response.trim()) {
+      addAIMessage(response)
+    } else {
+      addAIMessage('抱歉，我暂时无法回答。请稍后再试。')
+    }
   } catch (error) {
     console.error('AI调用失败:', error)
     addAIMessage('抱歉，我暂时无法回答。请稍后再试。')
     ElMessage.error('AI助手暂时无法连接')
   } finally {
     isLoading.value = false
+    isSubmitting.value = false
   }
 }
 

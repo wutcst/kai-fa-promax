@@ -24,6 +24,10 @@ private static final String GLM_API_URL = "https://api.siliconflow.cn/v1/chat/co
     private List<ChatMessage> conversationHistory = new ArrayList<>();
 
     public String chat(String userMessage) {
+        // 参数空值校验
+        if (userMessage == null || userMessage.trim().isEmpty()) {
+            return "请输入您的问题";
+        }
         try {
             // 添加系统提示词
             List<ChatMessage> messages = new ArrayList<>();
@@ -104,6 +108,17 @@ private static final String GLM_API_URL = "https://api.siliconflow.cn/v1/chat/co
             log.warn("AI出牌建议：手牌为空");
             return new ArrayList<>();
         }
+        // 级牌边界校验（掼蛋级牌范围 0-12）
+        if (levelCardRank < 0 || levelCardRank > 12) {
+            log.warn("AI出牌建议：级牌参数异常 {}", levelCardRank);
+            levelCardRank = 0;
+        }
+        // 去重校验（手牌不应有重复ID）
+        long distinctCount = handCards.stream().distinct().count();
+        if (distinctCount != handCards.size()) {
+            log.warn("AI出牌建议：手牌包含重复ID，已自动去重");
+            handCards = new ArrayList<>(handCards.stream().distinct().toList());
+        }
         // 如果上一手是空或者自由出牌，选择最小的牌打出
         if (lastPlayedCards == null || lastPlayedCards.isEmpty()) {
             List<Integer> sorted = new ArrayList<>(handCards);
@@ -114,7 +129,20 @@ private static final String GLM_API_URL = "https://api.siliconflow.cn/v1/chat/co
             return result;
         }
         // 跟牌场景：找一个比上一手大的最小牌
-        int lastCardValue = lastPlayedCards.get(lastPlayedCards.size() - 1);
+        if (lastPlayedCards == null || lastPlayedCards.isEmpty()) {
+            log.info("AI出牌建议：自由出牌场景，推荐最小牌");
+            List<Integer> sorted = new ArrayList<>(handCards);
+            sorted.sort(Integer::compareTo);
+            List<Integer> result = new ArrayList<>();
+            result.add(sorted.get(0));
+            return result;
+        }
+        // 安全获取上一手牌的最大值
+        int lastCardValue = lastPlayedCards.stream().max(Integer::compareTo).orElse(-1);
+        if (lastCardValue < 0) {
+            log.warn("AI出牌建议：上一手牌数据异常");
+            return new ArrayList<>();
+        }
         Integer bestCard = null;
         for (Integer cardId : handCards) {
             if (cardId > lastCardValue) {
