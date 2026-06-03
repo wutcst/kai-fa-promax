@@ -20,3 +20,4 @@ public class AIService {
         return List.of();
     }
 }
+// AI: getPlaySuggestion(playerHand) returns recommended card combo

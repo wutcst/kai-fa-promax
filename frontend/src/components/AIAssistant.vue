@@ -5,3 +5,4 @@
     <button @click="ask">问AI</button>
   </div>
 </template>
+// Component: AI suggestion panel with question input

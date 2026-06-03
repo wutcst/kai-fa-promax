@@ -19,3 +19,4 @@ public class AIAssistantController {
         return Result.ok(service.answer(request.getMessage()));
     }
 }
+// Controller: GET /ai/suggestion and POST /ai/ask
