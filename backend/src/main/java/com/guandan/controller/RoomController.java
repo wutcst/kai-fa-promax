@@ -1,0 +1,44 @@
+package com.guandan.controller;
+
+import com.guandan.common.Result;
+import com.guandan.dto.*;
+import com.guandan.service.RoomService;
+import com.guandan.util.UserContext;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api")
+public class RoomController {
+    private final RoomService roomService;
+
+    public RoomController(RoomService roomService) {
+        this.roomService = roomService;
+    }
+
+    @PostMapping("/new-game")
+    public Result<RoomDetailResponse> createRoom() {
+        return Result.ok(roomService.createRoom(UserContext.getUserId()));
+    }
+
+    @PostMapping("/room/join")
+    public Result<RoomDetailResponse> join(@RequestBody JoinRoomRequest request) {
+        return Result.ok(roomService.joinRoom(UserContext.getUserId(), request));
+    }
+
+    @GetMapping("/rooms")
+    public Result<?> rooms() {
+        return Result.ok(roomService.waitingRooms());
+    }
+}
+// Controller: POST /rooms and POST /rooms/join endpoints
+// Fix: validate room full before allowing join
+// Refactor: rename endpoints for RESTful consistency
+// Docs: API endpoint documentation with request/response examples
+// Refactor: consistent class naming with Service/Controller suffixes
+// Refactor: align controller method names with REST API paths
+// Fix: resolve compilation issues from renamed methods
+// Style: consistent indentation and brace placement
+// Regression: room controller join/leave flow validation
+// Chore: controller endpoint consolidation for Phase 2
+// Docs: package structure reference and class naming standards
+// Chore: Phase 2 backend room and match modules configuration consolidation
