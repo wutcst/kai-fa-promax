@@ -6,3 +6,4 @@
   </div>
 </template>
 // Component: AI suggestion panel with question input
+// Fix: show error state when API call fails
