@@ -1,0 +1,7 @@
+<template>
+  <div class="ai-assistant">
+    <div class="suggestion" v-if="suggestion">{{ suggestion }}</div>
+    <input v-model="question" placeholder="问牌型规则..." />
+    <button @click="ask">问AI</button>
+  </div>
+</template>
