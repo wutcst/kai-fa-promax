@@ -12,6 +12,33 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * AI助手控制器
+ * 提供AI聊天、出牌建议、规则问答等智能辅助功能。
+ * 所有接口统一返回 Result<T> 格式。
+ *
+ * <h3>接口列表</h3>
+ * <ul>
+ *   <li>POST /api/ai/chat — AI聊天，输入问题返回回答</li>
+ *   <li>POST /api/ai/suggest-cards — AI出牌建议，根据手牌和桌⾯情况推荐出牌</li>
+ *   <li>GET /api/ai/rules — 规则问答，查询掼蛋游戏规则</li>
+ * </ul>
+ *
+ * <h3>异常场景说明</h3>
+ * <ul>
+ *   <li>参数为空或格式异常 → 返回 Result.error("请输入您的问题")</li>
+ *   <li>消息长度超过500字 → 返回 Result.error("请输入您的问题")</li>
+ *   <li>手牌数据为空 → 返回 Result.error("手牌数据不能为空")</li>
+ *   <li>手牌数量超过27张 → 返回 Result.error("手牌数据异常")</li>
+ *   <li>服务内部异常 → 返回 Result.error("AI助手暂时无法回答，请稍后再试")</li>
+ *   <li>出牌建议不可用 → 返回 Result.error("AI出牌建议暂时不可用")</li>
+ *   <li>规则查询失败 → 返回 Result.error("规则查询暂时不可用")</li>
+ *   <li>未找到相关规则 → 返回 Result.error("未找到相关规则说明")</li>
+ * </ul>
+ *
+ * @author kai-fa-promax 开发团队
+ */
+
 @Slf4j
 @Tag(name = "AI助手", description = "AI智能助手功能")
 @RestController
