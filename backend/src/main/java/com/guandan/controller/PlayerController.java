@@ -17,3 +17,4 @@ public class PlayerController {
         return playerService.getRecords(playerId, page, size);
     }
 }
+// Controller: GET /player/stats and GET /player/records?page=&size=

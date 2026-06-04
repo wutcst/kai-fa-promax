@@ -35,3 +35,4 @@ onMounted(() => {
 // Test: manual test case - stats dashboard loads with mock data
 // Feat: stats dashboard with win rate chart and game history
 // Fix: display empty state when no game history exists
+// Home: stats dashboard with win rate and total games

@@ -6,3 +6,4 @@
 // Docs: record detail data format and API endpoint reference
 // Test: manual test case - record pagination and search filter
 // Feat: record detail modal with round replay data
+// Detail: record detail with round-by-round card plays
