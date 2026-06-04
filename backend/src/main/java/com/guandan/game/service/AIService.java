@@ -22,3 +22,4 @@ public class AIService {
 }
 // AI: getPlaySuggestion(playerHand) returns recommended card combo
 // Fix: validate empty hand before AI suggestion
+// Refactor: extract suggestion scoring to separate method

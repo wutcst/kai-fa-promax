@@ -21,3 +21,4 @@ public class AIAssistantController {
 }
 // Controller: GET /ai/suggestion and POST /ai/ask
 // Fix: handle unsupported question topics in rule QA
+// Refactor: rename endpoints to /ai/suggest and /ai/chat
