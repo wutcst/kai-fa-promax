@@ -5,7 +5,7 @@
       ref="floatBall"
       class="float-ball"
       :style="{ left: ballPosition.x + 'px', top: ballPosition.y + 'px' }"
-      @mousedown="startDrag"
+      @mousedown="beginDrag"
       @click="toggleChat"
     >
       <div class="ball-icon">🤖</div>
@@ -85,11 +85,18 @@ const dragOffset = ref({ x: 0, y: 0 })
 
 // 初始化欢迎消息
 onMounted(() => {
-  addAIMessage('你好！我是掼蛋小助手 🤖\n\n我可以帮你：\n• 解释掼蛋规则\n• 提供打牌策略\n• 解答游戏问题\n\n有什么可以帮你的吗？')
+  insertWelcomeMessage()
 })
 
+/**
+ * 插入欢迎消息
+ */
+const insertWelcomeMessage = () => {
+  appendAssistantMessage('你好！我是掼蛋小助手 🤖\n\n我可以帮你：\n• 解释掼蛋规则\n• 提供打牌策略\n• 解答游戏问题\n\n有什么可以帮你的吗？')
+}
+
 // 开始拖拽
-const startDrag = (e) => {
+const beginDrag = (e) => {
   if (chatVisible.value) return // 聊天窗口打开时不拖拽
 
   isDragging.value = true
@@ -98,12 +105,12 @@ const startDrag = (e) => {
     y: e.clientY - ballPosition.value.y
   }
 
-  document.addEventListener('mousemove', onDrag)
-  document.addEventListener('mouseup', stopDrag)
+  document.addEventListener('mousemove', performDrag)
+  document.addEventListener('mouseup', endDrag)
 }
 
 // 拖拽中
-const onDrag = (e) => {
+const performDrag = (e) => {
   if (!isDragging.value) return
 
   const newX = e.clientX - dragOffset.value.x
@@ -123,10 +130,10 @@ const onDrag = (e) => {
 }
 
 // 停止拖拽
-const stopDrag = () => {
+const endDrag = () => {
   isDragging.value = false
-  document.removeEventListener('mousemove', onDrag)
-  document.removeEventListener('mouseup', stopDrag)
+  document.removeEventListener('mousemove', performDrag)
+  document.removeEventListener('mouseup', endDrag)
 }
 
 // 切换聊天窗口
@@ -157,7 +164,7 @@ const sendMessage = async () => {
   }
 
   // 添加用户消息
-  addUserMessage(message)
+  appendUserMessage(message)
   inputMessage.value = ''
 
   // 调用AI
@@ -166,13 +173,13 @@ const sendMessage = async () => {
   try {
     const response = await chatWithAI(message)
     if (response && response.trim()) {
-      addAIMessage(response)
+      appendAssistantMessage(response)
     } else {
-      addAIMessage('抱歉，我暂时无法回答。请稍后再试。')
+      appendAssistantMessage('抱歉，我暂时无法回答。请稍后再试。')
     }
   } catch (error) {
     console.error('AI调用失败:', error)
-    addAIMessage('抱歉，我暂时无法回答。请稍后再试。')
+    appendAssistantMessage('抱歉，我暂时无法回答。请稍后再试。')
     ElMessage.error('AI助手暂时无法连接')
   } finally {
     isLoading.value = false
@@ -181,7 +188,7 @@ const sendMessage = async () => {
 }
 
 // 添加用户消息
-const addUserMessage = (content) => {
+const appendUserMessage = (content) => {
   messages.value.push({
     role: 'user',
     content,
@@ -191,7 +198,7 @@ const addUserMessage = (content) => {
 }
 
 // 添加AI消息
-const addAIMessage = (content) => {
+const appendAssistantMessage = (content) => {
   messages.value.push({
     role: 'assistant',
     content,

@@ -13,81 +13,35 @@ import java.util.List;
 @Service
 public class AIAssistantService {
 
-private static final String GLM_API_URL = "https://api.siliconflow.cn/v1/chat/completions";
+    private static final String LLM_API_URL = "https://api.siliconflow.cn/v1/chat/completions";
     private static final String API_KEY = "sk-ebqmsclwuuqtgoouaffxlzfytyvqkawouxewyrcghhyopyzo";
-    private static final String MODEL = "Qwen/Qwen2.5-7B-Instruct"; // 使用Qwen2.5对话模型
+    private static final String LLM_MODEL = "Qwen/Qwen2.5-7B-Instruct";
 
-    private final OkHttpClient client = new OkHttpClient();
+    private static final int MAX_CARDS_PER_HAND = 27;
+    private static final int LEVEL_CARD_RANK_MIN = 0;
+    private static final int LEVEL_CARD_RANK_MAX = 12;
+
+    private final OkHttpClient httpClient = new OkHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // 对话历史（可选，用于上下文）
     private List<ChatMessage> conversationHistory = new ArrayList<>();
 
+    // ==================== 公开方法 ====================
+
+    /**
+     * 向AI助手提问
+     */
     public String chat(String userMessage) {
-        // 参数空值校验
-        if (userMessage == null || userMessage.trim().isEmpty()) {
+        if (isBlank(userMessage)) {
             return "请输入您的问题";
         }
         try {
-            // 添加系统提示词
-            List<ChatMessage> messages = new ArrayList<>();
-            messages.add(new ChatMessage("system",
-                "你是掼蛋游戏的智能助手。你的任务是：\n" +
-                "1. 解释掼蛋游戏规则\n" +
-                "2. 提供打牌策略建议\n" +
-                "3. 解答玩家关于游戏的问题\n" +
-                "4. 友好、专业地与玩家交流\n\n" +
-                "请用简洁、易懂的语言回答问题。"
-            ));
+            List<ChatMessage> messages = buildChatMessages(userMessage);
+            JsonNode requestBody = buildLlmRequestBody(messages);
+            log.info("发送LLM API请求: {}", requestBody);
 
-            // 添加用户消息
-            messages.add(new ChatMessage("user", userMessage));
-
-            // 构建请求体
-            JsonNode requestBody = objectMapper.createObjectNode()
-                .put("model", MODEL)
-                .set("messages", objectMapper.valueToTree(messages));
-
-            log.info("发送GLM API请求: {}", requestBody);
-
-            // 创建HTTP请求
-            RequestBody body = RequestBody.create(
-                requestBody.toString(),
-                MediaType.parse("application/json; charset=utf-8")
-            );
-
-            Request request = new Request.Builder()
-                .url(GLM_API_URL)
-                .post(body)
-                .addHeader("Authorization", "Bearer " + API_KEY)
-                .addHeader("Content-Type", "application/json")
-                .build();
-
-            // 发送请求
-            try (Response response = client.newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    log.error("GLM API调用失败: {}", response.code());
-                    String errorBody = response.body() != null ? response.body().string() : "无响应体";
-                    log.error("错误详情: {}", errorBody);
-                    throw new RuntimeException("API调用失败: " + response.code());
-                }
-
-                String responseBody = response.body().string();
-                log.info("GLM API响应: {}", responseBody);
-
-                // 解析响应
-                JsonNode jsonResponse = objectMapper.readTree(responseBody);
-                String aiResponse = jsonResponse
-                    .path("choices")
-                    .get(0)
-                    .path("message")
-                    .path("content")
-                    .asText();
-
-                log.info("AI回答: {}", aiResponse);
-                return aiResponse;
-            }
-
+            String responseBody = executeLlmRequest(requestBody);
+            return parseLlmResponse(responseBody);
         } catch (Exception e) {
             log.error("AI服务异常", e);
             throw new RuntimeException("AI服务暂时不可用: " + e.getMessage());
@@ -96,113 +50,214 @@ private static final String GLM_API_URL = "https://api.siliconflow.cn/v1/chat/co
 
     /**
      * AI出牌建议
-     * @param handCards 当前手牌ID列表
-     * @param lastPlayedCards 上一手打出的牌ID列表
-     * @param lastCardType 上一手牌的类型
-     * @param levelCardRank 级牌点数
-     * @return 建议打出的牌ID列表
      */
     public List<Integer> suggestCards(List<Integer> handCards, List<Integer> lastPlayedCards,
                                        String lastCardType, int levelCardRank) {
-        if (handCards == null || handCards.isEmpty()) {
-            log.warn("AI出牌建议：手牌为空");
+        handCards = sanitizeHandCards(handCards);
+        if (handCards.isEmpty()) {
             return new ArrayList<>();
         }
-        // 级牌边界校验（掼蛋级牌范围 0-12）
-        if (levelCardRank < 0 || levelCardRank > 12) {
-            log.warn("AI出牌建议：级牌参数异常 {}", levelCardRank);
-            levelCardRank = 0;
+
+        levelCardRank = clampLevelCardRank(levelCardRank);
+
+        if (isFreePlay(lastPlayedCards)) {
+            return suggestSmallestCard(handCards);
         }
-        // 去重校验（手牌不应有重复ID）
-        long distinctCount = handCards.stream().distinct().count();
-        if (distinctCount != handCards.size()) {
-            log.warn("AI出牌建议：手牌包含重复ID，已自动去重");
-            handCards = new ArrayList<>(handCards.stream().distinct().toList());
-        }
-        // 如果上一手是空或者自由出牌，选择最小的牌打出
-        if (lastPlayedCards == null || lastPlayedCards.isEmpty()) {
-            List<Integer> sorted = new ArrayList<>(handCards);
-            sorted.sort(Integer::compareTo);
-            List<Integer> result = new ArrayList<>();
-            result.add(sorted.get(0));
-            log.info("AI出牌建议（自由出牌）：推荐单张 {}", sorted.get(0));
-            return result;
-        }
-        // 跟牌场景：找一个比上一手大的最小牌
-        if (lastPlayedCards == null || lastPlayedCards.isEmpty()) {
-            log.info("AI出牌建议：自由出牌场景，推荐最小牌");
-            List<Integer> sorted = new ArrayList<>(handCards);
-            sorted.sort(Integer::compareTo);
-            List<Integer> result = new ArrayList<>();
-            result.add(sorted.get(0));
-            return result;
-        }
-        // 安全获取上一手牌的最大值
-        int lastCardValue = lastPlayedCards.stream().max(Integer::compareTo).orElse(-1);
+
+        int lastCardValue = resolveLastCardValue(lastPlayedCards);
         if (lastCardValue < 0) {
-            log.warn("AI出牌建议：上一手牌数据异常");
             return new ArrayList<>();
         }
-        Integer bestCard = null;
-        for (Integer cardId : handCards) {
-            if (cardId > lastCardValue) {
-                if (bestCard == null || cardId < bestCard) {
-                    bestCard = cardId;
-                }
-            }
-        }
+
+        Integer bestCard = findBestFollowCard(handCards, lastCardValue);
         if (bestCard != null) {
             List<Integer> result = new ArrayList<>();
             result.add(bestCard);
             log.info("AI出牌建议（跟牌）：推荐单张 {}", bestCard);
             return result;
         }
+
         log.info("AI出牌建议：没有合适的牌可出");
         return new ArrayList<>();
     }
 
     /**
      * 规则问答
-     * @param keyword 查询关键词
-     * @return 规则说明文字
      */
     public String queryRule(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return "掼蛋是一种流行于江苏、安徽等地的扑克游戏。\n" +
-                   "基本规则：四人游戏，两两组队，使用两副扑克共108张牌。\n" +
-                   "按照出完牌的先后顺序分为头游、二游、三游、末游。\n" +
-                   "级牌：每局有一个级牌，打到相应级数的队伍获胜。";
+        if (isBlank(keyword)) {
+            return buildDefaultRuleDescription();
         }
-        // 关键词匹配
         String kw = keyword.trim();
-        if (kw.contains("炸弹") || kw.contains("炸")) {
+        if (containsKeyword(kw, "炸弹", "炸")) {
             return "炸弹：四张或四张以上相同点数的牌，可以管任何非炸弹牌型。炸弹之间按点数大小比较。";
         }
-        if (kw.contains("顺子")) {
+        if (containsKeyword(kw, "顺子")) {
             return "顺子：五张或五张以上连续点数的牌（如3-4-5-6-7），不能包含大小王。";
         }
-        if (kw.contains("同花顺")) {
+        if (containsKeyword(kw, "同花顺")) {
             return "同花顺：五张相同花色且点数连续的牌，是最大的非炸弹牌型。可以管任何非炸弹牌型。";
         }
-        if (kw.contains("级牌") || kw.contains("升级")) {
+        if (containsKeyword(kw, "级牌", "升级")) {
             return "级牌：每局游戏中指定一个点数作为级牌，打到相应级数的队伍获胜。级牌的大小仅次于大小王。";
         }
-        if (kw.contains("头游") || kw.contains("二游") || kw.contains("三游") || kw.contains("末游")) {
+        if (containsKeyword(kw, "头游", "二游", "三游", "末游")) {
             return "排名：四人按出完牌的顺序依次为头游、二游、三游、末游。头游所在队伍得分升级。";
         }
-        if (kw.contains("三带二")) {
+        if (containsKeyword(kw, "三带二")) {
             return "三带二：三张相同点数的牌加两张相同点数的牌（三张和对子点数不同）。";
         }
-        if (kw.contains("钢板")) {
+        if (containsKeyword(kw, "钢板")) {
             return "钢板：两组连续的三张（如333444），共6张牌。";
         }
+        return buildGenericRuleDescription(keyword);
+    }
+
+    // ==================== LLM 交互相关私有方法 ====================
+
+    private List<ChatMessage> buildChatMessages(String userMessage) {
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(new ChatMessage("system",
+            "你是掼蛋游戏的智能助手。你的任务是：\n" +
+            "1. 解释掼蛋游戏规则\n" +
+            "2. 提供打牌策略建议\n" +
+            "3. 解答玩家关于游戏的问题\n" +
+            "4. 友好、专业地与玩家交流\n\n" +
+            "请用简洁、易懂的语言回答问题。"
+        ));
+        messages.add(new ChatMessage("user", userMessage));
+        return messages;
+    }
+
+    private JsonNode buildLlmRequestBody(List<ChatMessage> messages) {
+        return objectMapper.createObjectNode()
+            .put("model", LLM_MODEL)
+            .set("messages", objectMapper.valueToTree(messages));
+    }
+
+    private String executeLlmRequest(JsonNode requestBody) throws Exception {
+        RequestBody body = RequestBody.create(
+            requestBody.toString(),
+            MediaType.parse("application/json; charset=utf-8")
+        );
+        Request request = new Request.Builder()
+            .url(LLM_API_URL)
+            .post(body)
+            .addHeader("Authorization", "Bearer " + API_KEY)
+            .addHeader("Content-Type", "application/json")
+            .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                log.error("LLM API调用失败: {}", response.code());
+                String errorBody = response.body() != null ? response.body().string() : "无响应体";
+                log.error("错误详情: {}", errorBody);
+                throw new RuntimeException("API调用失败: " + response.code());
+            }
+            return response.body().string();
+        }
+    }
+
+    private String parseLlmResponse(String responseBody) throws Exception {
+        JsonNode jsonResponse = objectMapper.readTree(responseBody);
+        String aiResponse = jsonResponse
+            .path("choices")
+            .get(0)
+            .path("message")
+            .path("content")
+            .asText();
+        log.info("AI回答: {}", aiResponse);
+        return aiResponse;
+    }
+
+    // ==================== 出牌建议相关私有方法 ====================
+
+    private List<Integer> sanitizeHandCards(List<Integer> handCards) {
+        if (handCards == null || handCards.isEmpty()) {
+            log.warn("出牌建议：手牌为空");
+            return new ArrayList<>();
+        }
+        List<Integer> distinct = handCards.stream().distinct().toList();
+        if (distinct.size() != handCards.size()) {
+            log.warn("出牌建议：手牌包含重复ID，已自动去重");
+            return new ArrayList<>(distinct);
+        }
+        return handCards;
+    }
+
+    private int clampLevelCardRank(int levelCardRank) {
+        if (levelCardRank < LEVEL_CARD_RANK_MIN || levelCardRank > LEVEL_CARD_RANK_MAX) {
+            log.warn("出牌建议：级牌参数异常 {}，已重置为0", levelCardRank);
+            return 0;
+        }
+        return levelCardRank;
+    }
+
+    private boolean isFreePlay(List<Integer> lastPlayedCards) {
+        return lastPlayedCards == null || lastPlayedCards.isEmpty();
+    }
+
+    private List<Integer> suggestSmallestCard(List<Integer> handCards) {
+        List<Integer> sorted = new ArrayList<>(handCards);
+        sorted.sort(Integer::compareTo);
+        List<Integer> result = new ArrayList<>();
+        result.add(sorted.get(0));
+        log.info("出牌建议（自由出牌）：推荐单张 {}", sorted.get(0));
+        return result;
+    }
+
+    private int resolveLastCardValue(List<Integer> lastPlayedCards) {
+        if (lastPlayedCards == null || lastPlayedCards.isEmpty()) {
+            return -1;
+        }
+        return lastPlayedCards.stream().max(Integer::compareTo).orElse(-1);
+    }
+
+    private Integer findBestFollowCard(List<Integer> handCards, int minValue) {
+        Integer bestCard = null;
+        for (Integer cardId : handCards) {
+            if (cardId > minValue) {
+                if (bestCard == null || cardId < bestCard) {
+                    bestCard = cardId;
+                }
+            }
+        }
+        return bestCard;
+    }
+
+    // ==================== 规则问答相关私有方法 ====================
+
+    private boolean containsKeyword(String text, String... keywords) {
+        for (String kw : keywords) {
+            if (text.contains(kw)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String buildDefaultRuleDescription() {
+        return "掼蛋是一种流行于江苏、安徽等地的扑克游戏。\n" +
+               "基本规则：四人游戏，两两组队，使用两副扑克共108张牌。\n" +
+               "按照出完牌的先后顺序分为头游、二游、三游、末游。\n" +
+               "级牌：每局有一个级牌，打到相应级数的队伍获胜。";
+    }
+
+    private String buildGenericRuleDescription(String keyword) {
         return "关于'" + keyword + "'的规则说明：\n" +
                "掼蛋使用两副扑克共108张牌，四人游戏，两两组队。\n" +
                "牌型包括：单张、对子、三张、顺子（5+张）、三带二、钢板、同花顺、炸弹等。\n" +
                "如需更详细说明，请提供具体关键词。";
     }
 
-    // 聊天消息类
+    // ==================== 工具方法 ====================
+
+    private boolean isBlank(String str) {
+        return str == null || str.trim().isEmpty();
+    }
+
+    // ==================== 内部类 ====================
+
     private static class ChatMessage {
         private final String role;
         private final String content;
