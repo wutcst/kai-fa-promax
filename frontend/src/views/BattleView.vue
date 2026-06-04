@@ -281,7 +281,101 @@ import { usePlayCard } from '../composables/usePlayCard'
  *   前置：非自由出牌 + 我的回合
  *   操作：点击"不出" → 桌面显示"不要" → 回合切换
  *   预期：pass 指示器渲染，倒计时归零自动过牌
+ *
  * ============================================================
+ * 手动测试用例：手牌渲染性能
+ * ============================================================
+ * TC-BV-005 27 张牌 DOM 渲染耗时：
+ *   前置：myCards 赋值 27 张 mock 牌
+ *   操作：在 Performance 面板录制 sortCards() → nextTick → DOM 更新
+ *   预期：从数据变更到 DOM 渲染完成 < 200ms
+ *
+ * TC-BV-006 选牌状态切换 re-render：
+ *   前置：已有 27 张手牌渲染完成
+ *   操作：切换 3 张牌选中状态，检查 Vue Devtools 组件更新范围
+ *   预期：仅被点击卡牌所在 li/div 触发更新，其它牌不重绘
+ *
+ * TC-BV-007 手牌排序快照比对防重绘：
+ *   前置：myCards 内容不变
+ *   操作：连续调用 sortCards() 3 次
+ *   预期：第 2、3 次不触发 myCards.value 赋值（before === after）
+ *
+ * TC-BV-008 虚拟滚动裁剪正确性：
+ *   前置：手牌 27 张，VIRTUAL_THRESHOLD = 18
+ *   操作：检查 visibleCards.value.length
+ *   预期：< 18 张时不启用裁剪，> 18 张时仅返回 18 张切片
+ *
+ * TC-BV-009 浏览器 resize 布局 recalc：
+ *   前置：在手牌区域
+ *   操作：从 1920px 拖拽缩放到 1024px
+ *   预期：handStyle 中 cardWidth / step 重新计算，底部手牌不溢出
+ * ============================================================
+ */
+
+/**
+ * BattleView Interaction Flow Documentation
+ *
+ * === 1. Room Entry & Preparation ===
+ * User enters BattleView via router (room params in query).
+ *   -> onMounted: validate login -> fetchRoomDetail -> connectWebSocket
+ *   -> WebSocket JOIN_ROOM_SUCCESS -> wsJoined=true
+ *   -> User clicks "准备就绪" -> ready(roomId) -> isReady=true
+ *   -> Room owner clicks "开始游戏" -> WS START_GAME -> handleGameStart
+ *
+ * === 2. Game Start ===
+ * handleGameStart(data):
+ *   - Extracts myCards from data.myCards (backend cardIds array)
+ *   - Calls idToCard() for each cardId -> myCards.value
+ *   - Calls sortCards() to sort by rank desc + suit priority
+ *   - Sets playerPositions, levelCard, teammateCards/opponents refs
+ *   - Plays soundManager.play('game_start') + ElMessage.success
+ *
+ * === 3. Card Selecting ===
+ * User clicks/drags on hand cards:
+ *   - handleCardMousedown: records mouseDownX/Y, toggles toggleCardLogic
+ *   - handleCardMouseenter: drag-selection mode, batch selects/unselects
+ *   - toggleCardLogic: adds/removes index from selectedCards ref
+ *   - Debounce: 150ms tapDebounceMs prevents rapid double-tap
+ *   - Selected cards get CSS .selected class -> translateY(-18px) + gold glow
+ *
+ * === 4. Playing Cards ===
+ * User clicks "出牌" button:
+ *   - playCards() from usePlayCard composable
+ *   - Sends WS PLAY_CARD with selected cardIds
+ *   - Server broadcasts PLAYER_ACTION + TURN_CHANGE
+ *   - handlePlayerAction: removes played cards from myCards
+ *   - Renders cards in deskDisplay[position] with idToCard
+ *   - Checks checkWin() if own cards depleted
+ *
+ * === 5. Passing ===
+ * User clicks "不出" button:
+ *   - pass() from usePlayCard composable
+ *   - Sends WS PLAY_CARD with empty array
+ *   - Server broadcasts PLAYER_ACTION with pass flag
+ *   - handlePlayerAction: deskDisplay[position] = [{type: 'pass'}]
+ *   - Countdown auto-passes at 0 via pass() or autoPlaySmallestCard
+ *
+ * === 6. Turn Management ===
+ * handleTurnChange(data):
+ *   - If data.myTurn -> currentPlayer='我', startCountdown(30s)
+ *   - Else currentPlayer=position name, stop countdown
+ *   - Turn advance: server nextTurn() -> broadcasts TURN_CHANGE to all
+ *
+ * === 7. Game End ===
+ * handleGameEnd(data):
+ *   - winnerId check vs currentUserId -> victory/defeat message
+ *   - score/levelTeamA/levelTeamB display
+ *   - soundManager.play('victory'|'defeat')
+ *   - Room resets to WAITING for next round
+ *
+ * === 8. Disconnect & Reconnect ===
+ * - Normal close: onClose -> executeCleanDisconnect (remove player)
+ * - Abnormal close: onClose -> markOffline (retain data for reconnect)
+ * - Reconnect: onOpen with existing session -> RECONNECT_SUCCESS
+ *   -> send myCards + currentPlayerId + gameStatus back to client
+ *
+ * Note: All card format conversions use cardConverter.js utility.
+ * Images are loaded dynamically via getCardImage() using Vite import.meta.url.
  */
 import { useGameState } from '../composables/useGameState'
 
