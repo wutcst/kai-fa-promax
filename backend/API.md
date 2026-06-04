@@ -1239,4 +1239,75 @@ GET /api/match/status
 2. **自动重试**：基础设施类失败（DB 超时、Redis 未启动）配置 CI 自动重试 1 次
 3. **失败归档**：每月汇总 Action 失败记录，识别高频率失败 Action 并定向优化
 
+---
+
+## Phase 3 补充内容：基础战绩记录与规则说明文档的测试点和异常路径
+
+> 以下内容补充 Phase 3 中新增强的模块的测试验证点和异常路径设计，
+> 用于提升对局可复盘性和联调可追踪性。
+
+### 战绩记录 API 测试点（Phase 3 新增）
+
+#### POST /api/game/record — 提交对局记录
+
+| 验证点 | 正常场景 | 异常场景 |
+|--------|---------|---------|
+| TC-REC-001 | 提交合法对局记录 → 返回 recordId | roomId 为空 → 400 |
+| TC-REC-002 | 包含 winnerId 和 score → 入库成功 | winnerId 为 null → 200（预留未知胜负） |
+| TC-REC-003 | score 为 0 时正常入库 | score 为 null → 兜底为 0 |
+| TC-REC-004 | createTime 自动填充当前时间 | Token 过期 → 401 |
+| TC-REC-005 | 同 roomId 允许多条记录 | roomId 不对应数据库房间 → 仍可插入 |
+
+#### GET /api/player/records — 查询战绩列表
+
+| 验证点 | 正常场景 | 异常场景 |
+|--------|---------|---------|
+| TC-REC-006 | 分页查询返回 records 和 total | page/size 参数非法 → 使用默认值 |
+| TC-REC-007 | startDate/endDate 筛选日期范围 | 日期格式错误 → 忽略该筛选条件 |
+| TC-REC-008 | 玩家无记录时返回空列表 | Token 过期 → 401 |
+
+#### POST /api/game/upgrade — 升级计算
+
+| 验证点 | 正常场景 | 异常场景 |
+|--------|---------|---------|
+| TC-REC-009 | 头游+二游同队 → 升 3 级 | levelTeamA 或 levelTeamB 为 null → 不更新 |
+| TC-REC-010 | 头游+三游同队 → 升 2 级 | 升级后超过 14 级 → 封顶 14 |
+| TC-REC-011 | 头游+末游同队 → 升 1 级 | 降级后低于 2 级 → 最低 2 |
+| TC-REC-012 | 输家队伍 level 不变 | 传入空排名列表 → 默认不升级 |
+
+### 规则说明文档的测试点
+
+#### 掼蛋基本规则
+
+| 验证点 | 说明 | 预期 |
+|--------|------|------|
+| TC-RULE-001 | 四人两副牌，每人 27 张 | 发牌后各玩家手牌数 = 27 |
+| TC-RULE-002 | 2 最小，A 最大（普通牌） | rank 0=2, rank 12=A |
+| TC-RULE-003 | 小王 > 大王？大王 > 所有牌 | getGameLevel 大王=16 > 小王=15 > 级牌=14 |
+| TC-RULE-004 | 级牌为当前打几第几大的牌 | isLevelCard 按 levelCardRank 匹配 |
+| TC-RULE-005 | 逢人配为红桃级牌，万能牌 | isWildCard → true 当 suit=2 且 rank=levelCardRank |
+
+#### 牌型大小规则
+
+| 验证点 | 说明 | 预期 |
+|--------|------|------|
+| TC-RULE-006 | 炸弹 > 非炸弹 | 炸弹可压任何非炸弹牌型 |
+| TC-RULE-007 | 同点数炸弹按张数比大小 | 5 张炸弹 > 4 张炸弹 |
+| TC-RULE-008 | 同张数炸弹按点数比大小 | 8 点炸弹 > 5 点炸弹 |
+| TC-RULE-009 | 同花顺视为 5 张炸弹 | getCardType 返回 "同花顺" |
+| TC-RULE-010 | 顺子不能包含 2 和王 | isStraight 排除 rank=12 和 rank>=13 |
+| TC-RULE-011 | 三带二只在 5 张时有效 | isThreeWithTwo 5 张时判定 |
+
+#### 异常路径规则
+
+| 验证点 | 说明 | 预期 |
+|--------|------|------|
+| TC-RULE-012 | 出牌时不包含手牌中的牌 → 拒绝 | playCards 返回 false |
+| TC-RULE-013 | 非当前玩家出牌 → 拒绝 | 返回 false + 错误提示 |
+| TC-RULE-014 | 管不住上一手牌 → 拒绝 | canBeat 返回 false |
+| TC-RULE-015 | 非法牌型（如 4 张非同点）→ 拒绝 | isValidHand 返回 false |
+| TC-RULE-016 | 连续 3 人过牌 → 清空桌面 | consecutivePassCount >= 3 触发 |
+| TC-RULE-017 | 头游出完后队友接风 | getLeadPlayerIndexAfterTrickEnd 隔位 |
+| TC-RULE-018 | 3 人出完 → 游戏结束 | checkGameEnd 触发，保存记录 |
+
 
