@@ -21,6 +21,28 @@
       </div>
     </div>
 
+    <!-- 胜率图表看板 -->
+    <div class="chart-section">
+      <h2>胜率图表</h2>
+      <div class="chart-container">
+        <div class="chart-bar-wrapper">
+          <div class="chart-label">胜率</div>
+          <div class="chart-track">
+            <div class="chart-fill" :style="{ width: chartPercent + '%' }"></div>
+          </div>
+          <div class="chart-value">{{ chartPercent }}%</div>
+        </div>
+        <div class="chart-bar-wrapper">
+          <div class="chart-label">总局数</div>
+          <div class="chart-track">
+            <div class="chart-fill total-fill" :style="{ width: totalPercent + '%' }"></div>
+          </div>
+          <div class="chart-value">{{ playerStatistics.totalGames }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 对局历史 -->
     <div class="records-section">
       <h2>对局历史</h2>
       <div v-if="recordList.length === 0" class="empty-state">暂无对局记录</div>
@@ -37,7 +59,10 @@
       </div>
     </div>
 
-    <el-button @click="goBack">返回大厅</el-button>
+    <div class="action-bar">
+      <el-button @click="goBack">返回大厅</el-button>
+      <el-button type="primary" @click="refreshData">刷新数据</el-button>
+    </div>
   </div>
 </template>
 
@@ -65,6 +90,18 @@ const winRate = computed(() => {
   return playerStatistics.value.winRate
     ? playerStatistics.value.winRate.toFixed(1)
     : Math.round((playerStatistics.value.winGames / playerStatistics.value.totalGames) * 100)
+})
+
+// 胜率图表百分比
+const chartPercent = computed(() => {
+  const rate = parseFloat(playerStatistics.value.winRate) || 0
+  return Math.min(rate, 100).toFixed(1)
+})
+
+// 总局数图表百分比 (按100场为基准)
+const totalPercent = computed(() => {
+  const total = playerStatistics.value.totalGames || 0
+  return Math.min((total / 100) * 100, 100)
 })
 
 const fetchPlayerStatistics = async () => {
@@ -96,6 +133,12 @@ onMounted(() => {
   fetchPlayerStatistics()
   fetchPlayerRecords()
 })
+
+const refreshData = () => {
+  fetchPlayerStatistics()
+  fetchPlayerRecords()
+  ElMessage.success('数据已刷新')
+}
 
 const toggleDetail = (index) => {
   recordList.value[index].showDetail = !recordList.value[index].showDetail
@@ -149,6 +192,74 @@ const goBack = () => router.push('/lobby')
 
 .label { font-size: 14px; color: #666; display: block; }
 .value { font-size: 24px; font-weight: bold; color: #8B4513; display: block; margin-top: 5px; }
+
+/* 胜率图表看板 */
+.chart-section {
+  margin: 20px 0;
+}
+
+.chart-section h2 {
+  color: #8B4513;
+  border-bottom: 1px solid #c19a6b;
+  padding-bottom: 10px;
+}
+
+.chart-container {
+  background: linear-gradient(to bottom, #fff8e1, #ffe0b2);
+  border: 1px solid #c19a6b;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 10px;
+}
+
+.chart-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.chart-bar-wrapper:last-child {
+  margin-bottom: 0;
+}
+
+.chart-label {
+  width: 60px;
+  font-size: 14px;
+  color: #6d4c41;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.chart-track {
+  flex: 1;
+  height: 24px;
+  background: #e8d4b8;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chart-fill {
+  height: 100%;
+  background: linear-gradient(to right, #D4AF37, #FFD700);
+  border-radius: 12px;
+  transition: width 0.8s ease;
+  min-width: 4px;
+}
+
+.total-fill {
+  background: linear-gradient(to right, #8B4513, #A1887F);
+}
+
+.chart-value {
+  width: 50px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #8B4513;
+  text-align: left;
+  flex-shrink: 0;
+}
 
 /* 对局历史 */
 .records-section {
@@ -217,6 +328,13 @@ const goBack = () => router.push('/lobby')
 
 .record-detail-wrapper {
   border-top: 1px dashed #c19a6b;
+}
+
+.action-bar {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
 }
 
 /* 过渡动画 */
