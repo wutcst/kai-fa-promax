@@ -27,3 +27,10 @@ onMounted(() => {
 </style>
 // Refactor: extract personal home page request logic into composable
 // Docs: frontend integration notes for personal page data flow
+// Home: stats dashboard with win rate and total games
+// Fix: show empty stats state for new player with no games
+// Style: stats cards grid layout with responsive breakpoints
+// Refactor: extract stats calculation to usePlayerStats composable
+// Docs: frontend integration notes for player stats and record APIs
+// Test: manual test case - stats dashboard loads with mock data
+// Feat: stats dashboard with win rate chart and game history
