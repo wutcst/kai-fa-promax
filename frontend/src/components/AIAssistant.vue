@@ -8,3 +8,4 @@
 // Component: AI suggestion panel with question input
 // Fix: show error state when API call fails
 // Refactor: extract AIAssistant as standalone component
+// Docs: AIAssistant emits 'suggest' event with card selection data
