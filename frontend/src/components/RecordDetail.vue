@@ -2,8 +2,8 @@
   <div class="record-detail">
     <!-- 详情头部：标题 + 比赛时间 -->
     <div class="detail-header">
-      <span class="detail-title">单局详细战绩</span>
-      <span class="detail-time">比赛时间：{{ record.time || '暂无数据' }}</span>
+      <span class="detail-title">战绩详情</span>
+      <span class="detail-time">{{ record.time || '暂无数据' }}</span>
     </div>
 
     <!-- 参与者战绩表格 -->
@@ -13,25 +13,26 @@
         size="small"
         class="participant-table"
         v-loading="!record.participants || record.participants.length === 0"
-        element-loading-text="暂无参与者数据"
+        element-loading-text="加载中..."
     >
       <el-table-column
-          label="参与者昵称"
+          label="玩家"
           prop="nickname"
-          width="200"
+          width="160"
           align="center"
           :formatter="emptyFormatter"
       />
       <el-table-column
-          label="比赛成绩"
+          label="成绩"
           prop="score"
           align="center"
           :formatter="formatScore"
       />
     </el-table>
-    <!-- 空数据兜底 -->
+    <!-- 空数据提示 -->
     <div v-if="!record || !record.participants || record.participants.length === 0" class="detail-empty">
-      暂无参与者数据
+      <span class="empty-icon">&#128203;</span>
+      <p class="empty-text">暂无对局数据</p>
     </div>
   </div>
 </template>
@@ -72,9 +73,9 @@ const formatScore = ({ row }) => {
 <style scoped>
 /* 详情容器 */
 .record-detail {
-  padding: 20px;
+  padding: 16px 20px;
   border-top: 1px solid #e5e7eb;
-  background-color: #fff;
+  background-color: #fafafa;
 }
 
 /* 详情头部 */
@@ -82,14 +83,20 @@ const formatScore = ({ row }) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
-  font-size: 16px;
+  margin-bottom: 12px;
+  font-size: 14px;
   color: #666;
 }
 
 .detail-title {
-  font-weight: bold;
+  font-weight: 600;
   color: #333;
+  font-size: 15px;
+}
+
+.detail-time {
+  color: #999;
+  font-size: 13px;
 }
 
 /* 参与者表格 */
@@ -97,27 +104,48 @@ const formatScore = ({ row }) => {
   --el-table-text-color: #333;
   --el-table-header-text-color: #666;
   width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 /* 表格成绩样式（穿透样式） */
 :deep(.score-first) {
-  color: #67C23A; /* 头游-绿色 */
+  color: #67C23A;
   font-weight: bold;
 }
 
 :deep(.score-second) {
-  color: #409EFF; /* 二游-蓝色 */
+  color: #409EFF;
   font-weight: bold;
 }
 
 :deep(.score-third) {
-  color: #E6A23C; /* 三游-橙色 */
+  color: #E6A23C;
   font-weight: bold;
 }
 
 :deep(.score-last) {
-  color: #F56C6C; /* 末游-红色 */
+  color: #F56C6C;
   font-weight: bold;
+}
+
+/* 空数据兜底 */
+.detail-empty {
+  text-align: center;
+  padding: 30px 20px;
+  color: #999;
+}
+
+.empty-icon {
+  font-size: 36px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: #bbb;
+  margin: 0;
 }
 
 /* 响应式适配 */
@@ -125,15 +153,7 @@ const formatScore = ({ row }) => {
   .detail-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 5px;
+    gap: 4px;
   }
-}
-
-/* 空数据兜底 */
-.detail-empty {
-  text-align: center;
-  padding: 20px;
-  color: #999;
-  font-size: 14px;
 }
 </style>
