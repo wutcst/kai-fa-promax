@@ -24,3 +24,4 @@ public class AIService {
 // Fix: validate empty hand before AI suggestion
 // Refactor: extract suggestion scoring to separate method
 // Docs: AI suggestion uses card combo analysis with basic heuristic scoring
+// Test: AI suggestion for various hand scenarios - passing hand, winning hand

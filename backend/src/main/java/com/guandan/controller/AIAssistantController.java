@@ -23,3 +23,4 @@ public class AIAssistantController {
 // Fix: handle unsupported question topics in rule QA
 // Refactor: rename endpoints to /ai/suggest and /ai/chat
 // Docs: /ai/suggest returns {play: [...cards]}, /ai/chat returns {answer: string}
+// Test: /ai/ask question classification - card rules, game flow, invalid
