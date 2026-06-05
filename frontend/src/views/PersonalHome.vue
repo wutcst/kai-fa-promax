@@ -37,3 +37,4 @@ onMounted(() => {
 // Fix: display empty state when no game history exists
 // Home: stats dashboard with win rate and total games
 // Fix: show empty stats state for new player with no games
+// Style: stats cards grid layout with responsive breakpoints
