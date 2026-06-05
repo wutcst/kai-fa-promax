@@ -29,6 +29,10 @@
           :formatter="formatScore"
       />
     </el-table>
+    <!-- 空数据兜底 -->
+    <div v-if="!record || !record.participants || record.participants.length === 0" class="detail-empty">
+      暂无参与者数据
+    </div>
   </div>
 </template>
 
@@ -123,5 +127,13 @@ const formatScore = ({ row }) => {
     align-items: flex-start;
     gap: 5px;
   }
+}
+
+/* 空数据兜底 */
+.detail-empty {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+  font-size: 14px;
 }
 </style>

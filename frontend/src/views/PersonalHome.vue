@@ -22,7 +22,7 @@
     </div>
 
     <!-- 胜率图表看板 -->
-    <div class="chart-section">
+    <div class="chart-section" v-if="hasChartData">
       <h2>胜率图表</h2>
       <div class="chart-container">
         <div class="chart-bar-wrapper">
@@ -41,12 +41,23 @@
         </div>
       </div>
     </div>
+    <div v-else class="chart-section">
+      <h2>胜率图表</h2>
+      <div class="empty-chart-hint">暂无对局数据，开始游戏后将展示胜率统计</div>
+    </div>
 
     <!-- 对局历史 -->
     <div class="records-section">
       <h2>对局历史</h2>
-      <div v-if="recordList.length === 0" class="empty-state">暂无对局记录</div>
-      <div v-for="(record, index) in recordList" :key="record.id" class="record-item">
+      <div v-if="isRecordsLoading" class="loading-state">
+        <span class="loading-text">正在加载战绩记录...</span>
+      </div>
+      <div v-else-if="recordList.length === 0" class="empty-state">
+        <div class="empty-icon">📋</div>
+        <span class="empty-text">暂无对局记录</span>
+        <span class="empty-hint">开始游戏后，您的战绩将会展示在这里</span>
+      </div>
+      <div v-else v-for="(record, index) in recordList" :key="record.id" class="record-item">
         <div class="record-main" @click="toggleDetail(index)">
           <span class="record-time">{{ formatTime(record.gameTime) }}</span>
           <span class="record-result" :class="getResultClass(record.result)">{{ formatResult(record.result) }}</span>
@@ -84,6 +95,7 @@ const playerStatistics = ref({
 })
 
 const recordList = ref([])
+const isRecordsLoading = ref(false)
 
 const winRate = computed(() => {
   if (!playerStatistics.value.totalGames) return 0
@@ -104,11 +116,16 @@ const totalPercent = computed(() => {
   return Math.min((total / 100) * 100, 100)
 })
 
+// 是否有图表数据
+const hasChartData = computed(() => {
+  return playerStatistics.value.totalGames > 0
+})
+
 const fetchPlayerStatistics = async () => {
   try {
     const response = await getPlayerStatistics()
     console.log('获取玩家统计信息:', response)
-    playerStatistics.value = response
+    playerStatistics.value = response || { totalGames: 0, winGames: 0, winRate: 0, levelCurrent: 1 }
   } catch (error) {
     console.error('获取玩家统计信息失败：', error)
     ElMessage.error('获取统计信息失败')
@@ -116,9 +133,10 @@ const fetchPlayerStatistics = async () => {
 }
 
 const fetchPlayerRecords = async () => {
+  isRecordsLoading.value = true
   try {
     const response = await getPlayerRecords({ page: 1, pageSize: 20 })
-    const { records } = response
+    const { records } = response || { records: [] }
     recordList.value = (records || []).map(record => ({
       ...record,
       showDetail: false
@@ -126,6 +144,9 @@ const fetchPlayerRecords = async () => {
   } catch (error) {
     console.error('获取战绩记录失败：', error)
     ElMessage.error('获取战绩记录失败')
+    recordList.value = []
+  } finally {
+    isRecordsLoading.value = false
   }
 }
 
@@ -276,6 +297,55 @@ const goBack = () => router.push('/lobby')
   text-align: center;
   padding: 40px;
   color: #999;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+
+.empty-text {
+  display: block;
+  font-size: 16px;
+  color: #8B4513;
+  margin-bottom: 8px;
+}
+
+.empty-hint {
+  display: block;
+  font-size: 13px;
+  color: #999;
+}
+
+.empty-chart-hint {
+  text-align: center;
+  padding: 30px;
+  color: #999;
+  font-size: 14px;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 40px;
+}
+
+.loading-text {
+  color: #8B4513;
+  font-size: 14px;
+}
+
+.loading-text::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  margin-left: 4px;
+  animation: dotAnimation 1.4s infinite;
+}
+
+@keyframes dotAnimation {
+  0%, 20% { content: '.'; }
+  40% { content: '..'; }
+  60%, 100% { content: '...'; }
 }
 
 .record-item {
