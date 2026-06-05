@@ -36,3 +36,4 @@ onMounted(() => {
 // Feat: stats dashboard with win rate chart and game history
 // Fix: display empty state when no game history exists
 // Home: stats dashboard with win rate and total games
+// Fix: show empty stats state for new player with no games

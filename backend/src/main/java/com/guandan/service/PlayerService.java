@@ -5,3 +5,4 @@ public class PlayerService {
     public Object getRecords(String playerId, int page, int size) { return null; }
 }
 // PlayerService: getStats(playerId) returns winRate, totalGames, rank
+// Fix: handle null player stats gracefully

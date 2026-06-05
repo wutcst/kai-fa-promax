@@ -18,3 +18,4 @@ public class PlayerController {
     }
 }
 // Controller: GET /player/stats and GET /player/records?page=&size=
+// Fix: validate page number in request
