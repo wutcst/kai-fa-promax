@@ -184,4 +184,59 @@ class CardUtilsTest {
         // 红桃Q的显示名称
         assertEquals("红桃Q(级)(逢人配)", CardUtils.getDisplayName(36, levelCardRank));
     }
+
+    @Test
+    void testEmptyHandCards() {
+        // 边界用例：空手牌
+        int levelCardRank = 0;
+
+        List<Integer> emptyList = List.of();
+
+        // 空手牌应返回空列表
+        List<Integer> levelCards = CardUtils.getLevelCards(emptyList, levelCardRank);
+        assertNotNull(levelCards, "空手牌应返回非null列表");
+        assertTrue(levelCards.isEmpty(), "空手牌应返回空列表");
+
+        List<Integer> wildCards = CardUtils.getWildCards(emptyList, levelCardRank);
+        assertNotNull(wildCards, "空手牌应返回非null列表");
+        assertTrue(wildCards.isEmpty(), "空手牌应返回空列表");
+    }
+
+    @Test
+    void testInvalidCardIds() {
+        // 边界用例：无效卡牌ID
+        int levelCardRank = 0;
+
+        // 越界卡牌ID不应被认为是级牌
+        assertFalse(CardUtils.isLevelCard(-1, levelCardRank), "负数卡牌ID不应该是级牌");
+        assertFalse(CardUtils.isLevelCard(108, levelCardRank), "超出范围卡牌ID不应该是级牌");
+        assertFalse(CardUtils.isLevelCard(999, levelCardRank), "超大卡牌ID不应该是级牌");
+
+        // 越界卡牌ID不应被认为是逢人配
+        assertFalse(CardUtils.isWildCard(-1, levelCardRank), "负数卡牌ID不应该是逢人配");
+        assertFalse(CardUtils.isWildCard(108, levelCardRank), "超出范围卡牌ID不应该是逢人配");
+    }
+
+    @Test
+    void testAllLevelCardsSameLevel() {
+        // 边界用例：所有级牌在不同级牌等级下都正确判定
+        int[] testLevels = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+
+        for (int levelCardRank : testLevels) {
+            // 对应点数的方块牌应该是级牌
+            assertTrue(CardUtils.isLevelCard(levelCardRank, levelCardRank));
+            // 对应点数的红桃牌应该是逢人配
+            assertTrue(CardUtils.isWildCard(levelCardRank + 26, levelCardRank));
+        }
+    }
+
+    @Test
+    void testNullSafety() {
+        // 边界用例：验证null安全性（如果有对应方法）
+        int levelCardRank = 0;
+
+        // 级牌判断
+        assertFalse(CardUtils.isLevelCard(104, levelCardRank), "小王不应该是级牌");
+        assertFalse(CardUtils.isLevelCard(106, levelCardRank), "大王不应该是级牌");
+    }
 }
