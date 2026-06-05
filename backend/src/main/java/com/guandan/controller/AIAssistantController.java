@@ -24,3 +24,4 @@ public class AIAssistantController {
 // Refactor: rename endpoints to /ai/suggest and /ai/chat
 // Docs: /ai/suggest returns {play: [...cards]}, /ai/chat returns {answer: string}
 // Test: /ai/ask question classification - card rules, game flow, invalid
+// Chore: AIAssistant controller delivery wrap-up
