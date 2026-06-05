@@ -85,6 +85,35 @@
               <span class="winrate-value highlight">{{ winRate }}%</span>
             </div>
           </div>
+          <!-- 筛选条件 -->
+          <div class="filter-bar">
+            <div class="filter-group">
+              <span class="filter-label">时间范围</span>
+              <select v-model="filterTimeRange" class="filter-select" @change="onFilterChange">
+                <option value="all">全部时间</option>
+                <option value="today">今天</option>
+                <option value="week">本周</option>
+                <option value="month">本月</option>
+                <option value="custom">自定义</option>
+              </select>
+            </div>
+            <div class="filter-group" v-if="filterTimeRange === 'custom'">
+              <input type="date" v-model="filterStartDate" class="filter-input" @change="onFilterChange" />
+              <span class="filter-sep">至</span>
+              <input type="date" v-model="filterEndDate" class="filter-input" @change="onFilterChange" />
+            </div>
+            <div class="filter-group">
+              <span class="filter-label">结果筛选</span>
+              <select v-model="filterResult" class="filter-select" @change="onFilterChange">
+                <option value="all">全部结果</option>
+                <option value="1">头游</option>
+                <option value="2">二游</option>
+                <option value="3">三游</option>
+                <option value="4">末游</option>
+              </select>
+            </div>
+            <button class="filter-reset" @click="resetFilters">重置</button>
+          </div>
           <!-- 分页战绩列表 -->
           <div class="record-scrollview">
             <div v-for="(record, index) in recordList" :key="record.id" class="record-strip">
@@ -192,6 +221,12 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const totalRecords = ref(0)
 
+// 筛选条件
+const filterTimeRange = ref('all')
+const filterResult = ref('all')
+const filterStartDate = ref('')
+const filterEndDate = ref('')
+
 // 计算胜率
 const winRate = computed(() => {
   if (!playerStatistics.value.totalGames) return 0
@@ -216,11 +251,28 @@ const fetchPlayerStatistics = async () => {
   }
 }
 
-// 获取玩家战绩记录
+// 获取玩家战绩记录（支持筛选）
 const fetchPlayerRecords = async (page = 1) => {
   try {
     console.log('开始获取玩家战绩记录...')
-    const response = await getPlayerRecords({ page, pageSize: pageSize.value })
+    const params = { page, pageSize: pageSize.value }
+
+    // 时间范围筛选
+    if (filterTimeRange.value !== 'all') {
+      if (filterTimeRange.value === 'custom') {
+        if (filterStartDate.value) params.startDate = filterStartDate.value
+        if (filterEndDate.value) params.endDate = filterEndDate.value
+      } else {
+        params.timeRange = filterTimeRange.value
+      }
+    }
+
+    // 结果筛选
+    if (filterResult.value !== 'all') {
+      params.result = filterResult.value
+    }
+
+    const response = await getPlayerRecords(params)
     console.log('API响应:', response)
 
     // response已经是Page对象，直接使用
@@ -243,6 +295,21 @@ const fetchPlayerRecords = async (page = 1) => {
 const changePage = (page) => {
   if (page < 1 || page > totalPages.value) return
   fetchPlayerRecords(page)
+}
+
+// 筛选条件变更
+const onFilterChange = () => {
+  currentPage.value = 1
+  fetchPlayerRecords(1)
+}
+
+// 重置筛选
+const resetFilters = () => {
+  filterTimeRange.value = 'all'
+  filterResult.value = 'all'
+  filterStartDate.value = ''
+  filterEndDate.value = ''
+  onFilterChange()
 }
 
 // 页面加载时获取数据
@@ -880,6 +947,72 @@ const showChangePassword = () => ElMessage.success('请重新设定您的密语'
   font-weight: bold;
 }
 
+/* 筛选条件栏 */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid #e3d5ca;
+  border-radius: 8px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-label {
+  font-size: 13px;
+  color: #6d4c41;
+  white-space: nowrap;
+}
+
+.filter-select {
+  padding: 4px 8px;
+  border: 1px solid #c19a6b;
+  border-radius: 6px;
+  background: #fff;
+  color: #5d4037;
+  font-size: 13px;
+  outline: none;
+}
+
+.filter-input {
+  padding: 4px 8px;
+  border: 1px solid #c19a6b;
+  border-radius: 6px;
+  background: #fff;
+  color: #5d4037;
+  font-size: 13px;
+  outline: none;
+}
+
+.filter-sep {
+  color: #999;
+  font-size: 13px;
+}
+
+.filter-reset {
+  padding: 4px 12px;
+  border: 1px solid #c19a6b;
+  border-radius: 6px;
+  background: linear-gradient(to bottom, #f5e8d3, #e8d4b8);
+  color: #8B4513;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-reset:hover {
+  background: linear-gradient(to right, #8B4513, #A1887F);
+  color: #fff;
+}
+
 /* 对局统计面板 */
 .stats-layout {
   padding: 20px 0;
@@ -987,6 +1120,15 @@ const showChangePassword = () => ElMessage.success('请重新设定您的密语'
   .winrate-bar {
     flex-direction: column;
     gap: 8px;
+  }
+
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    flex-wrap: wrap;
   }
 
   .pagination-bar {
