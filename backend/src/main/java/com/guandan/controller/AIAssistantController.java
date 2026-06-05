@@ -181,4 +181,11 @@ public class AIAssistantController {
     private boolean isEmptyResult(String result) {
         return result == null || result.trim().isEmpty();
     }
+
+    // ========== 阶段标记 ==========
+    // [PHASE: COMPLETE] AI 助手后端接口层 — 完成
+    // 涵盖：AI聊天、出牌建议、规则问答三个核心接口
+    // 参数校验：空消息/超长消息/空手牌/手牌异常/超长关键词/空结果
+    // 异常处理：服务异常/规则查询异常/出牌建议不可用
+    // 回归验证点：12个 (TC-AI-CHAT-* / TC-AI-SUGGEST-* / TC-AI-RULE-*)
 }

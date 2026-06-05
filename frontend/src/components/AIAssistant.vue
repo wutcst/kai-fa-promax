@@ -534,4 +534,12 @@ const getCurrentTime = () => {
 .message-list::-webkit-scrollbar-thumb:hover {
   background: #915C39;
 }
+
+/*
+ * 阶段标记
+ * [PHASE: COMPLETE] AI 助手前端组件 — 完成
+ * 涵盖：悬浮球拖拽、聊天窗口、消息展示、打字动画
+ * 异常场景：空消息拦截/超长消息警告/网络异常兜底/空响应兜底/重复提交防护
+ * 回归验证点：11个 (TC-AI-UI-* / TC-AI-API-*)
+ */
 </style>

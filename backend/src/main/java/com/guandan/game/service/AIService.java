@@ -759,4 +759,11 @@ public class AIService {
     public String generateAIPlayerId(int index) {
         return "ai_player_" + index;
     }
+
+    // ========== 阶段标记 ==========
+    // [PHASE: COMPLETE] AI 出牌逻辑服务层 — 完成
+    // 涵盖：自由出牌、跟牌响应、炸弹压制、AI玩家识别
+    // 牌型支持：单张/对子/三张/顺子/三带二/钢板/同花顺/炸弹
+    // 异常场景：空手牌/牌型不合法/无法管住/无牌可出
+    // 回归验证点：9个 (TC-AI-PLAY-*)
 }
