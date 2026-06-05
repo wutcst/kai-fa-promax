@@ -43,3 +43,4 @@ onMounted(() => {
 // Test: manual test case - stats dashboard loads with mock data
 // Style: responsive grid layout for stats cards on mobile
 // Refactor: extract stats calculation logic into useStats composable
+// Feat: record history filter by date range and result type (win/loss)
