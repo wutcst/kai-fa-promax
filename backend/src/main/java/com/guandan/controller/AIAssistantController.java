@@ -36,6 +36,20 @@ import java.util.List;
  *   <li>未找到相关规则 → 返回 Result.error("未找到相关规则说明")</li>
  * </ul>
  *
+ * <h3>回归验证点</h3>
+ * <ul>
+ *   <li>[TC-AI-CHAT-001] POST /api/ai/chat 传入空消息 → 返回 Result.error("请输入您的问题")</li>
+ *   <li>[TC-AI-CHAT-002] POST /api/ai/chat 传入超长消息(>500字) → 返回 Result.error("请输入您的问题")</li>
+ *   <li>[TC-AI-CHAT-003] POST /api/ai/chat 正常消息 → 返回 Result.success 包含 AI 回答</li>
+ *   <li>[TC-AI-SUGGEST-001] POST /api/ai/suggest-cards 传入空手牌 → 返回 Result.error("手牌数据不能为空")</li>
+ *   <li>[TC-AI-SUGGEST-002] POST /api/ai/suggest-cards 手牌超过27张 → 返回 Result.error("手牌数据异常")</li>
+ *   <li>[TC-AI-SUGGEST-003] POST /api/ai/suggest-cards 正常请求 → 返回 Result.success 包含出牌建议列表</li>
+ *   <li>[TC-AI-RULE-001] GET /api/ai/rules 空关键词 → 正常返回规则列表或空结果</li>
+ *   <li>[TC-AI-RULE-002] GET /api/ai/rules 关键词超长(>100字) → 返回 Result.error("关键词太长，请精简后重试")</li>
+ *   <li>[TC-AI-RULE-003] GET /api/ai/rules 有效关键词 → 返回 Result.success 包含规则说明</li>
+ *   <li>[TC-AI-RULE-004] GET /api/ai/rules 不存在的关键词 → 返回 Result.error("未找到相关规则说明")</li>
+ * </ul>
+ *
  * @author kai-fa-promax 开发团队
  */
 
