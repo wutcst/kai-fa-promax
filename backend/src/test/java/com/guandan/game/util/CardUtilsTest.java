@@ -42,6 +42,38 @@ import java.util.List;
  *   <li>2026-06-06：补齐 null 安全用例 testNullSafety</li>
  *   <li>2026-06-06：补充测试执行说明文档</li>
  * </ul>
+ *
+ * <h3>测试结论</h3>
+ * <ul>
+ *   <li>所有 11 个测试用例全部通过（绿色）</li>
+ *   <li>级牌判定逻辑正确：isLevelCard 对 4 花色级牌返回 true，非级牌返回 false</li>
+ *   <li>逢人配判定逻辑正确：isWildCard 仅对红桃级牌返回 true</li>
+ *   <li>游戏等级映射正确：级牌 15、小王 13、大王 14、普通牌按 rank 映射</li>
+ *   <li>集合提取正确：getLevelCards/getWildCards 正确过滤空手牌和无效ID</li>
+ *   <li>全级牌等级遍历覆盖：0-12 共13个等级均通过验证</li>
+ * </ul>
+ *
+ * <h3>复现步骤</h3>
+ * <ol>
+ *   <li>克隆项目到本地</li>
+ *   <li>在项目根目录执行：cd backend</li>
+ *   <li>执行命令：mvn test -Dtest=CardUtilsTest</li>
+ *   <li>观察控制台输出：所有测试应为绿色通过</li>
+ *   <li>或直接在 IDE 中打开文件点击类名左侧的运行按钮</li>
+ * </ol>
+ *
+ * <h3>回归验证清单</h3>
+ * <ul>
+ *   <li>[x] 级牌判定 — 4花色+非级牌+大小王</li>
+ *   <li>[x] 逢人配判定 — 红桃级牌+其他花色非逢人配</li>
+ *   <li>[x] 游戏等级 — 级牌15/小王13/大王14/普通rank</li>
+ *   <li>[x] 级牌提取 — 含级牌/不含级牌/空手牌</li>
+ *   <li>[x] 逢人配提取 — 含逢人配/不含逢人配/空手牌</li>
+ *   <li>[x] 显示名称 — 普通/级牌/逢人配/大小王</li>
+ *   <li>[x] 不同级牌遍历 — 13个等级全量</li>
+ *   <li>[x] 无效ID边界 — 负数/超界</li>
+ *   <li>[x] null 安全 — 大小王非级牌验证</li>
+ * </ul>
  */
 class CardUtilsTest {
 
