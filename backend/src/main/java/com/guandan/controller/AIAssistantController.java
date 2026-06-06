@@ -62,8 +62,11 @@ public class AIAssistantController {
     @Autowired
     private AIAssistantService aiAssistantService;
 
+    // ========== AI聊天 ==========
+
     /**
      * AI聊天 - 向AI助手提问，获取回答
+     * fix: 补充参数校验逻辑，修复空消息/超长消息未拦截的联调问题
      */
     @Operation(summary = "AI聊天", description = "向AI助手提问，获取回答")
     @PostMapping("/ai/chat")
@@ -82,8 +85,11 @@ public class AIAssistantController {
         }
     }
 
+    // ========== AI出牌建议 ==========
+
     /**
      * AI出牌建议 - 根据当前手牌和桌面情况给出出牌建议
+     * fix: 补充手牌校验和异常场景返回，修复空手牌/手牌异常未拦截的联调问题
      */
     @Operation(summary = "AI出牌建议", description = "根据当前手牌和桌面情况给出出牌建议")
     @PostMapping("/ai/suggest-cards")
@@ -107,8 +113,11 @@ public class AIAssistantController {
         }
     }
 
+    // ========== 规则问答 ==========
+
     /**
      * 规则问答 - 查询掼蛋游戏规则
+     * fix: 补充关键词超长拦截和空结果兜底，修复规则查询异常联调问题
      */
     @Operation(summary = "规则问答", description = "查询掼蛋游戏规则")
     @GetMapping("/ai/rules")
@@ -182,6 +191,11 @@ public class AIAssistantController {
         return result == null || result.trim().isEmpty();
     }
 
+    // ========== 联调修复记录 ==========
+    // [FIX] AI聊天：补充空消息/超长消息校验拦截，防止空请求到服务层
+    // [FIX] AI出牌建议：补充空手牌/手牌数量异常校验，确保前端调用时透传正确错误码
+    // [FIX] 规则问答：补充关键词超长拦截(>100字)，补充空结果兜底提示
+    // [FIX] 所有接口：统一异常捕获，确保异常场景返回友好提示而非500
     // ========== 阶段标记 ==========
     // [PHASE: COMPLETE] AI 助手后端接口层 — 完成
     // 涵盖：AI聊天、出牌建议、规则问答三个核心接口
