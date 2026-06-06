@@ -11,3 +11,4 @@
 // Docs: AIAssistant emits 'suggest' event with card selection data
 // Test: component rendering with mock suggestion data
 // Chore: AIAssistant component stage materials
+// Perf: lazy-load AIAssistant component on mount
