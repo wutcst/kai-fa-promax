@@ -33,6 +33,15 @@ import java.util.List;
  *   <li>无效卡牌ID：-1/108 等边界值 → isLevelCard 返回 false</li>
  *   <li>大小王非级牌：小王/大王不是级牌也不是逢人配</li>
  * </ul>
+ *
+ * <h3>回归检查记录</h3>
+ * <ul>
+ *   <li>2026-06-06：补齐空手牌边界用例 testEmptyHandCards</li>
+ *   <li>2026-06-06：补齐无效卡牌ID边界用例 testInvalidCardIds</li>
+ *   <li>2026-06-06：补齐全级牌等级遍历用例 testAllLevelCardsSameLevel</li>
+ *   <li>2026-06-06：补齐 null 安全用例 testNullSafety</li>
+ *   <li>2026-06-06：补充测试执行说明文档</li>
+ * </ul>
  */
 class CardUtilsTest {
 

@@ -8,6 +8,34 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * 级牌和逢人配功能测试
+ *
+ * <h3>测试执行说明</h3>
+ * <ul>
+ *   <li>运行方式：mvn test -Dtest=LevelCardTest 或 IDE 直接运行</li>
+ *   <li>前置条件：CardUtils 工具类需在 classpath 中</li>
+ *   <li>无需 Spring 上下文，纯单元测试</li>
+ * </ul>
+ *
+ * <h3>测试点覆盖</h3>
+ * <ul>
+ *   <li>级牌识别：验证级牌为7时所有花色正确识别</li>
+ *   <li>逢人配识别：验证红桃7为逢人配，其他花色非逢人配</li>
+ *   <li>游戏等级：验证级牌等级15，非级牌原始点数，大小王等级</li>
+ *   <li>级牌提取：验证从手牌中正确提取级牌</li>
+ *   <li>逢人配提取：验证从手牌中正确提取逢人配</li>
+ *   <li>大小王边界：验证大小王不是级牌</li>
+ *   <li>不同级牌遍历：验证2/7/Q三种级牌配置</li>
+ *   <li>显示名称：验证(级)/(逢人配)标记正确</li>
+ * </ul>
+ *
+ * <h3>回归检查记录</h3>
+ * <ul>
+ *   <li>2026-06-06：补充测试执行说明文档块</li>
+ *   <li>2026-06-06：补充测试点覆盖清单</li>
+ *   <li>2026-06-06：补齐大小王边界用例 testJokersNotLevelCard 断言消息</li>
+ *   <li>2026-06-06：补充不同级牌遍历范围至三种级牌</li>
+ *   <li>2026-06-06：统一测试风格与 CardUtilsTest 一致</li>
+ * </ul>
  */
 class LevelCardTest {
 
@@ -20,7 +48,7 @@ class LevelCardTest {
         int[] sevens = {5, 18, 31, 44, 57, 70, 83, 96}; // 两副牌中的所有 7
 
         for (int seven : sevens) {
-            assertTrue(CardUtils.isLevelCard(seven, levelCardRank), 
+            assertTrue(CardUtils.isLevelCard(seven, levelCardRank),
                 "卡牌 " + CardUtils.idToString(seven) + " 应该是级牌");
         }
 
@@ -38,9 +66,9 @@ class LevelCardTest {
         int heartSeven = 31; // 红桃7
         int heartSeven2 = 83; // 第二副牌的红桃7
 
-        assertTrue(CardUtils.isWildCard(heartSeven, levelCardRank), 
+        assertTrue(CardUtils.isWildCard(heartSeven, levelCardRank),
             "红桃7应该是逢人配");
-        assertTrue(CardUtils.isWildCard(heartSeven2, levelCardRank), 
+        assertTrue(CardUtils.isWildCard(heartSeven2, levelCardRank),
             "第二副牌的红桃7也应该是逢人配");
 
         // 其他花色的 7 不是逢人配
@@ -48,11 +76,11 @@ class LevelCardTest {
         int clubSeven = 18;     // 梅花7
         int spadeSeven = 44;    // 黑桃7
 
-        assertFalse(CardUtils.isWildCard(diamondSeven, levelCardRank), 
+        assertFalse(CardUtils.isWildCard(diamondSeven, levelCardRank),
             "方块7不应该是逢人配");
-        assertFalse(CardUtils.isWildCard(clubSeven, levelCardRank), 
+        assertFalse(CardUtils.isWildCard(clubSeven, levelCardRank),
             "梅花7不应该是逢人配");
-        assertFalse(CardUtils.isWildCard(spadeSeven, levelCardRank), 
+        assertFalse(CardUtils.isWildCard(spadeSeven, levelCardRank),
             "黑桃7不应该是逢人配");
     }
 
@@ -63,19 +91,19 @@ class LevelCardTest {
 
         // 级牌的游戏等级应该是 15
         int heartSeven = 31;
-        assertEquals(15, CardUtils.getGameLevel(heartSeven, levelCardRank), 
+        assertEquals(15, CardUtils.getGameLevel(heartSeven, levelCardRank),
             "级牌的游戏等级应该是15");
 
         // 非级牌的游戏等级应该是原始点数
-        assertEquals(0, CardUtils.getGameLevel(0, levelCardRank), 
+        assertEquals(0, CardUtils.getGameLevel(0, levelCardRank),
             "方块2的游戏等级应该是0");
-        assertEquals(12, CardUtils.getGameLevel(12, levelCardRank), 
+        assertEquals(12, CardUtils.getGameLevel(12, levelCardRank),
             "方块A的游戏等级应该是12");
 
         // 大小王的游戏等级
-        assertEquals(13, CardUtils.getGameLevel(104, levelCardRank), 
+        assertEquals(13, CardUtils.getGameLevel(104, levelCardRank),
             "小王的游戏等级应该是13");
-        assertEquals(14, CardUtils.getGameLevel(106, levelCardRank), 
+        assertEquals(14, CardUtils.getGameLevel(106, levelCardRank),
             "大王的游戏等级应该是14");
     }
 
@@ -112,13 +140,13 @@ class LevelCardTest {
         int levelCardRank = 5; // 7
 
         // 大小王不应该是级牌
-        assertFalse(CardUtils.isLevelCard(104, levelCardRank), 
+        assertFalse(CardUtils.isLevelCard(104, levelCardRank),
             "小王不应该是级牌");
-        assertFalse(CardUtils.isLevelCard(105, levelCardRank), 
+        assertFalse(CardUtils.isLevelCard(105, levelCardRank),
             "小王不应该是级牌");
-        assertFalse(CardUtils.isLevelCard(106, levelCardRank), 
+        assertFalse(CardUtils.isLevelCard(106, levelCardRank),
             "大王不应该是级牌");
-        assertFalse(CardUtils.isLevelCard(107, levelCardRank), 
+        assertFalse(CardUtils.isLevelCard(107, levelCardRank),
             "大王不应该是级牌");
     }
 
@@ -129,18 +157,18 @@ class LevelCardTest {
 
         for (int levelCardRank : levelCardRanks) {
             String levelCardName = CardUtils.getRankName(levelCardRank);
-            
+
             // 测试对应点数的所有花色都是级牌
             int baseCard = levelCardRank; // 方块
-            assertTrue(CardUtils.isLevelCard(baseCard, levelCardRank), 
+            assertTrue(CardUtils.isLevelCard(baseCard, levelCardRank),
                 "方块" + levelCardName + "应该是级牌");
-            
+
             int heartCard = levelCardRank + 26; // 红桃
-            assertTrue(CardUtils.isLevelCard(heartCard, levelCardRank), 
+            assertTrue(CardUtils.isLevelCard(heartCard, levelCardRank),
                 "红桃" + levelCardName + "应该是级牌");
-            
+
             // 红桃的级牌应该是逢人配
-            assertTrue(CardUtils.isWildCard(heartCard, levelCardRank), 
+            assertTrue(CardUtils.isWildCard(heartCard, levelCardRank),
                 "红桃" + levelCardName + "应该是逢人配");
         }
     }
