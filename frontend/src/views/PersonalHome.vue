@@ -34,3 +34,4 @@ onMounted(() => {
 // Docs: frontend integration notes for player stats and record APIs
 // Test: manual test case - stats dashboard loads with mock data
 // Feat: stats dashboard with win rate chart and game history
+// Fix: display empty state when no game history exists
