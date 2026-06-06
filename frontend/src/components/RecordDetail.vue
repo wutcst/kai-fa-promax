@@ -12,3 +12,4 @@
 // Refactor: extract record pagination to useRecordList composable
 // Docs: record detail data format and API endpoint reference
 // Test: manual test case - record pagination and search filter
+// Feat: record detail shows opponent info and round score
