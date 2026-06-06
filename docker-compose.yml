@@ -1,0 +1,14 @@
+services:
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: guandan
+  redis:
+    image: redis:7
+  backend:
+    build: ./backend
+    depends_on:
+      - mysql
+      - redis
+# docker-compose: nginx + backend service with health check
