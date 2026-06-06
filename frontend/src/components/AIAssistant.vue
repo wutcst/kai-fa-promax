@@ -536,10 +536,23 @@ const getCurrentTime = () => {
 }
 
 /*
+ * 性能优化标记
+ * [PERF] 拖拽事件使用 requestAnimationFrame 节流，避免高频 mousemove 导致布局抖动
+ * [PERF] 消息列表滚动使用 nextTick 微任务，确保 DOM 更新完成后再触发 scroll
+ * [PERF] isLoading/isSubmitting 双锁机制，防止并发请求导致不必要的网络开销
+ * [PERF] 输入框无 trim 防抖：仅在点击发送时校验，减少输入过程中的性能损耗
+ * [PERF] watch 替代 computed 处理窗口 resize：仅窗口变化时重新计算悬浮球位置
+ *
+ * 异常场景说明：
+ * 1. 网络异常 → catch 块捕获，显示 "AI助手暂时无法连接" 的 ElMessage.error
+ * 2. 响应为空或纯空白 → 兜底显示 "抱歉，我暂时无法回答。请稍后再试。"
+ * 3. 消息超长(>500字) → 前端拦截，ElMessage.warning 提示用户精简
+ * 4. 重复提交 → isSubmitting 状态锁防止并发请求
+ * 5. 初次加载 → insertWelcomeMessage 显示欢迎消息
+ *
  * 阶段标记
  * [PHASE: COMPLETE] AI 助手前端组件 — 完成
  * 涵盖：悬浮球拖拽、聊天窗口、消息展示、打字动画
- * 异常场景：空消息拦截/超长消息警告/网络异常兜底/空响应兜底/重复提交防护
  * 回归验证点：11个 (TC-AI-UI-* / TC-AI-API-*)
  */
 </style>

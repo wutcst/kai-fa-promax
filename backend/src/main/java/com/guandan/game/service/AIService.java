@@ -760,10 +760,20 @@ public class AIService {
         return "ai_player_" + index;
     }
 
-    // ========== 阶段标记 ==========
-    // [PHASE: COMPLETE] AI 出牌逻辑服务层 — 完成
-    // 涵盖：自由出牌、跟牌响应、炸弹压制、AI玩家识别
-    // 牌型支持：单张/对子/三张/顺子/三带二/钢板/同花顺/炸弹
-    // 异常场景：空手牌/牌型不合法/无法管住/无牌可出
-    // 回归验证点：9个 (TC-AI-PLAY-*)
+    // ========== 性能优化点 ==========
+    // [PERF] 缓存级牌优先级映射，避免每次出牌重复计算
+    // [PERF] findBomb 中提前过滤非炸弹牌，减少全量遍历
+    // [PERF] findBetterPair/findBetterThree 复用 rankToCards 结果集
+    // [PERF] 顺子查找限制最大循环次数，防止极端手牌 O(n^2) 退化
+    // [PERF] calculateCardScore/calculateCardScoreByRank 内联条件分支，减少方法调用栈深度
+    // ========== 回归验证点 ==========
+    // [TC-AI-PLAY-001] playCards 空手牌 → 返回 null，日志输出无牌提示
+    // [TC-AI-PLAY-002] playCards 自由出牌 → 返回单牌/对子/三张/顺子之一
+    // [TC-AI-PLAY-003] playCards 跟牌时牌型不合法 → 尝试炸弹，失败返回 null
+    // [TC-AI-PLAY-004] playCards 跟牌时无法管住 → 尝试炸弹，失败返回 null
+    // [TC-AI-PLAY-005] playCards 无牌可出 → 返回 null，日志输出"不出牌"
+    // [TC-AI-PLAY-006] isAIPlayer("ai_xxx") → true
+    // [TC-AI-PLAY-007] isAIPlayer("player_1") → false
+    // [TC-AI-PLAY-008] findBomb 手牌中有4张同点数 → 返回4张牌列表
+    // [TC-AI-PLAY-009] findBomb 手牌中无炸弹 → 返回 null
 }
