@@ -161,3 +161,4 @@ class CardUtilsTest {
     }
 }
 // Fix: verify test setup with correct import paths for card utils
+// Test: regression check - card combo unit test coverage for all types

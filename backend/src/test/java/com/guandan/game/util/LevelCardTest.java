@@ -163,3 +163,4 @@ class LevelCardTest {
         assertFalse(displayName.contains("(逢人配)"), "非逢人配不应该有(逢人配)标记");
     }
 }
+// Test: regression check - level card edge cases
