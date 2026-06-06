@@ -38,3 +38,4 @@ onMounted(() => {
 // Home: stats dashboard with win rate and total games
 // Fix: show empty stats state for new player with no games
 // Style: stats cards grid layout with responsive breakpoints
+// Refactor: extract stats calculation to usePlayerStats composable

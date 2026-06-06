@@ -9,3 +9,4 @@
 // Detail: record detail with round-by-round card plays
 // Fix: handle pagination edge case when page > total
 // Style: detailed table striped rows and status badges
+// Refactor: extract record pagination to useRecordList composable
