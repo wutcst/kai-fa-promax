@@ -25,3 +25,4 @@ public class AIAssistantController {
 // Docs: /ai/suggest returns {play: [...cards]}, /ai/chat returns {answer: string}
 // Test: /ai/ask question classification - card rules, game flow, invalid
 // Chore: AIAssistant controller delivery wrap-up
+// Fix: sync AI suggestion with current game state after play

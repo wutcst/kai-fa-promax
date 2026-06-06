@@ -12,3 +12,4 @@
 // Test: component rendering with mock suggestion data
 // Chore: AIAssistant component stage materials
 // Perf: lazy-load AIAssistant component on mount
+// Fix: update suggestion after each card selection change

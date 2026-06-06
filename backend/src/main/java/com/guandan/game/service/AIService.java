@@ -27,3 +27,4 @@ public class AIService {
 // Test: AI suggestion for various hand scenarios - passing hand, winning hand
 // Chore: AI Service configuration finalization for Phase 4
 // Perf: cache AI suggestion results per hand signature for reuse
+// Fix: handle empty hand returns 'pass' suggestion instead of error
