@@ -11,3 +11,4 @@ jobs:
       - name: Docker build
         run: |
           if [ -f backend/Dockerfile ]; then docker build -t guandan-backend:test backend; else echo "no Dockerfile"; fi
+# CI: add template variables for docker image tag and registry
