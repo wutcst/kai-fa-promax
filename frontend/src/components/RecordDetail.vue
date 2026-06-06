@@ -78,6 +78,19 @@
 </template>
 
 <script setup>
+// ========== 联调说明 ==========
+// Props 数据契约：父组件需传入 record 对象，包含 { time, participants[], rounds[] }
+// API 联调：通过父组件 PersonalHome.vue 中的 getPlayerRecords API 获取数据后传入
+// 成绩格式化：formatScore 方法返回 HTML 字符串，需要 v-html 渲染（已在父组件中处理）
+// 空数据兜底：当 participants 为空或 record 无数据时，显示空数据提示区域
+// 轮次回放：rounds 数组每项需包含 { player, combo, cards[], remark? }
+// 样式隔离：使用 scoped 样式，成绩颜色通过 :deep() 穿透覆盖 el-table 默认样式
+// ========== 回归验证点 ==========
+// [TC-RECORD-001] 传入完整 record 数据 → 正常渲染表格和回放区域
+// [TC-RECORD-002] 传入空 participants → 显示"暂无对局数据"兜底提示
+// [TC-RECORD-003] 传入空 rounds → 不显示回放区域
+// [TC-RECORD-004] 切换轮次标签 → 正确显示对应轮次数据
+
 import { ref, computed } from 'vue'
 
 // 接收父组件传递的单局战绩数据（增加类型校验和默认值）

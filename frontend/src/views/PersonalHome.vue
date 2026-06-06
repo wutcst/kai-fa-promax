@@ -185,6 +185,28 @@
 </template>
 
 <script setup>
+// ========== 联调说明 ==========
+// 1. API 接口：getPlayerStatistics - 获取玩家统计信息（总局数/胜场/胜率/等级）
+// 2. API 接口：getPlayerRecords - 获取玩家战绩列表（支持分页和时间范围/结果筛选）
+// 3. 分页参数：page（当前页码） + pageSize（每页条数，默认10）
+// 4. 筛选参数：timeRange(all/today/week/month/custom) + result(all/1/2/3/4)
+// 5. 自定义时间范围：startDate + endDate（格式 yyyy-MM-dd）
+// 6. 返回结构：Page 对象 { records: [], total: number }
+// 7. 战绩详情组件：通过 RecordDetail.vue 嵌入，传入 record 对象
+// 8. 胜率计算：优先使用后端返回的 winRate 字段，不存在时前端计算 winGames/totalGames
+//
+// 联调异常处理：
+// - getPlayerStatistics 失败 → 控制台错误日志，playerStatistics 保持默认值
+// - getPlayerRecords 失败 → 控制台错误日志，recordList 保持为空
+// - records 或 total 为空 → 显示"暂无记录"文字，不渲染列表
+// - 分页超出范围 → changePage 前置校验阻止无效请求
+// ========== 回归验证点 ==========
+// [TC-PERSONAL-001] 页面加载 → 自动调用 getPlayerStatistics 和 getPlayerRecords
+// [TC-PERSONAL-002] 筛选条件变更 → 重置到第1页重新请求
+// [TC-PERSONAL-003] 分页切换 → 请求对应页码数据
+// [TC-PERSONAL-004] 重置筛选 → 清空所有条件并重新请求
+// [TC-PERSONAL-005] API 异常 → 控制台错误，页面不崩溃
+
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
