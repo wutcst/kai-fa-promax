@@ -39,3 +39,4 @@ onMounted(() => {
 // Fix: show empty stats state for new player with no games
 // Style: stats cards grid layout with responsive breakpoints
 // Refactor: extract stats calculation to usePlayerStats composable
+// Docs: frontend integration notes for player stats and record APIs

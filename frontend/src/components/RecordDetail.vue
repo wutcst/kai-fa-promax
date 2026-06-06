@@ -10,3 +10,4 @@
 // Fix: handle pagination edge case when page > total
 // Style: detailed table striped rows and status badges
 // Refactor: extract record pagination to useRecordList composable
+// Docs: record detail data format and API endpoint reference
