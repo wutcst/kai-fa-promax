@@ -116,6 +116,12 @@
           </div>
           <!-- 分页战绩列表 -->
           <div class="record-scrollview">
+            <!-- 空状态 -->
+            <div v-if="recordList.length === 0" class="empty-state">
+              <div class="empty-icon">📋</div>
+              <p class="empty-text">暂无战绩记录</p>
+              <p class="empty-hint">完成对局后，战绩数据将在这里展示</p>
+            </div>
             <div v-for="(record, index) in recordList" :key="record.id" class="record-strip">
               <div class="strip-main" @click="toggleDetail(index)">
                 <div class="strip-left">
@@ -160,7 +166,13 @@
 
         <div v-else-if="activeNav === 'gameStats'" class="stats-layout">
           <h3 class="panel-title">对局统计</h3>
-          <div class="stats-grid">
+          <!-- 空状态展示 -->
+          <div v-if="!playerStatistics.totalGames" class="empty-state">
+            <div class="empty-icon">📊</div>
+            <p class="empty-text">暂无对局记录</p>
+            <p class="empty-hint">开始一局游戏后，统计数据将在这里展示</p>
+          </div>
+          <div v-else class="stats-grid">
             <div class="stat-card">
               <div class="stat-label">总局数</div>
               <div class="stat-value">{{ playerStatistics.totalGames }}</div>
@@ -1087,6 +1099,30 @@ const showChangePassword = () => ElMessage.success('请重新设定您的密语'
   font-weight: bold;
   color: #8B4513;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 空状态展示 */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 18px;
+  color: #8B4513;
+  margin: 0 0 8px 0;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
 }
 
 /* 过渡动画 */
