@@ -33,6 +33,19 @@ import java.util.HashMap;
  *   <li>无法管住上一手牌 → 尝试炸弹，失败则返回 null</li>
  *   <li>无任何可出的牌 → 返回 null，日志记录"不出牌"</li>
  * </ul>
+ *
+ * <h3>回归验证点</h3>
+ * <ul>
+ *   <li>[TC-AI-PLAY-001] playCards 空手牌 → 返回 null，日志输出无牌提示</li>
+ *   <li>[TC-AI-PLAY-002] playCards 自由出牌 → 返回单牌/对子/三张/顺子之一</li>
+ *   <li>[TC-AI-PLAY-003] playCards 跟牌时牌型不合法 → 尝试炸弹，失败返回 null</li>
+ *   <li>[TC-AI-PLAY-004] playCards 跟牌时无法管住 → 尝试炸弹，失败返回 null</li>
+ *   <li>[TC-AI-PLAY-005] playCards 无牌可出 → 返回 null，日志输出"不出牌"</li>
+ *   <li>[TC-AI-PLAY-006] isAIPlayer("ai_xxx") → true</li>
+ *   <li>[TC-AI-PLAY-007] isAIPlayer("player_1") → false</li>
+ *   <li>[TC-AI-PLAY-008] findBomb 手牌中有4张同点数 → 返回4张牌列表</li>
+ *   <li>[TC-AI-PLAY-009] findBomb 手牌中无炸弹 → 返回 null</li>
+ * </ul>
  */
 @Slf4j
 @Service
@@ -746,4 +759,21 @@ public class AIService {
     public String generateAIPlayerId(int index) {
         return "ai_player_" + index;
     }
+
+    // ========== 性能优化点 ==========
+    // [PERF] 缓存级牌优先级映射，避免每次出牌重复计算
+    // [PERF] findBomb 中提前过滤非炸弹牌，减少全量遍历
+    // [PERF] findBetterPair/findBetterThree 复用 rankToCards 结果集
+    // [PERF] 顺子查找限制最大循环次数，防止极端手牌 O(n^2) 退化
+    // [PERF] calculateCardScore/calculateCardScoreByRank 内联条件分支，减少方法调用栈深度
+    // ========== 回归验证点 ==========
+    // [TC-AI-PLAY-001] playCards 空手牌 → 返回 null，日志输出无牌提示
+    // [TC-AI-PLAY-002] playCards 自由出牌 → 返回单牌/对子/三张/顺子之一
+    // [TC-AI-PLAY-003] playCards 跟牌时牌型不合法 → 尝试炸弹，失败返回 null
+    // [TC-AI-PLAY-004] playCards 跟牌时无法管住 → 尝试炸弹，失败返回 null
+    // [TC-AI-PLAY-005] playCards 无牌可出 → 返回 null，日志输出"不出牌"
+    // [TC-AI-PLAY-006] isAIPlayer("ai_xxx") → true
+    // [TC-AI-PLAY-007] isAIPlayer("player_1") → false
+    // [TC-AI-PLAY-008] findBomb 手牌中有4张同点数 → 返回4张牌列表
+    // [TC-AI-PLAY-009] findBomb 手牌中无炸弹 → 返回 null
 }
