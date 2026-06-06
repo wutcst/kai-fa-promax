@@ -1,0 +1,85 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: guandan-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: guandan
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./backend/src/main/resources/add_card_deal_table.sql:/docker-entrypoint-initdb.d/02-add-card-deal-table.sql:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: guandan-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+  backend:
+    image: maven:3.9-eclipse-temurin-17
+    container_name: guandan-backend
+    working_dir: /app
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - maven_repo:/root/.m2
+    command: mvn spring-boot:run
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/guandan?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root123456
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      JWT_SECRET: guandan-game-jwt-secret-key-2026-for-demo-only
+      AGENT_AUTH_ENABLED: "true"
+      AGENT_AUTH_TOKEN: "ef3d2be730653f780b57ca3b29a8e38b556bde16b5a8560b9a7afe232a5eae6b"
+      AGENT_AUTH_USER_ID: "100000"
+      AGENT_AUTH_USERNAME: "999999"
+      TZ: Asia/Shanghai
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  frontend:
+    image: node:22-alpine
+    container_name: guandan-frontend
+    working_dir: /app
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+  redis_data:
+  maven_repo:
+  frontend_node_modules:
