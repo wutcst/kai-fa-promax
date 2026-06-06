@@ -85,6 +85,35 @@
               <span class="winrate-value highlight">{{ winRate }}%</span>
             </div>
           </div>
+          <!-- 筛选条件 -->
+          <div class="filter-bar">
+            <div class="filter-group">
+              <span class="filter-label">时间范围</span>
+              <select v-model="filterTimeRange" class="filter-select" @change="onFilterChange">
+                <option value="all">全部时间</option>
+                <option value="today">今天</option>
+                <option value="week">本周</option>
+                <option value="month">本月</option>
+                <option value="custom">自定义</option>
+              </select>
+            </div>
+            <div class="filter-group" v-if="filterTimeRange === 'custom'">
+              <input type="date" v-model="filterStartDate" class="filter-input" @change="onFilterChange" />
+              <span class="filter-sep">至</span>
+              <input type="date" v-model="filterEndDate" class="filter-input" @change="onFilterChange" />
+            </div>
+            <div class="filter-group">
+              <span class="filter-label">结果筛选</span>
+              <select v-model="filterResult" class="filter-select" @change="onFilterChange">
+                <option value="all">全部结果</option>
+                <option value="1">头游</option>
+                <option value="2">二游</option>
+                <option value="3">三游</option>
+                <option value="4">末游</option>
+              </select>
+            </div>
+            <button class="filter-reset" @click="resetFilters">重置</button>
+          </div>
           <!-- 分页战绩列表 -->
           <div class="record-scrollview">
             <div v-for="(record, index) in recordList" :key="record.id" class="record-strip">
@@ -156,6 +185,28 @@
 </template>
 
 <script setup>
+// ========== 联调说明 ==========
+// 1. API 接口：getPlayerStatistics - 获取玩家统计信息（总局数/胜场/胜率/等级）
+// 2. API 接口：getPlayerRecords - 获取玩家战绩列表（支持分页和时间范围/结果筛选）
+// 3. 分页参数：page（当前页码） + pageSize（每页条数，默认10）
+// 4. 筛选参数：timeRange(all/today/week/month/custom) + result(all/1/2/3/4)
+// 5. 自定义时间范围：startDate + endDate（格式 yyyy-MM-dd）
+// 6. 返回结构：Page 对象 { records: [], total: number }
+// 7. 战绩详情组件：通过 RecordDetail.vue 嵌入，传入 record 对象
+// 8. 胜率计算：优先使用后端返回的 winRate 字段，不存在时前端计算 winGames/totalGames
+//
+// 联调异常处理：
+// - getPlayerStatistics 失败 → 控制台错误日志，playerStatistics 保持默认值
+// - getPlayerRecords 失败 → 控制台错误日志，recordList 保持为空
+// - records 或 total 为空 → 显示"暂无记录"文字，不渲染列表
+// - 分页超出范围 → changePage 前置校验阻止无效请求
+// ========== 回归验证点 ==========
+// [TC-PERSONAL-001] 页面加载 → 自动调用 getPlayerStatistics 和 getPlayerRecords
+// [TC-PERSONAL-002] 筛选条件变更 → 重置到第1页重新请求
+// [TC-PERSONAL-003] 分页切换 → 请求对应页码数据
+// [TC-PERSONAL-004] 重置筛选 → 清空所有条件并重新请求
+// [TC-PERSONAL-005] API 异常 → 控制台错误，页面不崩溃
+
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -192,6 +243,14 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const totalRecords = ref(0)
 
+// 筛选条件（拆分到独立状态块）
+const filterTimeRange = ref('all')
+const filterResult = ref('all')
+const filterStartDate = ref('')
+const filterEndDate = ref('')
+
+// ===== 计算属性 =====
+
 // 计算胜率
 const winRate = computed(() => {
   if (!playerStatistics.value.totalGames) return 0
@@ -205,6 +264,8 @@ const totalPages = computed(() => {
   return Math.max(1, Math.ceil(totalRecords.value / pageSize.value))
 })
 
+// ===== 数据请求逻辑 =====
+
 // 获取玩家统计信息
 const fetchPlayerStatistics = async () => {
   try {
@@ -216,11 +277,13 @@ const fetchPlayerStatistics = async () => {
   }
 }
 
-// 获取玩家战绩记录
+// 获取玩家战绩记录（支持筛选）
 const fetchPlayerRecords = async (page = 1) => {
   try {
     console.log('开始获取玩家战绩记录...')
-    const response = await getPlayerRecords({ page, pageSize: pageSize.value })
+    const params = buildQueryParams(page)
+
+    const response = await getPlayerRecords(params)
     console.log('API响应:', response)
 
     // response已经是Page对象，直接使用
@@ -238,6 +301,47 @@ const fetchPlayerRecords = async (page = 1) => {
     console.error('获取玩家战绩记录失败：', error)
   }
 }
+
+// ===== 筛选逻辑 =====
+
+// 构建查询参数
+const buildQueryParams = (page) => {
+  const params = { page, pageSize: pageSize.value }
+
+  // 时间范围筛选
+  if (filterTimeRange.value !== 'all') {
+    if (filterTimeRange.value === 'custom') {
+      if (filterStartDate.value) params.startDate = filterStartDate.value
+      if (filterEndDate.value) params.endDate = filterEndDate.value
+    } else {
+      params.timeRange = filterTimeRange.value
+    }
+  }
+
+  // 结果筛选
+  if (filterResult.value !== 'all') {
+    params.result = filterResult.value
+  }
+
+  return params
+}
+
+// 筛选条件变更（重置到第一页）
+const onFilterChange = () => {
+  currentPage.value = 1
+  fetchPlayerRecords(1)
+}
+
+// 重置筛选条件
+const resetFilters = () => {
+  filterTimeRange.value = 'all'
+  filterResult.value = 'all'
+  filterStartDate.value = ''
+  filterEndDate.value = ''
+  onFilterChange()
+}
+
+// ===== 分页逻辑 =====
 
 // 分页切换
 const changePage = (page) => {
@@ -880,6 +984,72 @@ const showChangePassword = () => ElMessage.success('请重新设定您的密语'
   font-weight: bold;
 }
 
+/* 筛选条件栏 */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid #e3d5ca;
+  border-radius: 8px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-label {
+  font-size: 13px;
+  color: #6d4c41;
+  white-space: nowrap;
+}
+
+.filter-select {
+  padding: 4px 8px;
+  border: 1px solid #c19a6b;
+  border-radius: 6px;
+  background: #fff;
+  color: #5d4037;
+  font-size: 13px;
+  outline: none;
+}
+
+.filter-input {
+  padding: 4px 8px;
+  border: 1px solid #c19a6b;
+  border-radius: 6px;
+  background: #fff;
+  color: #5d4037;
+  font-size: 13px;
+  outline: none;
+}
+
+.filter-sep {
+  color: #999;
+  font-size: 13px;
+}
+
+.filter-reset {
+  padding: 4px 12px;
+  border: 1px solid #c19a6b;
+  border-radius: 6px;
+  background: linear-gradient(to bottom, #f5e8d3, #e8d4b8);
+  color: #8B4513;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-reset:hover {
+  background: linear-gradient(to right, #8B4513, #A1887F);
+  color: #fff;
+}
+
 /* 对局统计面板 */
 .stats-layout {
   padding: 20px 0;
@@ -987,6 +1157,15 @@ const showChangePassword = () => ElMessage.success('请重新设定您的密语'
   .winrate-bar {
     flex-direction: column;
     gap: 8px;
+  }
+
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    flex-wrap: wrap;
   }
 
   .pagination-bar {
