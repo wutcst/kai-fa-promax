@@ -28,6 +28,28 @@
           align="center"
           :formatter="formatScore"
       />
+      <!-- 新增：对手信息展示 -->
+      <el-table-column
+          label="对手"
+          align="center"
+          width="160"
+      >
+        <template #default="{ row }">
+          <span class="opponent-name">{{ row.opponentName || '未知' }}</span>
+        </template>
+      </el-table-column>
+      <!-- 新增：当局得分展示 -->
+      <el-table-column
+          label="当局得分"
+          align="center"
+          width="120"
+      >
+        <template #default="{ row }">
+          <span :class="['round-score', row.roundScore > 0 ? 'score-positive' : row.roundScore < 0 ? 'score-negative' : '']">
+            {{ row.roundScore !== undefined ? (row.roundScore > 0 ? '+' : '') + row.roundScore : '--' }}
+          </span>
+        </template>
+      </el-table-column>
     </el-table>
     <!-- 逐轮回放区域 -->
     <div v-if="record.rounds && record.rounds.length > 0" class="round-replay">
@@ -190,6 +212,26 @@ const formatScore = ({ row }) => {
 :deep(.score-last) {
   color: #F56C6C;
   font-weight: bold;
+}
+
+/* 对手名称样式 */
+.opponent-name {
+  color: #606266;
+  font-size: 13px;
+}
+
+/* 当局得分样式 */
+.round-score {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.score-positive {
+  color: #67C23A;
+}
+
+.score-negative {
+  color: #F56C6C;
 }
 
 /* 逐轮回放区域 */
