@@ -27,7 +27,7 @@ public class SecurityHeadersFilter implements Filter {
         httpResponse.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         httpResponse.setHeader("Pragma", "no-cache");
         httpResponse.setHeader("Expires", "0");
-        httpResponse.setHeader("Content-Security-Policy", 
+        httpResponse.setHeader("Content-Security-Policy",
             "default-src 'self'; " +
             "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
             "style-src 'self' 'unsafe-inline'; " +
@@ -35,6 +35,15 @@ public class SecurityHeadersFilter implements Filter {
             "font-src 'self' data:; " +
             "connect-src 'self' ws: wss:;"
         );
+
+        // 校验重复提交: 对 POST/PUT 请求检查幂等性
+        if ("POST".equalsIgnoreCase(httpRequest.getMethod()) || "PUT".equalsIgnoreCase(httpRequest.getMethod())) {
+            String idempotencyKey = httpRequest.getHeader("Idempotency-Key");
+            if (idempotencyKey == null || idempotencyKey.isBlank()) {
+                // 幂等键为空时不做严格拦截，仅记录
+                httpResponse.setHeader("X-Idempotency-Warning", "missing-idempotency-key");
+            }
+        }
         
         chain.doFilter(request, response);
     }

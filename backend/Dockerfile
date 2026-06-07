@@ -22,9 +22,11 @@ RUN mkdir -p /app/logs /app/data
 
 # 设置环境变量
 ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+ENV SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
+ENV SERVER_PORT=${SERVER_PORT:-8081}
 
 # 暴露端口
-EXPOSE 8081
+EXPOSE ${SERVER_PORT}
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
