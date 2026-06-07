@@ -218,6 +218,13 @@
 // [TC-PERSONAL-003] 分页切换 → 请求对应页码数据
 // [TC-PERSONAL-004] 重置筛选 → 清空所有条件并重新请求
 // [TC-PERSONAL-005] API 异常 → 控制台错误，页面不崩溃
+//
+// ========== 手动测试用例 ==========
+// [TC-PERSONAL-MANUAL-001] 【胜率统计】有对局数据 → 胜率概览条正确显示总场次、胜场、胜率百分比
+// [TC-PERSONAL-MANUAL-002] 【胜率统计】无对局数据 → 胜率概览条不显示，输出来源于 API getPlayerStatistics
+// [TC-PERSONAL-MANUAL-003] 【战绩分页】recodeList 共 25 条，pageSize=10 → 第1页显示 10 条，分页栏显示 "1 / 3"
+// [TC-PERSONAL-MANUAL-004] 【战绩分页】点击"下一页" → 跳转到第 2 页，重新请求并渲染
+// [TC-PERSONAL-MANUAL-005] 【战绩分页】在最后一页点击"下一页" → 按钮 disabled，不触发请求
 
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'

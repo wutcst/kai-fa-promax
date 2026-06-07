@@ -112,6 +112,13 @@
 // [TC-RECORD-002] 传入空 participants → 显示"暂无对局数据"兜底提示
 // [TC-RECORD-003] 传入空 rounds → 不显示回放区域
 // [TC-RECORD-004] 切换轮次标签 → 正确显示对应轮次数据
+//
+// ========== 手动测试用例 ==========
+// [TC-RECORD-MANUAL-001] 【战绩详情展示】传入包含 4 名 participant 的完整 record → 表格正确渲染玩家/成绩/对手/当局得分列
+// [TC-RECORD-MANUAL-002] 【战绩详情展示】某行 roundScore > 0 → 显示为 "+分值" 且为绿色
+// [TC-RECORD-MANUAL-003] 【战绩详情展示】某行 roundScore < 0 → 显示为 "分值" 且为红色
+// [TC-RECORD-MANUAL-004] 【战绩详情展示】roundScore 为 undefined → 显示 "--"
+// [TC-RECORD-MANUAL-005] 【战绩详情展示】轮次回放 rounds 数组含 5 轮 → 显示 5 个轮次按钮，点击第 3 轮正确显示该轮数据
 
 import { ref, computed } from 'vue'
 
