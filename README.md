@@ -16,3 +16,4 @@
 <!-- Test: Phase 2 API acceptance checklist verified -->
 <!-- Test: Phase 2 API boundary test and exception documentation -->
 <!-- Phase 4: AI assistant, stats, deployment and quality documentation -->
+<!-- Chore: milestone, label and version notes synced for Phase 4 delivery -->
