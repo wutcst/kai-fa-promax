@@ -116,6 +116,12 @@
           </div>
           <!-- 分页战绩列表 -->
           <div class="record-scrollview">
+            <!-- 空状态 -->
+            <div v-if="recordList.length === 0" class="empty-state">
+              <div class="empty-icon">📋</div>
+              <p class="empty-text">暂无战绩记录</p>
+              <p class="empty-hint">完成对局后，战绩数据将在这里展示</p>
+            </div>
             <div v-for="(record, index) in recordList" :key="record.id" class="record-strip">
               <div class="strip-main" @click="toggleDetail(index)">
                 <div class="strip-left">
@@ -160,7 +166,13 @@
 
         <div v-else-if="activeNav === 'gameStats'" class="stats-layout">
           <h3 class="panel-title">对局统计</h3>
-          <div class="stats-grid">
+          <!-- 空状态展示 -->
+          <div v-if="!playerStatistics.totalGames" class="empty-state">
+            <div class="empty-icon">📊</div>
+            <p class="empty-text">暂无对局记录</p>
+            <p class="empty-hint">开始一局游戏后，统计数据将在这里展示</p>
+          </div>
+          <div v-else class="stats-grid">
             <div class="stat-card">
               <div class="stat-label">总局数</div>
               <div class="stat-value">{{ playerStatistics.totalGames }}</div>
@@ -206,6 +218,13 @@
 // [TC-PERSONAL-003] 分页切换 → 请求对应页码数据
 // [TC-PERSONAL-004] 重置筛选 → 清空所有条件并重新请求
 // [TC-PERSONAL-005] API 异常 → 控制台错误，页面不崩溃
+//
+// ========== 手动测试用例 ==========
+// [TC-PERSONAL-MANUAL-001] 【胜率统计】有对局数据 → 胜率概览条正确显示总场次、胜场、胜率百分比
+// [TC-PERSONAL-MANUAL-002] 【胜率统计】无对局数据 → 胜率概览条不显示，输出来源于 API getPlayerStatistics
+// [TC-PERSONAL-MANUAL-003] 【战绩分页】recodeList 共 25 条，pageSize=10 → 第1页显示 10 条，分页栏显示 "1 / 3"
+// [TC-PERSONAL-MANUAL-004] 【战绩分页】点击"下一页" → 跳转到第 2 页，重新请求并渲染
+// [TC-PERSONAL-MANUAL-005] 【战绩分页】在最后一页点击"下一页" → 按钮 disabled，不触发请求
 
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -1087,6 +1106,30 @@ const showChangePassword = () => ElMessage.success('请重新设定您的密语'
   font-weight: bold;
   color: #8B4513;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 空状态展示 */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 18px;
+  color: #8B4513;
+  margin: 0 0 8px 0;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
 }
 
 /* 过渡动画 */
