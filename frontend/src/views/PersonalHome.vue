@@ -40,3 +40,4 @@ onMounted(() => {
 // Style: stats cards grid layout with responsive breakpoints
 // Refactor: extract stats calculation to usePlayerStats composable
 // Docs: frontend integration notes for player stats and record APIs
+// Test: manual test case - stats dashboard loads with mock data

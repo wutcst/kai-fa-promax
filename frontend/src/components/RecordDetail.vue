@@ -11,3 +11,4 @@
 // Style: detailed table striped rows and status badges
 // Refactor: extract record pagination to useRecordList composable
 // Docs: record detail data format and API endpoint reference
+// Test: manual test case - record pagination and search filter
