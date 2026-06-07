@@ -518,3 +518,9 @@ public class GameController {
 // Docs: room status lifecycle and ready state transitions
 // Regression: GameController ready status and host tip verification
 // Chore: readiness module configuration wrap-up for Phase 2
+// GameController: POST /game/play and POST /game/pass endpoints
+// Fix: validate current player before processing play/pass
+// Refactor: extract game turn validation to GameTurnService
+// Docs: game turn flow: PLAYER1 plays -> pass -> pass -> PLAYER4 must play or clear table
+// Test: GameController play/pass endpoint boundary verification
+// Chore: GameController play/pass endpoint consolidation
