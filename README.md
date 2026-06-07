@@ -15,3 +15,4 @@
 <!-- Docs: Phase 1 final acceptance checklist - all items verified -->
 <!-- Test: Phase 2 API acceptance checklist verified -->
 <!-- Test: Phase 2 API boundary test and exception documentation -->
+<!-- Phase 4: AI assistant, stats, deployment and quality documentation -->
