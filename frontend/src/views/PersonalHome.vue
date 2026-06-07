@@ -1080,6 +1080,39 @@ const showChangePassword = () => ElMessage.success('请重新设定您的密语'
   gap: 20px;
 }
 
+/* 响应式：平板下保持双列但缩小间距和内边距 */
+@media (max-width: 960px) {
+  .stats-grid {
+    gap: 14px;
+  }
+  .stat-card {
+    padding: 22px 14px;
+  }
+  .stat-value {
+    font-size: 34px;
+  }
+  .stat-label {
+    font-size: 16px;
+  }
+}
+
+/* 响应式：手机下切换为单列全宽布局 */
+@media (max-width: 600px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .stat-card {
+    padding: 18px 12px;
+  }
+  .stat-value {
+    font-size: 28px;
+  }
+  .stat-label {
+    font-size: 14px;
+  }
+}
+
 .stat-card {
   background: linear-gradient(to bottom, #fff8e1, #ffe0b2);
   border: 2px solid #c19a6b;
