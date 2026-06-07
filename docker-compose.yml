@@ -12,3 +12,4 @@ services:
       - mysql
       - redis
 # docker-compose: nginx + backend service with health check
+# Fix: add nginx health check endpoint fallback
