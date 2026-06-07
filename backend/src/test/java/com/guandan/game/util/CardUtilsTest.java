@@ -163,3 +163,4 @@ class CardUtilsTest {
 // Fix: verify test setup with correct import paths for card utils
 // Test: regression check - card combo unit test coverage for all types
 // Docs: test execution results and reproduction notes for all card rule scenarios
+// Chore: action failure logs and retry records for unit test CI runs
