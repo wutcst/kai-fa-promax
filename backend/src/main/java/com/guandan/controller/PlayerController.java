@@ -58,6 +58,7 @@ public class PlayerController {
 
             Page<PlayerGameRecordVO> records = playerService.getRecords(page, pageSize, startTime, endTime);
             PageResult<PlayerGameRecordVO> result = PageResult.of(records);
+            log.info("战绩分页查询成功: page={}, pageSize={}, total={}, totalPages={}", page, pageSize, result.getTotal(), result.getTotalPages());
             return Result.success(result);
         } catch (Exception e) {
             log.error("获取玩家战绩记录异常: {}", e.getMessage(), e);

@@ -225,6 +225,8 @@
 // [TC-PERSONAL-MANUAL-003] 【战绩分页】recodeList 共 25 条，pageSize=10 → 第1页显示 10 条，分页栏显示 "1 / 3"
 // [TC-PERSONAL-MANUAL-004] 【战绩分页】点击"下一页" → 跳转到第 2 页，重新请求并渲染
 // [TC-PERSONAL-MANUAL-005] 【战绩分页】在最后一页点击"下一页" → 按钮 disabled，不触发请求
+// [TC-PERSONAL-MANUAL-006] 【交互边界】筛选后无匹配记录 → 空状态展示"暂无战绩记录"提示
+// [TC-PERSONAL-MANUAL-007] 【交互边界】快速连续切换筛选条件 → 重置到第1页，避免页码偏移
 
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'

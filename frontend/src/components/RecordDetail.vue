@@ -83,6 +83,10 @@
             <span v-for="(card, cIdx) in currentRound.cards" :key="cIdx" class="card-chip">{{ card }}</span>
           </div>
         </div>
+        <div v-else-if="currentRound.cards && currentRound.cards.length === 0" class="round-cards">
+          <span class="cards-label">打出牌张：</span>
+          <span class="no-cards">无牌张数据</span>
+        </div>
         <div v-if="currentRound.remark" class="round-remark">
           {{ currentRound.remark }}
         </div>
@@ -119,6 +123,7 @@
 // [TC-RECORD-MANUAL-003] 【战绩详情展示】某行 roundScore < 0 → 显示为 "分值" 且为红色
 // [TC-RECORD-MANUAL-004] 【战绩详情展示】roundScore 为 undefined → 显示 "--"
 // [TC-RECORD-MANUAL-005] 【战绩详情展示】轮次回放 rounds 数组含 5 轮 → 显示 5 个轮次按钮，点击第 3 轮正确显示该轮数据
+// [TC-RECORD-MANUAL-006] 【交互边界】当前轮次 cards 为空数组 → 显示"无牌张数据"兜底文本
 
 import { ref, computed } from 'vue'
 
