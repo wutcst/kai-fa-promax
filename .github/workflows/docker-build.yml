@@ -22,11 +22,12 @@ env:
   FRONTEND_IMAGE_NAME: guandan-frontend
 
 jobs:
-  # ===== 服务层主流程：构建后端镜像 =====
-  build-backend:
+  # ===== 职责：后端镜像构建 =====
+  # 触发条件：backend/ 或 Dockerfile 变更时执行
+  # 方法命名原则：build-and-push-{module}
+  # 职责边界：仅负责后端模块的编译、镜像构建与推送
+  build-and-push-backend:
     runs-on: ubuntu-latest
-    # 核心判断：仅当 backend/ 或 Dockerfile 有变更时执行
-    # fix: 处理空值判断，避免 github.event.pull_request 为 null 时报错
     if: |
       github.event_name == 'push' ||
       (github.event_name == 'pull_request' &&
@@ -70,10 +71,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ===== 服务层主流程：构建前端镜像 =====
-  build-frontend:
+  # ===== 职责：前端镜像构建 =====
+  # 触发条件：frontend/ 或 Dockerfile 变更时执行
+  # 方法命名原则：build-and-push-{module}
+  # 职责边界：仅负责前端模块的编译、镜像构建与推送
+  build-and-push-frontend:
     runs-on: ubuntu-latest
-    # 核心判断：仅当 frontend/ 或 Dockerfile 有变更时执行
     if: |
       github.event_name == 'push' ||
       (github.event_name == 'pull_request' &&
