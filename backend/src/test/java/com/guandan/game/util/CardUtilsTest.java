@@ -41,6 +41,8 @@ import java.util.List;
  *   <li>2026-06-06：补齐全级牌等级遍历用例 testAllLevelCardsSameLevel</li>
  *   <li>2026-06-06：补齐 null 安全用例 testNullSafety</li>
  *   <li>2026-06-06：补充测试执行说明文档</li>
+ *   <li>2026-06-07：【Action 记录】CI 流水线测试阶段首次执行失败（超时设置过短），调整超时配置后重跑通过</li>
+ *   <li>2026-06-07：【Action 记录】补齐测试用例后 mvn test 未覆盖新用例——检查发现 test 目录未在 pom.xml 中正确配置为测试资源目录，修正后重跑全部通过</li>
  * </ul>
  *
  * <h3>测试结论</h3>
