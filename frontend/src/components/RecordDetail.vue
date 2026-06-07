@@ -28,6 +28,16 @@
           align="center"
           :formatter="formatScore"
       />
+      <!-- 赛果标签 -->
+      <el-table-column
+          label="赛果"
+          align="center"
+          width="100"
+      >
+        <template #default="{ row }">
+          <span :class="['result-tag', getResultTagClass(row.result)]">{{ getResultTag(row.result) }}</span>
+        </template>
+      </el-table-column>
       <!-- 新增：对手信息展示 -->
       <el-table-column
           label="对手"
@@ -165,6 +175,17 @@ const formatScore = ({ row }) => {
   const score = row.score || '未知成绩'
   return `<span class="${classMap[row.score] || ''}">${score}</span>`
 }
+
+// 赛果标签
+const getResultTag = (result) => {
+  const map = { 1: '胜', 2: '平', 3: '负', 4: '负' }
+  return map[result] || '--'
+}
+
+const getResultTagClass = (result) => {
+  const map = { 1: 'tag-win', 2: 'tag-draw', 3: 'tag-lose', 4: 'tag-lose' }
+  return map[result] || 'tag-default'
+}
 </script>
 
 <style scoped>
@@ -230,6 +251,41 @@ const formatScore = ({ row }) => {
 .opponent-name {
   color: #606266;
   font-size: 13px;
+}
+
+/* 赛果标签样式 */
+.result-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 32px;
+  text-align: center;
+}
+
+.tag-win {
+  background: #f0f9eb;
+  color: #67C23A;
+  border: 1px solid #c2e7b0;
+}
+
+.tag-draw {
+  background: #fdf6ec;
+  color: #E6A23C;
+  border: 1px solid #f5dab1;
+}
+
+.tag-lose {
+  background: #fef0f0;
+  color: #F56C6C;
+  border: 1px solid #fbc4c4;
+}
+
+.tag-default {
+  background: #f4f4f5;
+  color: #909399;
+  border: 1px solid #e9e9eb;
 }
 
 /* 当局得分样式 */
