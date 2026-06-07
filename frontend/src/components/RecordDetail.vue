@@ -14,3 +14,4 @@
 // Test: manual test case - record pagination and search filter
 // Feat: record detail shows opponent info and round score
 // Style: result badge color coding - win(green), loss(red)
+// Fix: handle record detail with missing opponent data

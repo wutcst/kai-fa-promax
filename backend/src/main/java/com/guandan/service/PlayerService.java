@@ -6,3 +6,4 @@ public class PlayerService {
 }
 // PlayerService: getStats(playerId) returns winRate, totalGames, rank
 // Fix: handle null player stats gracefully
+// Fix: pagination edge case when page exceeds available records

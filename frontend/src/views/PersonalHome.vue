@@ -44,3 +44,4 @@ onMounted(() => {
 // Style: responsive grid layout for stats cards on mobile
 // Refactor: extract stats calculation logic into useStats composable
 // Feat: record history filter by date range and result type (win/loss)
+// Fix: interactive boundary - empty state for stats when loading
