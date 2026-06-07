@@ -11,6 +11,35 @@ on:
         required: true
         default: 'v1.0.0'
 
+# ============================================================
+# Release 自动发布流水线
+# 产品目标:
+#   提供一键式版本发布能力，确保每次 Tag 推送自动触发构建、
+#   收集制品并创建 GitHub Release，降低人工操作遗漏风险。
+# 验收标准:
+#   1. 任意 v* Tag 推送触发流水线
+#   2. 后端 Maven 编译成功，前端 npm 构建成功
+#   3. 制品归档至 release-artifacts 目录
+#   4. GitHub Release 创建成功，附件包含 JAR 和前端构建产物
+# 阶段边界:
+#   Phase 2 — 发布工程基建
+#   后续 Phase 3 将在此基础增加:
+#     - 自动生成 CHANGELOG
+#     - 集成测试门禁
+#     - Docker 镜像签名
+# 请求参数:
+#   version (required): 发布版本号，格式 v<major>.<minor>.<patch>
+# 返回结构:
+#   - status: success | failure
+#   - release_tag: 实际创建的 Git Tag
+#   - release_url: GitHub Release 页面 URL
+#   - artifacts:
+#       - backend_jar: 后端 JAR 包路径
+#       - frontend_dist: 前端构建产物路径
+# ============================================================
+env:
+  RELEASE_ARTIFACT_DIR: ./release-artifacts
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -46,6 +75,12 @@ jobs:
           npm ci
           npm run build
 
+      - name: Collect release artifacts
+        run: |
+          mkdir -p ${{ env.RELEASE_ARTIFACT_DIR }}
+          cp backend/target/guandan-backend-*.jar ${{ env.RELEASE_ARTIFACT_DIR }}/
+          cp -r frontend/dist ${{ env.RELEASE_ARTIFACT_DIR }}/frontend-dist
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -54,3 +89,6 @@ jobs:
           body_path: CHANGELOG.md
           draft: false
           prerelease: false
+          files: |
+            ${{ env.RELEASE_ARTIFACT_DIR }}/guandan-backend-*.jar
+            ${{ env.RELEASE_ARTIFACT_DIR }}/frontend-dist/**/*
