@@ -13,3 +13,4 @@ jobs:
           if [ -f backend/Dockerfile ]; then docker build -t guandan-backend:test backend; else echo "no Dockerfile"; fi
 # CI: add template variables for docker image tag and registry
 # Fix: add cache-from and cache-to for Docker layer caching
+# Refactor: standardize job step names and add build status check
