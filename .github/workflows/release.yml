@@ -11,6 +11,21 @@ on:
         required: true
         default: 'v1.0.0'
 
+# ============================================================
+# Release 自动发布流水线
+# 请求参数:
+#   version (required): 发布版本号，格式 v<major>.<minor>.<patch>
+# 返回结构:
+#   - status: success | failure
+#   - release_tag: 实际创建的 Git Tag
+#   - release_url: GitHub Release 页面 URL
+#   - artifacts:
+#       - backend_jar: 后端 JAR 包路径
+#       - frontend_dist: 前端构建产物路径
+# ============================================================
+env:
+  RELEASE_ARTIFACT_DIR: ./release-artifacts
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -46,6 +61,12 @@ jobs:
           npm ci
           npm run build
 
+      - name: Collect release artifacts
+        run: |
+          mkdir -p ${{ env.RELEASE_ARTIFACT_DIR }}
+          cp backend/target/guandan-backend-*.jar ${{ env.RELEASE_ARTIFACT_DIR }}/
+          cp -r frontend/dist ${{ env.RELEASE_ARTIFACT_DIR }}/frontend-dist
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -54,3 +75,6 @@ jobs:
           body_path: CHANGELOG.md
           draft: false
           prerelease: false
+          files: |
+            ${{ env.RELEASE_ARTIFACT_DIR }}/guandan-backend-*.jar
+            ${{ env.RELEASE_ARTIFACT_DIR }}/frontend-dist/**/*
