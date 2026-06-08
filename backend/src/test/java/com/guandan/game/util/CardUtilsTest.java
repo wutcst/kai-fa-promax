@@ -166,3 +166,4 @@ class CardUtilsTest {
 // Chore: action failure logs and retry records for unit test CI runs
 // Test: acceptance criteria verified - all card rule test scenarios pass
 // Test: card utils boundary testing design points for combo recognition
+// Fix: unit test import paths corrected for project structure
