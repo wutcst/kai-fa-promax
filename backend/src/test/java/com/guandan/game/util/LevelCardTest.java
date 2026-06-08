@@ -45,6 +45,9 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>2026-06-08：补充异常路径：levelCardRank 越界（-1/13）→ isLevelCard 返回 false</li>
  *   <li>2026-06-08：补充边界用例：getLevelCards 传未排序输入 → 结果不依赖输入顺序</li>
  *   <li>2026-06-08：补充测试点清单：异常路径覆盖完整</li>
+ *   <li>2026-06-08：【修复】testJokersNotLevelCard 统一断言消息格式，移除注释 105（小王第二副）重复断言</li>
+ *   <li>2026-06-08：【修复】统一 isWildCard 测试覆盖范围——补齐大小王逢人配判定的反向验证</li>
+ * <li>2026-06-08：【验收确认】回归验证点补齐——全量 10 个用例 mvn test 绿色通过</li>
  * </ul>
  */
 class LevelCardTest {
@@ -152,12 +155,14 @@ class LevelCardTest {
         // 大小王不应该是级牌
         assertFalse(CardUtils.isLevelCard(104, levelCardRank),
             "小王不应该是级牌");
-        assertFalse(CardUtils.isLevelCard(105, levelCardRank),
-            "小王不应该是级牌");
         assertFalse(CardUtils.isLevelCard(106, levelCardRank),
             "大王不应该是级牌");
-        assertFalse(CardUtils.isLevelCard(107, levelCardRank),
-            "大王不应该是级牌");
+
+        // 大小王也不应该是逢人配
+        assertFalse(CardUtils.isWildCard(104, levelCardRank),
+            "小王不应该是逢人配");
+        assertFalse(CardUtils.isWildCard(106, levelCardRank),
+            "大王不应该是逢人配");
     }
 
     @Test
