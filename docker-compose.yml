@@ -2,15 +2,17 @@ services:
   mysql:
     image: mysql:8.0
     container_name: guandan-mysql
+    # 接口字段：restart: unless-stopped — 非手动停止时自动重启
+    # 异常场景：MySQL 崩溃后自动重启，数据由 volume 持久化
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root123456
       MYSQL_DATABASE: guandan
       TZ: Asia/Shanghai
     ports:
-      - "3307:3306"
+      - "3307:3306"  # 接口字段：宿主机3307映射容器3306，避免与本地MySQL冲突
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql  # 接口字段：持久化数据库文件
       - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./backend/src/main/resources/add_card_deal_table.sql:/docker-entrypoint-initdb.d/02-add-card-deal-table.sql:ro
     command:
@@ -18,6 +20,7 @@ services:
       - --collation-server=utf8mb4_general_ci
       - --default-authentication-plugin=mysql_native_password
     healthcheck:
+      # 异常场景：healthcheck 超时（timeout:5s）→ MySQL 未就绪，backend 等待
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123456"]
       interval: 10s
       timeout: 5s
@@ -26,12 +29,14 @@ services:
   redis:
     image: redis:7-alpine
     container_name: guandan-redis
+    # 接口字段：appendonly yes — 启用 AOF 持久化
+    # 异常场景：Redis 宕机后重启，AOF 文件恢复数据；无 AOF 则缓存数据丢失
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6379:6379"  # 接口字段：宿主机6379映射容器6379，默认端口
     command: redis-server --appendonly yes
     volumes:
-      - redis_data:/data
+      - redis_data:/data  # 接口字段：持久化 AOF 和 RDB 文件
 
   backend:
     image: maven:3.9-eclipse-temurin-17

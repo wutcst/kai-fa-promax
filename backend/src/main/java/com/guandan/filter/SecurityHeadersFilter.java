@@ -8,6 +8,26 @@ import org.springframework.core.annotation.Order;
 
 import java.io.IOException;
 
+/**
+ * 安全响应头过滤器
+ *
+ * <h3>接口字段说明</h3>
+ * <ul>
+ *   <li>X-Content-Type-Options: nosniff — 防止 MIME 类型嗅探攻击</li>
+ *   <li>X-Frame-Options: DENY — 禁止页面被嵌入 iframe，防止点击劫持</li>
+ *   <li>X-XSS-Protection: 1; mode=block — 浏览器 XSS 过滤器（已废弃，仅兼容旧浏览器）</li>
+ *   <li>Referrer-Policy: strict-origin-when-cross-origin — 跨域时仅传递 origin</li>
+ *   <li>Cache-Control: no-cache, no-store, must-revalidate — 禁止浏览器缓存敏感响应</li>
+ *   <li>Content-Security-Policy — 严格资源白名单，限制脚本/样式/图片/字体/连接来源</li>
+ * </ul>
+ *
+ * <h3>异常场景</h3>
+ * <ul>
+ *   <li>请求头 Idempotency-Key 缺失：仅记录 X-Idempotency-Warning 头，不做严格拦截</li>
+ *   <li>Filter 链中后续 Filter 抛出异常：安全头仍在 response 中，不会丢失</li>
+ *   <li>非 POST/PUT 请求：跳过幂等性检查，不影响 GET/HEAD/OPTIONS</li>
+ * </ul>
+ */
 @Component
 @Order(1)
 public class SecurityHeadersFilter implements Filter {
