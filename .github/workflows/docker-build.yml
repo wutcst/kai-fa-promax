@@ -26,6 +26,12 @@ jobs:
   # 触发条件：backend/ 或 Dockerfile 变更时执行
   # 方法命名原则：build-and-push-{module}
   # 职责边界：仅负责后端模块的编译、镜像构建与推送
+  #
+  # [回归验证点-RV-DB-001] 后端 Maven 编译成功 → JAR 包生成
+  # [回归验证点-RV-DB-002] Docker Buildx 设置成功 → 多架构构建能力可用
+  # [回归验证点-RV-DB-003] Docker Hub 登录成功 → 使用 secrets.DOCKER_USERNAME/PASSWORD
+  # [回归验证点-RV-DB-004] 镜像推送成功 → 生成 latest 和 commit SHA 双标签
+  # [回归验证点-RV-DB-005] 缓存复用（gha）→ 增量构建时间不超过全量的一半
   build-and-push-backend:
     runs-on: ubuntu-latest
     if: |
@@ -75,6 +81,12 @@ jobs:
   # 触发条件：frontend/ 或 Dockerfile 变更时执行
   # 方法命名原则：build-and-push-{module}
   # 职责边界：仅负责前端模块的编译、镜像构建与推送
+  #
+  # [回归验证点-RV-DF-001] 前端 npm ci 安装成功 → 依赖版本锁定无冲突
+  # [回归验证点-RV-DF-002] 前端 npm run build 构建成功 → dist 目录生成
+  # [回归验证点-RV-DF-003] Docker Buildx 设置成功 → 多架构构建能力可用
+  # [回归验证点-RV-DF-004] Docker Hub 登录成功 → 使用 secrets.DOCKER_USERNAME/PASSWORD
+  # [回归验证点-RV-DF-005] 镜像推送成功 → 生成 latest 和 commit SHA 双标签
   build-and-push-frontend:
     runs-on: ubuntu-latest
     if: |
