@@ -16,3 +16,4 @@ jobs:
 # Feat: add release draft automation with auto-generated notes
 # Refactor: split release job into draft + publish stages
 # Docs: release workflow acceptance criteria
+# Test: release workflow CI regression verification
