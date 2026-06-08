@@ -41,7 +41,11 @@ env:
   RELEASE_ARTIFACT_DIR: ./release-artifacts
 
 jobs:
-  release:
+  # ===== 职责：版本发布总入口 =====
+  # 触发条件：v* Tag 推送或手动触发
+  # 方法命名原则：publish-{artifact-type}
+  # 职责边界：编排构建、制品收集与 Release 创建全流程
+  publish-artifacts:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -58,6 +62,8 @@ jobs:
           cache: maven
 
       - name: Build backend with Maven
+        # 职责：编译后端 JAR 包
+        # 边界：仅编译，不运行集成测试（依赖外部服务）
         run: |
           cd backend
           mvn clean package -DskipTests
@@ -70,18 +76,24 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Build frontend
+        # 职责：构建前端静态资源
+        # 边界：仅构建生产版本，不做 E2E 测试
         run: |
           cd frontend
           npm ci
           npm run build
 
       - name: Collect release artifacts
+        # 职责：汇总构建产物至发布目录
+        # 边界：仅收集后端 JAR 和前端 dist，不含测试报告
         run: |
           mkdir -p ${{ env.RELEASE_ARTIFACT_DIR }}
           cp backend/target/guandan-backend-*.jar ${{ env.RELEASE_ARTIFACT_DIR }}/
           cp -r frontend/dist ${{ env.RELEASE_ARTIFACT_DIR }}/frontend-dist
 
       - name: Create Release
+        # 职责：创建 GitHub Release 并上传制品
+        # 边界：不负责 Docker 镜像推送（由 docker-build.yml 独立负责）
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
