@@ -228,12 +228,12 @@
 // [TC-PERSONAL-MANUAL-006] 【交互边界】筛选后无匹配记录 → 空状态展示"暂无战绩记录"提示
 // [TC-PERSONAL-MANUAL-007] 【交互边界】快速连续切换筛选条件 → 重置到第1页，避免页码偏移
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 // 1. 确保图标正确引入（单独引入方式）
 import { User, PieChart, Calendar } from '@element-plus/icons-vue'
-import { getPlayerStatistics, getPlayerRecords } from '@/api/game'
+import { usePlayerStats } from '@/composables/usePlayerStats'
 
 const router = useRouter()
 const activeNav = ref('profile')
@@ -250,125 +250,25 @@ const userInfo = ref({
   avatarText: '玩'
 })
 
-// 玩家统计信息
-const playerStatistics = ref({
-  totalGames: 0,
-  winGames: 0,
-  winRate: 0,
-  levelCurrent: 1
-})
-
-// 玩家战绩记录
-const recordList = ref([])
-const currentPage = ref(1)
-const pageSize = ref(10)
-const totalRecords = ref(0)
-
-// 筛选条件（拆分到独立状态块）
-const filterTimeRange = ref('all')
-const filterResult = ref('all')
-const filterStartDate = ref('')
-const filterEndDate = ref('')
-
-// ===== 计算属性 =====
-
-// 计算胜率
-const winRate = computed(() => {
-  if (!playerStatistics.value.totalGames) return 0
-  return playerStatistics.value.winRate
-    ? playerStatistics.value.winRate
-    : Math.round((playerStatistics.value.winGames / playerStatistics.value.totalGames) * 100)
-})
-
-// 计算总页数
-const totalPages = computed(() => {
-  return Math.max(1, Math.ceil(totalRecords.value / pageSize.value))
-})
-
-// ===== 数据请求逻辑 =====
-
-// 获取玩家统计信息
-const fetchPlayerStatistics = async () => {
-  try {
-    const response = await getPlayerStatistics()
-    console.log('获取玩家统计信息:', response)
-    playerStatistics.value = response
-  } catch (error) {
-    console.error('获取玩家统计信息失败：', error)
-  }
-}
-
-// 获取玩家战绩记录（支持筛选）
-const fetchPlayerRecords = async (page = 1) => {
-  try {
-    console.log('开始获取玩家战绩记录...')
-    const params = buildQueryParams(page)
-
-    const response = await getPlayerRecords(params)
-    console.log('API响应:', response)
-
-    // response已经是Page对象，直接使用
-    const { records, total } = response
-    console.log('records:', records)
-    console.log('total:', total)
-    recordList.value = (records || []).map(record => ({
-      ...record,
-      showDetail: false
-    }))
-    totalRecords.value = total || 0
-    currentPage.value = page
-    console.log('recordList.value:', recordList.value)
-  } catch (error) {
-    console.error('获取玩家战绩记录失败：', error)
-  }
-}
-
-// ===== 筛选逻辑 =====
-
-// 构建查询参数
-const buildQueryParams = (page) => {
-  const params = { page, pageSize: pageSize.value }
-
-  // 时间范围筛选
-  if (filterTimeRange.value !== 'all') {
-    if (filterTimeRange.value === 'custom') {
-      if (filterStartDate.value) params.startDate = filterStartDate.value
-      if (filterEndDate.value) params.endDate = filterEndDate.value
-    } else {
-      params.timeRange = filterTimeRange.value
-    }
-  }
-
-  // 结果筛选
-  if (filterResult.value !== 'all') {
-    params.result = filterResult.value
-  }
-
-  return params
-}
-
-// 筛选条件变更（重置到第一页）
-const onFilterChange = () => {
-  currentPage.value = 1
-  fetchPlayerRecords(1)
-}
-
-// 重置筛选条件
-const resetFilters = () => {
-  filterTimeRange.value = 'all'
-  filterResult.value = 'all'
-  filterStartDate.value = ''
-  filterEndDate.value = ''
-  onFilterChange()
-}
-
-// ===== 分页逻辑 =====
-
-// 分页切换
-const changePage = (page) => {
-  if (page < 1 || page > totalPages.value) return
-  fetchPlayerRecords(page)
-}
+// 提取统计逻辑到独立 composable
+const {
+  playerStatistics,
+  recordList,
+  totalRecords,
+  filterTimeRange,
+  filterResult,
+  filterStartDate,
+  filterEndDate,
+  winRate,
+  totalPages,
+  currentPage,
+  pageSize,
+  fetchPlayerStatistics,
+  fetchPlayerRecords,
+  onFilterChange,
+  resetFilters,
+  changePage
+} = usePlayerStats()
 
 // 页面加载时获取数据
 onMounted(() => {
