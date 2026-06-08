@@ -8,3 +8,4 @@ cd backend && mvn spring-boot:run
 ```
 <!-- Chore: backend README status updated for Phase 1 -->
 <!-- Docs: backend acceptance - health check and build verified -->
+## Deployment Guide
