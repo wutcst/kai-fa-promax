@@ -28,3 +28,4 @@
 ## Test: GameRecord CRUD acceptance verified
 ## Test: Boundary scenarios for game record - missing fields, duplicate entry
 ## Phase 4: Final Release
+### Features: AI assistant, player stats, Docker deployment
