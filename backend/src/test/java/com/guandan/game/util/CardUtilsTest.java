@@ -165,3 +165,4 @@ class CardUtilsTest {
 // Docs: test execution results and reproduction notes for all card rule scenarios
 // Chore: action failure logs and retry records for unit test CI runs
 // Test: acceptance criteria verified - all card rule test scenarios pass
+// Test: card utils boundary testing design points for combo recognition
