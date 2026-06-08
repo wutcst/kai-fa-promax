@@ -22,6 +22,17 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api")
 @Tag(name = "玩家信息", description = "玩家统计信息相关接口")
+//
+// ===== 阶段标记 =====
+// Phase 2 — 个人中心价值提升
+// 职责: 提供胜率统计和战绩分页查询 API
+// 边界: 统计信息依赖 UserStats 表，不涉及游戏逻辑
+// 验收项:
+//   ✅ 胜率统计接口 (/api/player/statistics)
+//   ✅ 战绩列表接口 (/api/player/records) — 支持分页 + 时间筛选
+//   ✅ 空数据兜底 — statistics 返回空对象，records 返回空页
+//   ✅ 异常兜底 — Controller 层 try-catch 统一返回友好提示
+// =====
 public class PlayerController {
 
     @jakarta.annotation.Resource

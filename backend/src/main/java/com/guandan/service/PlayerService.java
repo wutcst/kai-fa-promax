@@ -14,6 +14,21 @@ import java.time.LocalDateTime;
 
 @Slf4j
 @Service
+//
+// ===== 阶段标记 =====
+// Phase 2 — 个人中心价值提升
+// 职责: 玩家统计信息查询和战绩分页查询
+// 边界:
+//   - 仅涉及 UserStats 表查询，不写操作
+//   - 分页查询限制最大页码 10000，防止恶意深度分页
+//   - 空数据和异常场景统一返回空 Page（不抛错）
+// 依赖: UserStatsMapper.selectRecordsByUserId
+// 验收项:
+//   ✅ 胜率计算逻辑 (winGames / totalGames * 100)
+//   ✅ 空 UserStats 兜底 — 返回全 0 统计
+//   ✅ 分页边界保护 — page < 1 重置为 1，pageSize > 100 截断
+//   ✅ 异常隔离 — Mapper 层异常 catch 后返回空 Page
+// =====
 public class PlayerService {
 
     @Autowired
