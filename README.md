@@ -4,6 +4,9 @@
 > Milestone: v1.1.0 | Label: phase-enhancement
 > Issue: #提升阶段 - 提升项目整体可验收性
 > Project Board: Phase 1 验收完成 ✅ | 推动至 Phase 2 开发
+> 
+> **项目提升方向**：本阶段聚焦 Release 自动发布流水线、Docker 镜像构建 CI、Nginx 安全配置、
+> 健康检查端点、单元测试覆盖率和文档完善等维度，全方位提升项目交付质量和可验收性。
 
 ## 项目概述
 
