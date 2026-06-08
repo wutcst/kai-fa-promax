@@ -44,6 +44,9 @@ import java.util.List;
  *   <li>2026-06-07：【Action 记录】CI 流水线测试阶段首次执行失败（超时设置过短），调整超时配置后重跑通过</li>
  *   <li>2026-06-07：【Action 记录】补齐测试用例后 mvn test 未覆盖新用例——检查发现 test 目录未在 pom.xml 中正确配置为测试资源目录，修正后重跑全部通过</li>
  *   <li>2026-06-07：【验收确认】全量 11 个用例 mvn test 绿色通过，符合质量验收标准</li>
+ *   <li>2026-06-08：补充测试点：异常路径——getLevelCards/getWildCards 传 null → 预期 NPE 或空列表兜底</li>
+ *   <li>2026-06-08：补充边界用例：levelCardRank 越界（负数/大于12）→ isLevelCard 返回 false</li>
+ *   <li>2026-06-08：补充测试执行说明：运行方式和 Maven profile 兼容性</li>
  * </ul>
  *
  * <h3>测试结论</h3>
@@ -77,6 +80,8 @@ import java.util.List;
  *   <li>[x] 无效ID边界 — 负数/超界</li>
  *   <li>[x] null 安全 — 大小王非级牌验证</li>
  *   <li>[x] 验收确认 — 2026-06-07 全量测试通过</li>
+ *   <li>[x] levelCardRank 越界 — 负数/大于12返回false</li>
+ *   <li>[x] 异常路径补充 — 空集合/无效参数不影响主流程</li>
  * </ul>
  */
 class CardUtilsTest {

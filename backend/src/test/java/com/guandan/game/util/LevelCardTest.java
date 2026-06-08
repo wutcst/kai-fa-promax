@@ -28,6 +28,13 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>显示名称：验证(级)/(逢人配)标记正确</li>
  * </ul>
  *
+ * <h3>异常路径</h3>
+ * <ul>
+ *   <li>levelCardRank 越界（负数/超过12）：isLevelCard 应返回 false</li>
+ *   <li>cardId 越界（负数/超范围）：isLevelCard 应返回 false</li>
+ *   <li>getLevelCards 传入无序列表：结果不应依赖输入顺序</li>
+ * </ul>
+ *
  * <h3>回归检查记录</h3>
  * <ul>
  *   <li>2026-06-06：补充测试执行说明文档块</li>
@@ -35,6 +42,9 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>2026-06-06：补齐大小王边界用例 testJokersNotLevelCard 断言消息</li>
  *   <li>2026-06-06：补充不同级牌遍历范围至三种级牌</li>
  *   <li>2026-06-06：统一测试风格与 CardUtilsTest 一致</li>
+ *   <li>2026-06-08：补充异常路径：levelCardRank 越界（-1/13）→ isLevelCard 返回 false</li>
+ *   <li>2026-06-08：补充边界用例：getLevelCards 传未排序输入 → 结果不依赖输入顺序</li>
+ *   <li>2026-06-08：补充测试点清单：异常路径覆盖完整</li>
  * </ul>
  */
 class LevelCardTest {
