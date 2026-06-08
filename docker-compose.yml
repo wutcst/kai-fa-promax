@@ -14,3 +14,4 @@ services:
 # docker-compose: nginx + backend service with health check
 # Fix: add nginx health check endpoint fallback
 # Refactor: split docker-compose services into base + prod profiles
+# Docs: deployment sequence - build, tag, push, deploy
