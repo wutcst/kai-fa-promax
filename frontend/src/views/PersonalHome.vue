@@ -45,3 +45,4 @@ onMounted(() => {
 // Refactor: extract stats calculation logic into useStats composable
 // Feat: record history filter by date range and result type (win/loss)
 // Fix: interactive boundary - empty state for stats when loading
+// Chore: PersonalHome component delivery wrap-up
