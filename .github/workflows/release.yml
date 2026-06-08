@@ -14,3 +14,4 @@ jobs:
           generate_release_notes: true
 # Chore: release workflow template variables and trigger config
 # Feat: add release draft automation with auto-generated notes
+# Refactor: split release job into draft + publish stages
