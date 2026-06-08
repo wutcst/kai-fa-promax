@@ -54,6 +54,11 @@ services:
       AGENT_AUTH_USER_ID: "100000"
       AGENT_AUTH_USERNAME: "999999"
       TZ: Asia/Shanghai
+      # 健康检查重试与超时配置
+      HEALTHCHECK_RETRIES: "10"
+      HEALTHCHECK_TIMEOUT: "30s"
+      # 部署环境标识
+      DEPLOY_ENV: "development"
     ports:
       - "8081:8081"
     depends_on:
