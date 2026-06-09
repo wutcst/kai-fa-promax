@@ -197,6 +197,23 @@
 </template>
 
 <script setup>
+// ========== 阶段标记 ==========
+// Phase 2 — 个人中心价值提升 — 胜率统计与战绩分页
+// 职责: 提供个人资料展示、胜率统计概览、战绩列表分页筛选、对局统计看板
+// 边界:
+//   - 数据来源: getPlayerStatistics + getPlayerRecords API（通过 usePlayerStats composable）
+//   - 空数据兜底: 无记录时展示空状态提示，不崩溃
+//   - 分页边界: 第 1 页不可"上一页"，最后一页不可"下一页"
+//   - 筛选重置: 重置所有条件并回到第 1 页重新请求
+//   - 自定义时间范围: startDate <= endDate 校验
+// 验收项:
+//   ✅ 胜率概览条 — 总场次/胜场/胜率百分比
+//   ✅ 战绩分页列表 — 分页 + 时间/结果筛选
+//   ✅ 战绩详情展开 — 点击折叠展开 RecordDetail
+//   ✅ 对局统计看板 — 4 项统计卡片（总局数/头游/头游率/等级）
+//   ✅ 空状态展示 — 无数据时友好提示
+//   ✅ 筛选重置 — 清空所有条件
+//   ✅ 安全边界 — 分页按钮 disabled 状态
 // ========== 联调说明 ==========
 // 1. API 接口：getPlayerStatistics - 获取玩家统计信息（总局数/胜场/胜率/等级）
 // 2. API 接口：getPlayerRecords - 获取玩家战绩列表（支持分页和时间范围/结果筛选）
@@ -225,13 +242,15 @@
 // [TC-PERSONAL-MANUAL-003] 【战绩分页】recodeList 共 25 条，pageSize=10 → 第1页显示 10 条，分页栏显示 "1 / 3"
 // [TC-PERSONAL-MANUAL-004] 【战绩分页】点击"下一页" → 跳转到第 2 页，重新请求并渲染
 // [TC-PERSONAL-MANUAL-005] 【战绩分页】在最后一页点击"下一页" → 按钮 disabled，不触发请求
+// [TC-PERSONAL-MANUAL-006] 【交互边界】筛选后无匹配记录 → 空状态展示"暂无战绩记录"提示
+// [TC-PERSONAL-MANUAL-007] 【交互边界】快速连续切换筛选条件 → 重置到第1页，避免页码偏移
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 // 1. 确保图标正确引入（单独引入方式）
 import { User, PieChart, Calendar } from '@element-plus/icons-vue'
-import { getPlayerStatistics, getPlayerRecords } from '@/api/game'
+import { usePlayerStats } from '@/composables/usePlayerStats'
 
 const router = useRouter()
 const activeNav = ref('profile')
@@ -248,125 +267,25 @@ const userInfo = ref({
   avatarText: '玩'
 })
 
-// 玩家统计信息
-const playerStatistics = ref({
-  totalGames: 0,
-  winGames: 0,
-  winRate: 0,
-  levelCurrent: 1
-})
-
-// 玩家战绩记录
-const recordList = ref([])
-const currentPage = ref(1)
-const pageSize = ref(10)
-const totalRecords = ref(0)
-
-// 筛选条件（拆分到独立状态块）
-const filterTimeRange = ref('all')
-const filterResult = ref('all')
-const filterStartDate = ref('')
-const filterEndDate = ref('')
-
-// ===== 计算属性 =====
-
-// 计算胜率
-const winRate = computed(() => {
-  if (!playerStatistics.value.totalGames) return 0
-  return playerStatistics.value.winRate
-    ? playerStatistics.value.winRate
-    : Math.round((playerStatistics.value.winGames / playerStatistics.value.totalGames) * 100)
-})
-
-// 计算总页数
-const totalPages = computed(() => {
-  return Math.max(1, Math.ceil(totalRecords.value / pageSize.value))
-})
-
-// ===== 数据请求逻辑 =====
-
-// 获取玩家统计信息
-const fetchPlayerStatistics = async () => {
-  try {
-    const response = await getPlayerStatistics()
-    console.log('获取玩家统计信息:', response)
-    playerStatistics.value = response
-  } catch (error) {
-    console.error('获取玩家统计信息失败：', error)
-  }
-}
-
-// 获取玩家战绩记录（支持筛选）
-const fetchPlayerRecords = async (page = 1) => {
-  try {
-    console.log('开始获取玩家战绩记录...')
-    const params = buildQueryParams(page)
-
-    const response = await getPlayerRecords(params)
-    console.log('API响应:', response)
-
-    // response已经是Page对象，直接使用
-    const { records, total } = response
-    console.log('records:', records)
-    console.log('total:', total)
-    recordList.value = (records || []).map(record => ({
-      ...record,
-      showDetail: false
-    }))
-    totalRecords.value = total || 0
-    currentPage.value = page
-    console.log('recordList.value:', recordList.value)
-  } catch (error) {
-    console.error('获取玩家战绩记录失败：', error)
-  }
-}
-
-// ===== 筛选逻辑 =====
-
-// 构建查询参数
-const buildQueryParams = (page) => {
-  const params = { page, pageSize: pageSize.value }
-
-  // 时间范围筛选
-  if (filterTimeRange.value !== 'all') {
-    if (filterTimeRange.value === 'custom') {
-      if (filterStartDate.value) params.startDate = filterStartDate.value
-      if (filterEndDate.value) params.endDate = filterEndDate.value
-    } else {
-      params.timeRange = filterTimeRange.value
-    }
-  }
-
-  // 结果筛选
-  if (filterResult.value !== 'all') {
-    params.result = filterResult.value
-  }
-
-  return params
-}
-
-// 筛选条件变更（重置到第一页）
-const onFilterChange = () => {
-  currentPage.value = 1
-  fetchPlayerRecords(1)
-}
-
-// 重置筛选条件
-const resetFilters = () => {
-  filterTimeRange.value = 'all'
-  filterResult.value = 'all'
-  filterStartDate.value = ''
-  filterEndDate.value = ''
-  onFilterChange()
-}
-
-// ===== 分页逻辑 =====
-
-// 分页切换
-const changePage = (page) => {
-  if (page < 1 || page > totalPages.value) return
-  fetchPlayerRecords(page)
-}
+// 提取统计逻辑到独立 composable
+const {
+  playerStatistics,
+  recordList,
+  totalRecords,
+  filterTimeRange,
+  filterResult,
+  filterStartDate,
+  filterEndDate,
+  winRate,
+  totalPages,
+  currentPage,
+  pageSize,
+  fetchPlayerStatistics,
+  fetchPlayerRecords,
+  onFilterChange,
+  resetFilters,
+  changePage
+} = usePlayerStats()
 
 // 页面加载时获取数据
 onMounted(() => {
@@ -1078,6 +997,39 @@ const showChangePassword = () => ElMessage.success('请重新设定您的密语'
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
+}
+
+/* 响应式：平板下保持双列但缩小间距和内边距 */
+@media (max-width: 960px) {
+  .stats-grid {
+    gap: 14px;
+  }
+  .stat-card {
+    padding: 22px 14px;
+  }
+  .stat-value {
+    font-size: 34px;
+  }
+  .stat-label {
+    font-size: 16px;
+  }
+}
+
+/* 响应式：手机下切换为单列全宽布局 */
+@media (max-width: 600px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .stat-card {
+    padding: 18px 12px;
+  }
+  .stat-value {
+    font-size: 28px;
+  }
+  .stat-label {
+    font-size: 14px;
+  }
 }
 
 .stat-card {

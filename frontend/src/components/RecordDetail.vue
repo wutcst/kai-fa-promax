@@ -28,6 +28,16 @@
           align="center"
           :formatter="formatScore"
       />
+      <!-- 赛果标签 -->
+      <el-table-column
+          label="赛果"
+          align="center"
+          width="100"
+      >
+        <template #default="{ row }">
+          <span :class="['result-tag', getResultTagClass(row.result)]">{{ getResultTag(row.result) }}</span>
+        </template>
+      </el-table-column>
       <!-- 新增：对手信息展示 -->
       <el-table-column
           label="对手"
@@ -83,6 +93,10 @@
             <span v-for="(card, cIdx) in currentRound.cards" :key="cIdx" class="card-chip">{{ card }}</span>
           </div>
         </div>
+        <div v-else-if="currentRound.cards && currentRound.cards.length === 0" class="round-cards">
+          <span class="cards-label">打出牌张：</span>
+          <span class="no-cards">无牌张数据</span>
+        </div>
         <div v-if="currentRound.remark" class="round-remark">
           {{ currentRound.remark }}
         </div>
@@ -100,6 +114,22 @@
 </template>
 
 <script setup>
+//
+// ===== 阶段标记 =====
+// Phase 2 — 个人中心价值提升 — 战绩详情展示
+// 职责: 展示单局战绩的参赛者成绩、赛果、对手信息、当局得分和逐轮回放
+// 边界:
+//   - 纯展示组件，不发起 API 调用（数据由父组件 PersonalHome 传入）
+//   - participants 为空数组时展示空数据兜底
+//   - rounds 为空时不展示回放区域
+//   - score/roundScore 异常值有兜底处理（undefined → '--' / '未知成绩'）
+// 验收项:
+//   ✅ 表格渲染 — 玩家/成绩/赛果/对手/当局得分 5 列
+//   ✅ 成绩着色 — 头游绿、二游蓝、三游橙、末游红
+//   ✅ 赛果标签 — 胜(绿)/平(黄)/负(红) 圆角标签
+//   ✅ 当局得分 — 正分带 "+" 绿色，负分红色
+//   ✅ 逐轮回放 — 轮次按钮切换 + 出牌详情
+//   ✅ 空数据兜底 — 无 participants 时显示提示
 // ========== 联调说明 ==========
 // Props 数据契约：父组件需传入 record 对象，包含 { time, participants[], rounds[] }
 // API 联调：通过父组件 PersonalHome.vue 中的 getPlayerRecords API 获取数据后传入
@@ -119,6 +149,7 @@
 // [TC-RECORD-MANUAL-003] 【战绩详情展示】某行 roundScore < 0 → 显示为 "分值" 且为红色
 // [TC-RECORD-MANUAL-004] 【战绩详情展示】roundScore 为 undefined → 显示 "--"
 // [TC-RECORD-MANUAL-005] 【战绩详情展示】轮次回放 rounds 数组含 5 轮 → 显示 5 个轮次按钮，点击第 3 轮正确显示该轮数据
+// [TC-RECORD-MANUAL-006] 【交互边界】当前轮次 cards 为空数组 → 显示"无牌张数据"兜底文本
 
 import { ref, computed } from 'vue'
 
@@ -159,6 +190,17 @@ const formatScore = ({ row }) => {
   }
   const score = row.score || '未知成绩'
   return `<span class="${classMap[row.score] || ''}">${score}</span>`
+}
+
+// 赛果标签
+const getResultTag = (result) => {
+  const map = { 1: '胜', 2: '平', 3: '负', 4: '负' }
+  return map[result] || '--'
+}
+
+const getResultTagClass = (result) => {
+  const map = { 1: 'tag-win', 2: 'tag-draw', 3: 'tag-lose', 4: 'tag-lose' }
+  return map[result] || 'tag-default'
 }
 </script>
 
@@ -225,6 +267,41 @@ const formatScore = ({ row }) => {
 .opponent-name {
   color: #606266;
   font-size: 13px;
+}
+
+/* 赛果标签样式 */
+.result-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 32px;
+  text-align: center;
+}
+
+.tag-win {
+  background: #f0f9eb;
+  color: #67C23A;
+  border: 1px solid #c2e7b0;
+}
+
+.tag-draw {
+  background: #fdf6ec;
+  color: #E6A23C;
+  border: 1px solid #f5dab1;
+}
+
+.tag-lose {
+  background: #fef0f0;
+  color: #F56C6C;
+  border: 1px solid #fbc4c4;
+}
+
+.tag-default {
+  background: #f4f4f5;
+  color: #909399;
+  border: 1px solid #e9e9eb;
 }
 
 /* 当局得分样式 */
