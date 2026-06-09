@@ -16,3 +16,4 @@
 // Style: result badge color coding - win(green), loss(red)
 // Fix: handle record detail with missing opponent data
 // Chore: RecordDetail module finalization
+// Perf: lazy load RecordDetail component to reduce initial bundle size
