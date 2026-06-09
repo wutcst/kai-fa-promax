@@ -16,9 +16,29 @@ on:
       - 'Dockerfile*'
       - 'docker-compose*.yml'
 
+env:
+  DOCKER_REGISTRY: docker.io
+  BACKEND_IMAGE_NAME: guandan-backend
+  FRONTEND_IMAGE_NAME: guandan-frontend
+
 jobs:
-  build:
+  # ===== 职责：后端镜像构建 =====
+  # 触发条件：backend/ 或 Dockerfile 变更时执行
+  # 方法命名原则：build-and-push-{module}
+  # 职责边界：仅负责后端模块的编译、镜像构建与推送
+  #
+  # [回归验证点-RV-DB-001] 后端 Maven 编译成功 → JAR 包生成
+  # [回归验证点-RV-DB-002] Docker Buildx 设置成功 → 多架构构建能力可用
+  # [回归验证点-RV-DB-003] Docker Hub 登录成功 → 使用 secrets.DOCKER_USERNAME/PASSWORD
+  # [回归验证点-RV-DB-004] 镜像推送成功 → 生成 latest 和 commit SHA 双标签
+  # [回归验证点-RV-DB-005] 缓存复用（gha）→ 增量构建时间不超过全量的一半
+  build-and-push-backend:
     runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request != null &&
+       contains(join(github.event.pull_request.changed_files, ','), 'backend/'))
 
     steps:
       - name: Checkout code
@@ -52,7 +72,63 @@ jobs:
           file: Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/guandan-backend:latest
-            ${{ secrets.DOCKER_USERNAME }}/guandan-backend:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:latest
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===== 职责：前端镜像构建 =====
+  # 触发条件：frontend/ 或 Dockerfile 变更时执行
+  # 方法命名原则：build-and-push-{module}
+  # 职责边界：仅负责前端模块的编译、镜像构建与推送
+  #
+  # [回归验证点-RV-DF-001] 前端 npm ci 安装成功 → 依赖版本锁定无冲突
+  # [回归验证点-RV-DF-002] 前端 npm run build 构建成功 → dist 目录生成
+  # [回归验证点-RV-DF-003] Docker Buildx 设置成功 → 多架构构建能力可用
+  # [回归验证点-RV-DF-004] Docker Hub 登录成功 → 使用 secrets.DOCKER_USERNAME/PASSWORD
+  # [回归验证点-RV-DF-005] 镜像推送成功 → 生成 latest 和 commit SHA 双标签
+  build-and-push-frontend:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request != null &&
+       contains(join(github.event.pull_request.changed_files, ','), 'frontend/'))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push frontend Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
