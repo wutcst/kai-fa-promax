@@ -1,3 +1,18 @@
+# ============================================================
+# 回归验证点: 提升发布可用性
+# ============================================================
+# [RV-DC-001] Docker Compose 启动: docker compose up -d
+#   → 预期: mysql、redis、backend、frontend 全部正常运行
+# [RV-DC-002] 服务依赖顺序: backend 在 mysql healthy 之前等待，
+#   frontend 在 backend 启动后启动
+# [RV-DC-003] 端口映射: 宿主机 3307→3306(MySQL)、6379→6379(Redis)、
+#   8081→8081(backend)、5173→5173(frontend) 映射正确
+# [RV-DC-004] 数据持久化: docker compose down 后 volume 数据不丢失，
+#   docker compose up -d 恢复后数据完整
+# [RV-DC-005] 部署脚本: deploy.sh 执行后服务正常启动，rollback.sh
+#   执行后回滚到上一版本
+# ============================================================
+
 services:
   mysql:
     image: mysql:8.0
