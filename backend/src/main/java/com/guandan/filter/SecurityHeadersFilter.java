@@ -18,3 +18,4 @@ public class SecurityHeadersFilter implements Filter {
 // SecurityHeadersFilter: add XSS, content-type, frame-options headers
 // Fix: skip header set on non-HTTP responses
 // Docs: filter chain path and security header specification
+// Chore: SecurityHeadersFilter delivery materials

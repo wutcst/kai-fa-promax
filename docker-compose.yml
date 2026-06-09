@@ -16,3 +16,4 @@ services:
 # Refactor: split docker-compose services into base + prod profiles
 # Docs: deployment sequence - build, tag, push, deploy
 # Test: docker-compose up and health check endpoints pass
+# Chore: docker-compose service orchestration wrap-up
