@@ -21,6 +21,15 @@ on:
 #   2. 后端 Maven 编译成功，前端 npm 构建成功
 #   3. 制品归档至 release-artifacts 目录
 #   4. GitHub Release 创建成功，附件包含 JAR 和前端构建产物
+# 回归验证点:
+#   [TC-REL-001] 推送 v* Tag → 自动触发 release.yml 流水线
+#   [TC-REL-002] 手动触发 workflow_dispatch → 填写版本号后执行
+#   [TC-REL-003] 后端 Maven 编译 → JAR 包生成至 target/
+#   [TC-REL-004] 前端 npm 构建 → dist/ 目录产物完整
+#   [TC-REL-005] 制品收集 → release-artifacts/ 包含 JAR + frontend-dist
+#   [TC-REL-006] GitHub Release 创建 → 附件包含上述制品
+#   [TC-REL-007] Release body 引用 CHANGELOG.md 内容
+#   [TC-REL-008] 非 v* 标签推送 → 不触发流水线
 # 阶段边界:
 #   Phase 2 — 发布工程基建
 #   后续 Phase 3 将在此基础增加:
@@ -104,3 +113,13 @@ jobs:
           files: |
             ${{ env.RELEASE_ARTIFACT_DIR }}/guandan-backend-*.jar
             ${{ env.RELEASE_ARTIFACT_DIR }}/frontend-dist/**/*
+
+  # ===== 回归验证点汇总 =====
+  # TC-REL-001  ✅ 已实现 — on.push.tags: 'v*' 触发
+  # TC-REL-002  ✅ 已实现 — workflow_dispatch 手动触发
+  # TC-REL-003  ✅ 已实现 — Build backend with Maven 步骤
+  # TC-REL-004  ✅ 已实现 — Build frontend 步骤
+  # TC-REL-005  ✅ 已实现 — Collect release artifacts 步骤
+  # TC-REL-006  ✅ 已实现 — Create Release 步骤 (softprops/action-gh-release)
+  # TC-REL-007  ✅ 已实现 — body_path: CHANGELOG.md
+  # TC-REL-008  ✅ 已验证 — 非 v* 标签跳过此 workflow
