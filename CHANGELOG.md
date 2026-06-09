@@ -15,3 +15,4 @@
 
 ## v0.1.0-alpha (2026-05-31)
 - 账号体系与基础页面
+<!-- Docs: v1.0.0 changelog and contributing guide regression notes -->

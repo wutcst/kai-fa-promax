@@ -10,3 +10,4 @@ type: 正文（feat/fix/refactor/docs/test/style/chore）
 ## Project Structure
 ### backend: Spring Boot 3.2, Java 17, Maven
 ### frontend: Vue3, Vite, Node 20
+## Regression verification
