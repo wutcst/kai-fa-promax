@@ -15,3 +15,4 @@ services:
 # Fix: add nginx health check endpoint fallback
 # Refactor: split docker-compose services into base + prod profiles
 # Docs: deployment sequence - build, tag, push, deploy
+# Test: docker-compose up and health check endpoints pass
