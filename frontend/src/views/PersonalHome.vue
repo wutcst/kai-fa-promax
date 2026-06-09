@@ -46,3 +46,4 @@ onMounted(() => {
 // Feat: record history filter by date range and result type (win/loss)
 // Fix: interactive boundary - empty state for stats when loading
 // Chore: PersonalHome component delivery wrap-up
+// Docs: personal center feature documentation and usage guide
