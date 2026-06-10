@@ -191,6 +191,44 @@
             </div>
           </div>
         </div>
+
+        <div v-else-if="activeNav === 'trend'" class="stats-layout">
+          <h3 class="panel-title">趋势统计</h3>
+          <div class="trend-section">
+            <!-- 连胜/连败概览 -->
+            <div class="trend-overview">
+              <div class="trend-item" :class="playerTrend.streakType === 'win_streak' ? 'trend-win' : playerTrend.streakType === 'lose_streak' ? 'trend-lose' : ''">
+                <span class="trend-label">当前</span>
+                <span class="trend-value">{{ playerTrend.streakType === 'win_streak' ? '连胜' : playerTrend.streakType === 'lose_streak' ? '连败' : '暂无趋势' }}</span>
+                <span class="trend-count" v-if="playerTrend.streakType !== 'none'">{{ Math.abs(playerTrend.streakCount) }}局</span>
+              </div>
+              <div class="trend-item">
+                <span class="trend-label">历史最大连胜</span>
+                <span class="trend-value highlight">{{ playerTrend.maxWinStreak }}局</span>
+              </div>
+              <div class="trend-item">
+                <span class="trend-label">历史最大连败</span>
+                <span class="trend-value highlight">{{ playerTrend.maxLoseStreak }}局</span>
+              </div>
+              <div class="trend-item">
+                <span class="trend-label">最近{{ playerTrend.recentResults.length }}局</span>
+                <span class="trend-value" :class="getRecentWinRateClass()">{{ getRecentWinRate() }}%</span>
+              </div>
+            </div>
+            <!-- 最近胜负序列（简化热力图） -->
+            <div class="trend-sequence" v-if="playerTrend.recentResults.length > 0">
+              <span class="trend-seq-label">最近胜负</span>
+              <div class="seq-dots">
+                <span v-for="(r, i) in playerTrend.recentResults.slice(0, 30)" :key="i"
+                      class="seq-dot"
+                      :class="r ? 'dot-win' : 'dot-lose'"
+                      :title="(r ? '胜' : '负') + ' 第' + (playerTrend.recentResults.length - i) + '局'">
+                </span>
+                <span v-if="playerTrend.recentResults.length > 30" class="seq-more">+{{ playerTrend.recentResults.length - 30 }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -249,7 +287,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 // 1. 确保图标正确引入（单独引入方式）
-import { User, PieChart, Calendar } from '@element-plus/icons-vue'
+import { User, PieChart, Calendar, DataLine } from '@element-plus/icons-vue'
 import { usePlayerStats } from '@/composables/usePlayerStats'
 
 const router = useRouter()
@@ -257,7 +295,8 @@ const activeNav = ref('profile')
 const navList = [
   { id: 'profile', name: '个人资料', icon: User },
   { id: 'gameStats', name: '对局统计', icon: PieChart },
-  { id: 'recordStats', name: '战绩统计', icon: Calendar }
+  { id: 'recordStats', name: '战绩统计', icon: Calendar },
+  { id: 'trend', name: '趋势分析', icon: DataLine }
 ]
 
 const userInfo = ref({
@@ -284,13 +323,16 @@ const {
   fetchPlayerRecords,
   onFilterChange,
   resetFilters,
-  changePage
+  changePage,
+  playerTrend,
+  fetchPlayerTrend
 } = usePlayerStats()
 
 // 页面加载时获取数据
 onMounted(() => {
   fetchPlayerStatistics()
   fetchPlayerRecords()
+  fetchPlayerTrend()
 })
 
 const toggleDetail = (index) => recordList.value[index].showDetail = !recordList.value[index].showDetail
@@ -314,6 +356,22 @@ const formatResult = (result) => {
 const getResultClass = (res) => {
   const map = { '头游': 'res-gold', '二游': 'res-blue', '三游': 'res-orange', '末游': 'res-gray' }
   return map[res] || ''
+}
+
+/** 计算最近 N 局胜率 */
+const getRecentWinRate = () => {
+  const results = playerTrend.value.recentResults
+  if (!results || results.length === 0) return 0
+  const wins = results.filter(r => r).length
+  return Math.round((wins / results.length) * 100)
+}
+
+/** 最近胜率 CSS 类 */
+const getRecentWinRateClass = () => {
+  const rate = getRecentWinRate()
+  if (rate >= 60) return 'trend-value-win'
+  if (rate >= 40) return ''
+  return 'trend-value-lose'
 }
 const goBack = () => router.push('/lobby')
 const showChangePassword = () => ElMessage.success('请重新设定您的密语')
@@ -1165,6 +1223,140 @@ const showChangePassword = () => ElMessage.success('请重新设定您的密语'
 
   .pagination-bar {
     flex-wrap: wrap;
+  }
+}
+
+/* 趋势统计面板 */
+.trend-section {
+  padding: 10px 0;
+}
+
+.trend-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.trend-item {
+  background: linear-gradient(to bottom, #fff8e1, #ffe0b2);
+  border: 1px solid #c19a6b;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.trend-item.trend-win {
+  border-color: #4caf50;
+  background: linear-gradient(to bottom, #e8f5e9, #c8e6c9);
+}
+
+.trend-item.trend-lose {
+  border-color: #f44336;
+  background: linear-gradient(to bottom, #ffebee, #ffcdd2);
+}
+
+.trend-label {
+  display: block;
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 6px;
+}
+
+.trend-value {
+  display: block;
+  font-size: 20px;
+  font-weight: bold;
+  color: #8B4513;
+}
+
+.trend-value.highlight {
+  color: #D4AF37;
+}
+
+.trend-value.trend-value-win {
+  color: #2e7d32;
+}
+
+.trend-value.trend-value-lose {
+  color: #c62828;
+}
+
+.trend-count {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 8px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #5d4037;
+}
+
+.trend-sequence {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.6);
+  border: 1px solid #c19a6b;
+  border-radius: 10px;
+}
+
+.trend-seq-label {
+  font-size: 13px;
+  color: #6d4c41;
+  white-space: nowrap;
+}
+
+.seq-dots {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.seq-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.seq-dot:hover {
+  transform: scale(1.5);
+}
+
+.seq-dot.dot-win {
+  background: #4caf50;
+}
+
+.seq-dot.dot-lose {
+  background: #f44336;
+}
+
+.seq-more {
+  font-size: 11px;
+  color: #999;
+  margin-left: 4px;
+}
+
+@media (max-width: 960px) {
+  .trend-overview {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .trend-overview {
+    grid-template-columns: 1fr;
+  }
+  .trend-sequence {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>
