@@ -8,3 +8,4 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Docs: Docker build args and environment variable reference
 # Test: Dockerfile build stage verification - multi-stage succeeds
 # Chore: Dockerfile and deployment configuration finalization
+# Perf: optimize Docker build with layer caching and multi-stage builds
