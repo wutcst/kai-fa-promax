@@ -1,9 +1,20 @@
 <template>
   <div class="record-detail">
-    <!-- 详情头部：标题 + 比赛时间 -->
+    <!-- 详情头部：标题 + 比赛时间 + 导出按钮 -->
     <div class="detail-header">
-      <span class="detail-title">战绩详情</span>
-      <span class="detail-time">{{ record.time || '暂无数据' }}</span>
+      <div class="header-left">
+        <span class="detail-title">战绩详情</span>
+        <span class="detail-time">{{ record.time || '暂无数据' }}</span>
+      </div>
+      <div class="header-right">
+        <button class="export-btn" @click="showExportMenu = !showExportMenu" title="导出战绩">
+          <span class="export-icon">&#128229;</span> 导出
+        </button>
+        <div v-if="showExportMenu" class="export-dropdown" @click.stop>
+          <button class="export-option" @click="exportRecords('json')">导出为 JSON</button>
+          <button class="export-option" @click="exportRecords('csv')">导出为 CSV</button>
+        </div>
+      </div>
     </div>
 
     <!-- 参与者战绩表格 -->
@@ -152,6 +163,7 @@
 // [TC-RECORD-MANUAL-006] 【交互边界】当前轮次 cards 为空数组 → 显示"无牌张数据"兜底文本
 
 import { ref, computed } from 'vue'
+import axios from 'axios'
 
 // 接收父组件传递的单局战绩数据（增加类型校验和默认值）
 const props = defineProps({
@@ -168,6 +180,63 @@ const props = defineProps({
 
 // 当前激活的回放轮次
 const activeRound = ref(0)
+
+// 导出菜单开关
+const showExportMenu = ref(false)
+
+// 点击外部关闭导出菜单
+const handleClickOutside = (e) => {
+  if (!e.target.closest('.header-right')) {
+    showExportMenu.value = false
+  }
+}
+
+// 导出战绩
+const exportRecords = async (format) => {
+  showExportMenu.value = false
+  try {
+    // 从 localStorage 或 props 中获取当前用户 ID
+    const userId = localStorage.getItem('userId') || '1'
+
+    const response = await axios.get(`/api/records/export`, {
+      params: { userId, format },
+      responseType: format === 'csv' ? 'blob' : 'text'
+    })
+
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:]/g, '-')
+
+    if (format === 'csv') {
+      // CSV：下载为 .csv 文件
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `game_records_${timestamp}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } else {
+      // JSON：下载为 .json 文件
+      const blob = new Blob([typeof response.data === 'string' ? response.data : JSON.stringify(response.data, null, 2)], {
+        type: 'application/json;charset=utf-8;'
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `game_records_${timestamp}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    }
+
+    window.$message?.success?.(`战绩已导出为 ${format.toUpperCase()} 格式`)
+  } catch (error) {
+    console.error('导出战绩失败:', error)
+    window.$message?.error?.('导出战绩失败，请稍后重试')
+  }
+}
 
 // 当前轮次数据
 const currentRound = computed(() => {
@@ -461,6 +530,73 @@ const getResultTagClass = (result) => {
   margin: 0;
 }
 
+/* 导出按钮区域 */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border: 1px solid #409EFF;
+  border-radius: 4px;
+  background: #fff;
+  color: #409EFF;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-btn:hover {
+  background: #ecf5ff;
+}
+
+.export-icon {
+  font-size: 14px;
+}
+
+.export-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  min-width: 140px;
+  overflow: hidden;
+}
+
+.export-option {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: #333;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.export-option:hover {
+  background: #ecf5ff;
+  color: #409EFF;
+}
+
 /* 响应式适配 */
 @media (max-width: 768px) {
   .detail-header {
@@ -476,6 +612,11 @@ const getResultTagClass = (result) => {
   .round-tab {
     font-size: 11px;
     padding: 3px 8px;
+  }
+
+  .export-dropdown {
+    right: auto;
+    left: 0;
   }
 }
 </style>
