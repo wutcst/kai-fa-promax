@@ -23,3 +23,5 @@
 ## Final Acceptance Checklist
 <!-- Docs: Phase 4 product goals, acceptance criteria and milestone boundaries -->
 <!-- Chore: milestone v1.0.0 label sync and version notes updated -->
+## Project Architecture
+![architecture](docs/architecture.png)
