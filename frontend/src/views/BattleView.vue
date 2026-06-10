@@ -220,7 +220,7 @@
                   <div class="played-cards-group" v-if="cards.length > 0">
                     <div v-for="(card, index) in cards" :key="index">
                       <div v-if="card.type === 'pass'" class="pass-indicator">不要</div>
-                      <div v-else class="card small-on-desk">
+                      <div v-else class="card small-on-desk" :class="getDeskCardAnimationClass(player, index)">
                         <img :src="getCardImage(card)" class="card-img">
                       </div>
                     </div>
@@ -274,7 +274,14 @@
           <div class="my-hand" :style="handStyle" @mousedown="startDragging">
             <div v-for="(card, index) in myCards" :key="'my-' + index"
                  class="card"
-                 :class="{ selected: selectedCards.includes(index), suggested: suggestedCards.includes(index) }"
+                 :class="{
+                   selected: selectedCards.includes(index),
+                   suggested: suggestedCards.includes(index),
+                   playable: currentPlayer === '我',
+                   unplayable: currentPlayer !== '我',
+                   'match-highlight': isMatchHighlighted(index),
+                   'card-disappearing': disappearingCards.includes(index)
+                 }"
                  draggable="true"
                  @mousedown.stop="handleCardMousedown(index, $event)"
                  @mouseup.stop="handleCardMouseup"
@@ -283,6 +290,8 @@
                  @dragstart="handleDragStart(index, $event)"
                  @dragover.prevent
                  @drop="handleDragDrop(index, $event)">
+              <!-- 牌型匹配高亮标签 -->
+              <div v-if="isMatchHighlighted(index) && selectedCardType" class="card-type-badge">{{ selectedCardType }}</div>
               <img :src="getCardImage(card)" :alt="getCardName(card)" class="card-img">
             </div>
           </div>
@@ -669,6 +678,153 @@ const handStyle = computed(() => {
 
 const finishOrder = ref([])
 const finishLabels = ref({})
+
+// ── 出牌动画系统状态 ──
+/** 正在消散动画中的卡牌索引列表 */
+const disappearingCards = ref([])
+/** 当前选中牌型名称（如 "顺子"、"炸弹"） */
+const selectedCardType = ref('')
+/** 桌面卡牌动画标记：记录每张刚出的牌是否需要飞入动画 */
+const deskCardAnimations = ref({})  // { '我': [true, false, ...], '队友': [...], ... }
+
+/**
+ * 判断指定索引的卡牌是否为匹配高亮状态
+ * 高亮条件：牌型匹配提示 active 且该牌在 selectedCards 中
+ */
+const isMatchHighlighted = (index) => {
+  return selectedCards.value.includes(index) && selectedCardType.value !== ''
+}
+
+/**
+ * 获取桌面卡牌的飞入动画 CSS 类
+ * 根据卡牌所属玩家位置决定动画变体
+ */
+const getDeskCardAnimationClass = (player, cardIndex) => {
+  const anim = deskCardAnimations.value[player]
+  if (!anim || !anim[cardIndex]) return ''
+  const posClass = player === '我' ? 'pos-fly-bottom' :
+                   player === '队友' ? 'pos-fly-top' :
+                   player === '左对手' ? 'pos-fly-left' :
+                   player === '右对手' ? 'pos-fly-right' : ''
+  return 'card-fly-in ' + posClass
+}
+
+/**
+ * 触发手牌消散动画（选中的手牌在出牌后渐隐消失）
+ */
+const triggerDisappearAnimation = () => {
+  const indices = [...selectedCards.value]
+  disappearingCards.value = indices
+  // 0.35s 后清除消散状态（匹配 CSS 动画时长）
+  setTimeout(() => {
+    disappearingCards.value = []
+  }, 380)
+}
+
+/**
+ * 触发桌面卡牌飞入动画（出牌后桌面卡牌从各自位置飞入）
+ * @param {string} player - 玩家位置
+ * @param {number} cardCount - 卡牌数量
+ */
+const triggerDeskFlyInAnimation = (player, cardCount) => {
+  const anims = new Array(cardCount).fill(true)
+  deskCardAnimations.value = {
+    ...deskCardAnimations.value,
+    [player]: anims
+  }
+  // 0.5s 后清除动画标记（匹配 CSS 动画时长）
+  setTimeout(() => {
+    const next = { ...deskCardAnimations.value }
+    delete next[player]
+    deskCardAnimations.value = next
+  }, 520)
+}
+
+/**
+ * 抛出牌型匹配事件：根据当前选中卡牌索引识别牌型并设置高亮标签
+ * 在 toggleCardLogic 和 hint 成功时调用
+ */
+const detectAndHighlightCardType = () => {
+  if (selectedCards.value.length === 0) {
+    selectedCardType.value = ''
+    return
+  }
+  // 获取选中卡牌的 cardId 列表
+  const selected = selectedCards.value
+    .map(idx => myCards.value[idx])
+    .filter(c => c != null)
+  if (selected.length === 0) {
+    selectedCardType.value = ''
+    return
+  }
+
+  const suitSet = new Set(selected.map(c => c.suit))
+  const rankSorted = selected.map(c => c.rank).sort((a, b) => a - b)
+  const rankSet = new Set(rankSorted)
+
+  // 单张
+  if (selected.length === 1) {
+    selectedCardType.value = '单张'
+    return
+  }
+  // 对子：2张同点数
+  if (selected.length === 2 && rankSet.size === 1) {
+    selectedCardType.value = '对子'
+    return
+  }
+  // 三张
+  if (selected.length === 3 && rankSet.size === 1) {
+    selectedCardType.value = '三张'
+    return
+  }
+  // 炸弹：4张同点数
+  if (selected.length >= 4 && rankSet.size === 1) {
+    selectedCardType.value = selected.length === 4 ? '炸弹' : `${selected.length}张炸弹`
+    return
+  }
+  // 顺子：5张连续
+  if (selected.length >= 5) {
+    let isStraight = true
+    for (let i = 1; i < rankSorted.length; i++) {
+      if (rankSorted[i] !== rankSorted[i - 1] + 1) {
+        isStraight = false
+        break
+      }
+    }
+    if (isStraight && rankSorted.every(r => r >= 1 && r <= 13) && rankSet.size === selected.length) {
+      const isFlush = suitSet.size === 1
+      selectedCardType.value = isFlush ? '同花顺' : '顺子'
+      return
+    }
+  }
+  // 三带二：5张，3+2
+  if (selected.length === 5) {
+    const rankCount = {}
+    selected.forEach(c => { rankCount[c.rank] = (rankCount[c.rank] || 0) + 1 })
+    const counts = Object.values(rankCount)
+    if (counts.includes(3) && counts.includes(2)) {
+      selectedCardType.value = '三带二'
+      return
+    }
+  }
+  // 钢板：6张，两个连续三张
+  if (selected.length === 6) {
+    const rankCount = {}
+    selected.forEach(c => { rankCount[c.rank] = (rankCount[c.rank] || 0) + 1 })
+    const threeRanks = Object.entries(rankCount).filter(([, c]) => c === 3).map(([r]) => Number(r)).sort((a, b) => a - b)
+    if (threeRanks.length === 2 && threeRanks[1] === threeRanks[0] + 1) {
+      selectedCardType.value = '钢板'
+      return
+    }
+  }
+  // 王炸
+  if (selected.length === 2 && suitSet.has('jokers') && rankSet.size === 2) {
+    selectedCardType.value = '王炸'
+    return
+  }
+  // 未识别牌型
+  selectedCardType.value = ''
+}
 
 const getFinishLabel = (position) => {
   return finishLabels.value[position] || ''
@@ -1181,6 +1337,8 @@ const toggleCardLogic = (index) => {
     }
     selectedCards.value.push(index)
   }
+  // 选中牌变更后检测牌型并更新高亮标签
+  detectAndHighlightCardType()
 }
 const toggleCard = (index) => {
   if (currentPlayer.value !== '我') {
@@ -1395,16 +1553,19 @@ const handlePlayerAction = (data) => {
   }
   if (cards && cards.length > 0) {
     if (position === '队友') {
+      triggerDeskFlyInAnimation(position, cards.length)
       deskDisplay.value['队友'] = cards.map(id => idToCard(id))
       const nextLen = Math.max(0, teammateCards.value.length - cards.length)
       teammateCards.value = Array(nextLen).fill(null)
       markFinishedIfNeeded('队友')
     } else if (position === '左对手') {
+      triggerDeskFlyInAnimation(position, cards.length)
       deskDisplay.value['左对手'] = cards.map(id => idToCard(id))
       const nextLen = Math.max(0, leftOpponentCards.value.length - cards.length)
       leftOpponentCards.value = Array(nextLen).fill(null)
       markFinishedIfNeeded('左对手')
     } else if (position === '右对手') {
+      triggerDeskFlyInAnimation(position, cards.length)
       deskDisplay.value['右对手'] = cards.map(id => idToCard(id))
       const nextLen = Math.max(0, rightOpponentCards.value.length - cards.length)
       rightOpponentCards.value = Array(nextLen).fill(null)
@@ -1421,6 +1582,9 @@ const handlePlayerAction = (data) => {
           return (suitPriority[b.suit] || 0) - (suitPriority[a.suit] || 0)
         })
       }
+      // 出牌动画：手牌消散 + 桌面飞入
+      triggerDisappearAnimation()
+      triggerDeskFlyInAnimation(position, cardsToPlay.length)
       deskDisplay.value['我'] = cardsToPlay
       myCards.value = myCards.value.filter(card => {
         const cardId = cardsToIds([card])[0]

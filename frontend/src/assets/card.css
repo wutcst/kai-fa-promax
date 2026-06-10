@@ -215,3 +215,213 @@
         transform: scale(1);
     }
 }
+
+/* ============================================================
+   出牌飞入动画系统
+   卡牌从手牌区飞入桌面时执行的 CSS 动画
+   ============================================================ */
+
+/* 出牌飞入动画：卡牌从底部飞入桌面槽位 */
+@keyframes card-fly-to-desk {
+    0% {
+        opacity: 0;
+        transform: translateY(120px) scale(0.6) rotateZ(-8deg);
+    }
+    40% {
+        opacity: 1;
+        transform: translateY(-10px) scale(1.08) rotateZ(2deg);
+    }
+    70% {
+        transform: translateY(6px) scale(0.97) rotateZ(-1deg);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotateZ(0deg);
+    }
+}
+
+/* 从左手侧飞入桌面的动画变体 */
+@keyframes card-fly-from-left {
+    0% {
+        opacity: 0;
+        transform: translateX(-180px) translateY(30px) scale(0.5) rotateZ(-15deg);
+    }
+    50% {
+        opacity: 1;
+        transform: translateX(10px) translateY(-5px) scale(1.05) rotateZ(3deg);
+    }
+    100% {
+        transform: translateX(0) translateY(0) scale(1) rotateZ(0deg);
+    }
+}
+
+/* 从右手侧飞入桌面的动画变体 */
+@keyframes card-fly-from-right {
+    0% {
+        opacity: 0;
+        transform: translateX(180px) translateY(30px) scale(0.5) rotateZ(15deg);
+    }
+    50% {
+        opacity: 1;
+        transform: translateX(-10px) translateY(-5px) scale(1.05) rotateZ(-3deg);
+    }
+    100% {
+        transform: translateX(0) translateY(0) scale(1) rotateZ(0deg);
+    }
+}
+
+/* 从顶部飞入桌面的动画变体 */
+@keyframes card-fly-from-top {
+    0% {
+        opacity: 0;
+        transform: translateY(-120px) scale(0.6) rotateZ(10deg);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(8px) scale(1.05) rotateZ(-2deg);
+    }
+    100% {
+        transform: translateY(0) scale(1) rotateZ(0deg);
+    }
+}
+
+/* 卡牌飞入动画类 - 应用于桌面小牌 */
+.card.small-on-desk.card-fly-in {
+    animation: card-fly-to-desk 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.card.small-on-desk.card-fly-in.pos-fly-left {
+    animation-name: card-fly-from-left;
+}
+.card.small-on-desk.card-fly-in.pos-fly-right {
+    animation-name: card-fly-from-right;
+}
+.card.small-on-desk.card-fly-in.pos-fly-top {
+    animation-name: card-fly-from-top;
+}
+
+/* ============================================================
+   牌型匹配提示高亮系统
+   选中手牌时高亮显示正在匹配的牌型
+   ============================================================ */
+
+/* 牌型匹配高亮：当选中卡牌即将匹配某牌型时的动画指示 */
+@keyframes match-highlight-pulse {
+    0%, 100% {
+        box-shadow: 0 0 8px rgba(64, 224, 208, 0.6), 0 0 16px rgba(64, 224, 208, 0.3);
+        border-color: rgba(64, 224, 208, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 16px rgba(64, 224, 208, 0.9), 0 0 28px rgba(64, 224, 208, 0.5);
+        border-color: rgba(0, 255, 200, 1);
+    }
+}
+
+.card.match-highlight {
+    animation: match-highlight-pulse 0.8s ease-in-out infinite;
+    border: 2px solid rgba(64, 224, 208, 0.8);
+    border-radius: 8px;
+    transform: translateY(-14px);
+    z-index: 150;
+}
+
+/* 牌形类型标签（展示当前选中的牌型名称） */
+.card-type-badge {
+    position: absolute;
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2px 12px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 10px;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 200;
+    animation: badge-pop-in 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    pointer-events: none;
+}
+
+@keyframes badge-pop-in {
+    0% { transform: translateX(-50%) scale(0); opacity: 0; }
+    70% { transform: translateX(-50%) scale(1.15); }
+    100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+/* ============================================================
+   可出/不可出手牌状态区分
+   ============================================================ */
+
+/* 可出手牌：当前回合可正常点击/拖拽选中的卡牌 */
+.card.playable {
+    cursor: pointer;
+    opacity: 1;
+    filter: brightness(1);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.2s ease,
+                opacity 0.2s ease;
+}
+
+.card.playable:hover {
+    transform: translateY(-8px);
+    z-index: 190;
+}
+
+.card.playable.selected:hover {
+    transform: translateY(-18px) scale(1.035);
+}
+
+/* 不可出手牌：非当前回合或该牌不能构成合法牌型 */
+.card.unplayable {
+    cursor: not-allowed;
+    opacity: 0.55;
+    filter: grayscale(0.6) brightness(0.85);
+    transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.card.unplayable:hover {
+    opacity: 0.65;
+    transform: translateY(-2px);
+}
+
+.card.unplayable.selected {
+    transform: translateY(-10px);
+    opacity: 0.7;
+    filter: grayscale(0.4) brightness(0.9);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================================================
+   出牌后的卡牌消散动画
+   ============================================================ */
+@keyframes card-disappear {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(0.8) rotateZ(5deg);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.3) rotateZ(-10deg) translateY(-30px);
+    }
+}
+
+.card.card-disappearing {
+    animation: card-disappear 0.35s ease-in forwards;
+    pointer-events: none;
+}
+
+/* 出牌按钮的脉冲动画反馈 */
+@keyframes play-button-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+    70% { box-shadow: 0 0 0 12px rgba(76, 175, 80, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+.btn-play.btn-pulse {
+    animation: play-button-pulse 0.6s ease-out;
+}
