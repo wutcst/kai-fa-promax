@@ -1047,6 +1047,54 @@ public class AIService {
     }
 
     /**
+     * 集成 bombChainDetector 的增强炸弹查找
+     * 在原有 findBomb 基础上，增加对连对炸弹的递归回溯检测
+     */
+    public List<Integer> findBombWithChain(List<Integer> handCards, int levelCardRank) {
+        List<Integer> normalBomb = findBomb(handCards, levelCardRank);
+        if (normalBomb != null) return normalBomb;
+        GameReferee.BombChainResult chainResult = gameReferee.bombChainDetector(handCards, levelCardRank);
+        if (chainResult.isFound()) {
+            log.info("AI player chain bomb detected: baseRank={}, chainLength={}", chainResult.getBaseRank(), chainResult.getChainLength());
+            return chainResult.getCardIds();
+        }
+        return null;
+    }
+
+    /**
+     * 集成 tripleWithTwoDetector 的增强三带二查找
+     */
+    public List<Integer> findTripleWithTwo(List<Integer> handCards, int levelCardRank) {
+        GameReferee.TripleWithTwoResult twResult = gameReferee.tripleWithTwoDetector(handCards, levelCardRank);
+        if (twResult.isFound()) {
+            log.info("AI player triple+two detected: tripleRank={}, pairRank={}, options={}", twResult.getTripleRank(), twResult.getPairRank(), twResult.getAllOptions().size());
+            return twResult.getCardIds();
+        }
+        return null;
+    }
+
+    /**
+     * 集成精确判定器的 playFirstCard 增强版本
+     */
+    public List<Integer> playFirstCardEnhanced(List<Integer> handCards, int levelCardRank) {
+        Integer bestSingle = findBestSingleCard(handCards, levelCardRank);
+        if (bestSingle != null) {
+            List<Integer> c = new ArrayList<>(); c.add(bestSingle); return c;
+        }
+        List<Integer> bestPair = findBestPair(handCards, levelCardRank);
+        if (bestPair != null) return bestPair;
+        List<Integer> bestThree = findBestThree(handCards, levelCardRank);
+        if (bestThree != null) return bestThree;
+        List<Integer> bestStraight = findBestStraight(handCards, levelCardRank);
+        if (bestStraight != null) return bestStraight;
+        List<Integer> tw = findTripleWithTwo(handCards, levelCardRank);
+        if (tw != null) return tw;
+        List<Integer> cb = findBombWithChain(handCards, levelCardRank);
+        if (cb != null) return cb;
+        return null;
+    }
+
+    /**
      * 使用自学习权重调整的出牌决策
      *
      * <p>在原有出牌逻辑基础上，加入自学习权重调整：
