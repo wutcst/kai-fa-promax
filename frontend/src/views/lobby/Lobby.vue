@@ -79,7 +79,7 @@
           <div
               v-for="(room, idx) in virtualVisibleRooms"
               :key="room.id"
-              :data-index="virtualStart + idx"
+              :data-index="virtualScrollWindow.start + idx"
               class="room-card"
           >
             <div class="room-card-header">
@@ -479,6 +479,7 @@ import {
   joinRoomAndSave
 } from '@/api/game'
 import { useLobby } from '@/composables/useLobby'
+import webSocketService, { WS_MESSAGE_TYPES } from '@/api/websocket'
 
 const router = useRouter()
 const nickname = ref(localStorage.getItem('nickname') || '玩家')
@@ -501,47 +502,31 @@ const {
   applySorting,
   toggleSortDirection,
   startAutoRefresh,
-  stopAutoRefresh
+  stopAutoRefresh,
+  enqueueWSMessage,
+  virtualScrollWindow,
+  virtualVisibleRooms,
+  virtualTotalHeight,
+  virtualOffsetY,
+  updateVirtualWindow,
+  resetVirtualWindow
 } = useLobby()
 
-// ── 虚拟滚动（大量房间高性能渲染） ──
+// ── 虚拟滚动（大量房间高性能渲染，从 useLobby 复用计算属性） ──
 const ITEM_HEIGHT = 100 // 每个房间卡片预估高度（px）
 const OVER_SCAN = 5     // 上下额外渲染数量
 
 const virtualScrollRef = ref(null)
-const virtualStart = ref(0)
-const virtualEnd = ref(0)
-const virtualOffsetY = ref(0)
-const containerHeight = ref(600)
-
-const virtualTotalHeight = computed(() => {
-  return sortedRooms.value.length * ITEM_HEIGHT
-})
-
-const virtualVisibleRooms = computed(() => {
-  return sortedRooms.value.slice(virtualStart.value, virtualEnd.value)
-})
 
 const onVirtualScroll = () => {
   if (!virtualScrollRef.value) return
-  const scrollTop = virtualScrollRef.value.scrollTop
-  const newStart = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - OVER_SCAN)
-  const newEnd = Math.min(
-    sortedRooms.value.length,
-    Math.ceil((scrollTop + containerHeight.value) / ITEM_HEIGHT) + OVER_SCAN
-  )
-  virtualStart.value = newStart
-  virtualEnd.value = newEnd
-  virtualOffsetY.value = newStart * ITEM_HEIGHT
+  updateVirtualWindow(virtualScrollRef.value.scrollTop, virtualScrollRef.value.clientHeight || 600)
 }
 
 const initVirtualScroll = () => {
   if (!virtualScrollRef.value) return
-  containerHeight.value = virtualScrollRef.value.clientHeight || 600
-  virtualEnd.value = Math.min(
-    sortedRooms.value.length,
-    Math.ceil(containerHeight.value / ITEM_HEIGHT) + OVER_SCAN
-  )
+  const containerHeight = virtualScrollRef.value.clientHeight || 600
+  updateVirtualWindow(0, containerHeight)
 }
 
 // ── 房间事件通知 Toast 系统 ──
@@ -947,6 +932,38 @@ onMounted(async () => {
   startAutoRefresh()
   await nextTick()
   initVirtualScroll()
+
+  // 注册 WS 房间事件监听（通过消息缓冲合并）
+  webSocketService.on(WS_MESSAGE_TYPES.ROOM_CREATED, (data) => {
+    if (data?.room) {
+      enqueueWSMessage('create', data.room)
+      pushRoomEvent('room_created', `新房间 ${data.room.roomNo} 已创建`)
+    }
+  })
+  webSocketService.on(WS_MESSAGE_TYPES.ROOM_UPDATED, (data) => {
+    if (data?.room) {
+      enqueueWSMessage('update', data.room)
+    }
+  })
+  webSocketService.on(WS_MESSAGE_TYPES.ROOM_DELETED, (data) => {
+    if (data?.roomNo) {
+      enqueueWSMessage('delete', { roomNo: data.roomNo })
+      pushRoomEvent('room_closed', `房间 ${data.roomNo} 已关闭`)
+    }
+  })
+  webSocketService.on(WS_MESSAGE_TYPES.PLAYER_JOINED_ROOM, (data) => {
+    if (data?.roomNo) {
+      enqueueWSMessage('update', { roomNo: data.roomNo, playerCount: data.playerCount })
+      pushRoomEvent('player_joined', `玩家加入房间 ${data.roomNo}`)
+    }
+  })
+  webSocketService.on(WS_MESSAGE_TYPES.PLAYER_LEFT_ROOM, (data) => {
+    if (data?.roomNo) {
+      enqueueWSMessage('update', { roomNo: data.roomNo, playerCount: data.playerCount })
+      pushRoomEvent('player_left', `玩家离开房间 ${data.roomNo}`)
+    }
+  })
+
   // 启动事件轮询
   eventPollTimer.value = startEventPolling()
 })
@@ -955,6 +972,14 @@ onMounted(async () => {
 import { onBeforeUnmount } from 'vue'
 
 onBeforeUnmount(() => {
+  // 清除 WS 事件监听
+  try {
+    webSocketService.off(WS_MESSAGE_TYPES.ROOM_CREATED)
+    webSocketService.off(WS_MESSAGE_TYPES.ROOM_UPDATED)
+    webSocketService.off(WS_MESSAGE_TYPES.ROOM_DELETED)
+    webSocketService.off(WS_MESSAGE_TYPES.PLAYER_JOINED_ROOM)
+    webSocketService.off(WS_MESSAGE_TYPES.PLAYER_LEFT_ROOM)
+  } catch (e) { /* 清理 WS 监听失败，忽略 */ }
   if (eventPollTimer.value) {
     stopEventPolling(eventPollTimer.value)
     eventPollTimer.value = null

@@ -26,6 +26,11 @@
  * - startAutoRefresh()      : 启动自动刷新
  * - stopAutoRefresh()       : 停止自动刷新
  *
+ * ── 新增功能 ─────────────────────────────────────
+ * - WebSocket 消息缓冲合并在短时间内将多条 WS 消息合并为一次更新
+ * - 消息缓冲队列管理(BUFFER_WINDOW=300ms)
+ * - flush 机制确保队列在窗口结束后统一处理
+ *
  * @author 陈懋任
  * @since 1.1.0
  */
@@ -49,6 +54,165 @@ export function useLobby() {
   // ── 排序控制 ──
   const sortBy = ref('default')
   const sortAsc = ref(true)
+
+  // ── WebSocket 消息缓冲系统 ──
+  /**
+   * 消息缓冲队列：短时间内多条 WS 消息合并为一次更新
+   * 缓冲窗口：300ms
+   * 适用场景：大厅房间列表频繁变动（创建/加入/离开），防止频繁 set rooms 触发大量 re-render
+   */
+  const MSG_BUFFER_WINDOW = 300 // 消息缓冲窗口（ms）
+  let messageBufferQueue = []    // 缓冲队列
+  let messageBufferTimer = null  // 缓冲定时器
+
+  /**
+   * 将 WebSocket 消息加入缓冲队列
+   * 在短时间内（BUFFER_WINDOW 内）的多条消息会被合并为一次更新
+   * @param {string} type - 消息类型（'create' | 'update' | 'delete'）
+   * @param {object} payload - 消息数据（房间对象或房间ID）
+   */
+  const enqueueWSMessage = (type, payload) => {
+    messageBufferQueue.push({ type, payload, timestamp: Date.now() })
+    // 如果缓冲定时器未启动，启动它
+    if (!messageBufferTimer) {
+      messageBufferTimer = setTimeout(() => {
+        flushMessageBuffer()
+      }, MSG_BUFFER_WINDOW)
+    }
+  }
+
+  /**
+   * 刷新缓冲队列：将队列中的所有消息合并执行一次更新
+   * 合并策略：
+   * - create: 新增房间（去重）
+   * - update: 更新房间信息（找 roomNo 匹配后覆盖）
+   * - delete: 移除房间
+   * 同 roomNo 的多条消息以最后一次操作为准
+   */
+  const flushMessageBuffer = () => {
+    if (messageBufferQueue.length === 0) {
+      messageBufferTimer = null
+      return
+    }
+
+    // 用 Map 聚合去重：key=roomNo, value={type, payload}
+    const mergedMap = new Map()
+    for (const msg of messageBufferQueue) {
+      const roomNo = msg.payload?.roomNo || msg.payload
+      if (roomNo) {
+        mergedMap.set(String(roomNo), msg)
+      }
+    }
+    messageBufferQueue = []
+
+    // 执行合并后的更新
+    const currentRooms = [...rooms.value]
+    for (const [, msg] of mergedMap) {
+      const roomNo = String(msg.payload?.roomNo || msg.payload)
+      const existIdx = currentRooms.findIndex(r => String(r.roomNo) === roomNo)
+      if (msg.type === 'delete') {
+        if (existIdx !== -1) currentRooms.splice(existIdx, 1)
+      } else if (msg.type === 'create') {
+        if (existIdx === -1) {
+          currentRooms.push(msg.payload)
+        }
+      } else if (msg.type === 'update') {
+        if (existIdx !== -1) {
+          currentRooms[existIdx] = { ...currentRooms[existIdx], ...msg.payload }
+        } else {
+          currentRooms.push(msg.payload)
+        }
+      }
+    }
+    rooms.value = currentRooms
+
+    messageBufferTimer = null
+    // 如果队列在 flush 期间又有新消息，重新启动定时器
+    if (messageBufferQueue.length > 0) {
+      messageBufferTimer = setTimeout(() => {
+        flushMessageBuffer()
+      }, MSG_BUFFER_WINDOW)
+    }
+  }
+
+  /**
+   * 强制立即刷新缓冲队列（用于页面卸载或手动刷新前）
+   */
+  const forceFlushMessageBuffer = () => {
+    if (messageBufferTimer) {
+      clearTimeout(messageBufferTimer)
+      messageBufferTimer = null
+    }
+    flushMessageBuffer()
+  }
+
+  /**
+   * 清空消息缓冲队列（用于重置状态）
+   */
+  const clearMessageBuffer = () => {
+    if (messageBufferTimer) {
+      clearTimeout(messageBufferTimer)
+      messageBufferTimer = null
+    }
+    messageBufferQueue = []
+  }
+
+  // ── 虚拟滚动窗口复用计算 ──
+  /**
+   * 虚拟滚动：只渲染可见区域的房间卡片
+   * 在 sortedRooms 之上增加窗口切片，Lobby.vue 的 virtualVisibleRooms 复用此逻辑
+   */
+  const virtualScrollWindow = ref({ start: 0, end: 50 })
+  const ITEM_HEIGHT = 100     // 每个房间卡片高度
+  const OVER_SCAN_COUNT = 5    // 上下额外渲染数量
+  const WINDOW_SIZE = 50       // 默认窗口大小
+
+  /**
+   * 更新虚拟滚动窗口
+   * @param {number} scrollTop - 滚动容器 scrollTop
+   * @param {number} containerHeight - 容器可视高度
+   */
+  const updateVirtualWindow = (scrollTop, containerHeight) => {
+    const totalItems = sortedRooms.value.length
+    if (totalItems === 0) {
+      virtualScrollWindow.value = { start: 0, end: 0 }
+      return
+    }
+    const rawStart = Math.floor(scrollTop / ITEM_HEIGHT) - OVER_SCAN_COUNT
+    const rawEnd = Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + OVER_SCAN_COUNT
+    const start = Math.max(0, rawStart)
+    const end = Math.min(totalItems, rawEnd)
+    virtualScrollWindow.value = { start, end }
+  }
+
+  /**
+   * 可见窗口内的房间列表（计算属性，供模板直接使用）
+   */
+  const virtualVisibleRooms = computed(() => {
+    const { start, end } = virtualScrollWindow.value
+    return sortedRooms.value.slice(start, end)
+  })
+
+  /**
+   * 虚拟滚动总高度（计算属性）
+   */
+  const virtualTotalHeight = computed(() => {
+    return sortedRooms.value.length * ITEM_HEIGHT
+  })
+
+  /**
+   * 虚拟滚动偏移量（translateY）
+   */
+  const virtualOffsetY = computed(() => {
+    return virtualScrollWindow.value.start * ITEM_HEIGHT
+  })
+
+  /**
+   * 重置虚拟滚动窗口到初始状态
+   */
+  const resetVirtualWindow = () => {
+    virtualScrollWindow.value = { start: 0, end: WINDOW_SIZE }
+  }
 
   /**
    * 排序后的房间列表（计算属性）
@@ -78,6 +242,7 @@ export function useLobby() {
     searchDebounceTimer = setTimeout(() => {
       debouncedSearchQuery.value = value
       applyRoomFilter()
+      resetVirtualWindow()
     }, 300)
   }
 
@@ -93,7 +258,7 @@ export function useLobby() {
   }
 
   const applySorting = () => {
-    // computed 自动重新计算 sortedRooms
+    resetVirtualWindow()
   }
 
   const toggleSortDirection = () => {
@@ -101,6 +266,8 @@ export function useLobby() {
   }
 
   const fetchRooms = async () => {
+    // 在拉取新数据前强制刷新缓冲队列，确保数据一致
+    forceFlushMessageBuffer()
     loading.value = true
     loadError.value = ''
     try {
@@ -113,6 +280,8 @@ export function useLobby() {
         status: room.status !== undefined ? room.status : 0,
         creatorId: room.creatorId
       }))
+      // 重置虚拟滚动窗口
+      resetVirtualWindow()
       // 处理空状态
       if (rooms.value.length === 0 && debouncedSearchQuery.value) {
         ElMessage.info('未找到匹配的房间，请尝试其他房间号')
@@ -142,6 +311,7 @@ export function useLobby() {
       clearTimeout(searchDebounceTimer)
       searchDebounceTimer = null
     }
+    resetVirtualWindow()
     fetchRooms()
   }
 
@@ -161,6 +331,7 @@ export function useLobby() {
           status: room.status !== undefined ? room.status : 0,
           creatorId: room.creatorId
         }))
+        resetVirtualWindow()
       } catch (e) {
         console.error('刷新房间列表失败:', e)
       } finally {
@@ -184,6 +355,8 @@ export function useLobby() {
       clearTimeout(searchDebounceTimer)
       searchDebounceTimer = null
     }
+    clearMessageBuffer()
+    forceFlushMessageBuffer()
   })
 
   return {
@@ -208,6 +381,19 @@ export function useLobby() {
     applySorting,
     toggleSortDirection,
     startAutoRefresh,
-    stopAutoRefresh
+    stopAutoRefresh,
+
+    // WebSocket 消息缓冲
+    enqueueWSMessage,
+    forceFlushMessageBuffer,
+    clearMessageBuffer,
+
+    // 虚拟滚动窗口复用
+    virtualScrollWindow,
+    virtualVisibleRooms,
+    virtualTotalHeight,
+    virtualOffsetY,
+    updateVirtualWindow,
+    resetVirtualWindow
   }
 }
