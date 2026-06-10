@@ -402,14 +402,54 @@ public class GameWebSocketServer {
     }
 
     /**
-     * 处理重连请求
+     * 处理重连请求（增强版：含座位锁定和状态全量恢复）
      */
     private void handleReconnect(String playerId) {
         if (reconnectManager == null) {
             sendToPlayer(playerId, WebSocketMessage.error("重连服务未就绪"));
             return;
         }
+
+        // 1. 执行重连
         Map<String, Object> reconnectData = reconnectManager.handleReconnect(playerId);
+        String status = reconnectData != null ? (String) reconnectData.get("status") : "failed";
+
+        // 2. 如果重连成功，恢复完整状态
+        if ("reconnected".equals(status)) {
+            String roomId = (String) reconnectData.get("roomId");
+            if (roomId != null) {
+                // 恢复玩家状态（更新在线、解锁座位、获取完整数据）
+                Map<String, Object> restoreData = reconnectManager.restorePlayerState(playerId, roomId);
+                reconnectData.putAll(restoreData);
+
+                // 通知其他玩家该玩家已重连
+                try {
+                    GameRoom room = gameLogicService.getPlayerRoom(playerId);
+                    if (room != null) {
+                        Map<String, Object> noticeData = new java.util.HashMap<>();
+                        noticeData.put("playerId", playerId);
+                        noticeData.put("message", "玩家已重连");
+                        WebSocketMessage noticeMsg = new WebSocketMessage("PLAYER_RECONNECTED", noticeData);
+                        for (String pid : room.getPlayerIds()) {
+                            if (!pid.equals(playerId)) {
+                                sendToPlayer(pid, noticeMsg);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("广播重连通知失败", e);
+                }
+
+                // 重连成功时恢复心跳和I/O活动
+                sessionManager.updateHeartbeat(playerId);
+                sessionManager.updateIoActivity(playerId);
+            }
+        } else if ("no_room".equals(status)) {
+            // 房间已不存在，清理玩家状态
+            log.warn("玩家 {} 重连失败：房间不存在", playerId);
+        }
+
+        // 3. 返回重连结果
         sendToPlayer(playerId, new WebSocketMessage("RECONNECT_SUCCESS", reconnectData));
     }
 
@@ -1194,6 +1234,7 @@ public class GameWebSocketServer {
      *   <li>向房间内其他玩家广播 {@code PLAYER_DISCONNECT} 消息（含原因：离开/掉线）</li>
      *   <li>广播房间信息更新（人数变化）</li>
      *   <li>检查并更新数据库中的房间状态（无人时置为已结束）</li>
+     *   <li>异常断线时锁定玩家座位防止被抢占</li>
      * </ol>
      *
      * @param room          玩家所在房间对象
@@ -1209,6 +1250,20 @@ public class GameWebSocketServer {
     private void notifyRoomOnPlayerDisconnect(GameRoom room, String playerId, boolean isNormalClose) {
         if (room == null) {
             return;
+        }
+
+        // 异常断线时锁定玩家座位（防止其他玩家抢占）
+        if (!isNormalClose && reconnectManager != null) {
+            try {
+                java.util.List<String> playerIds = room.getPlayerIds();
+                int seatIndex = playerIds != null ? playerIds.indexOf(playerId) : -1;
+                if (seatIndex >= 0) {
+                    reconnectManager.lockSeat(playerId, room.getRoomId(), seatIndex);
+                    log.info("玩家 {} 异常断线，座位 {} 已锁定", playerId, seatIndex);
+                }
+            } catch (Exception e) {
+                log.warn("锁定座位失败：playerId={}", playerId, e);
+            }
         }
 
         // 广播断线通知
