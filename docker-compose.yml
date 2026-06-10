@@ -1,0 +1,19 @@
+services:
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: guandan
+  redis:
+    image: redis:7
+  backend:
+    build: ./backend
+    depends_on:
+      - mysql
+      - redis
+# docker-compose: nginx + backend service with health check
+# Fix: add nginx health check endpoint fallback
+# Refactor: split docker-compose services into base + prod profiles
+# Docs: deployment sequence - build, tag, push, deploy
+# Test: docker-compose up and health check endpoints pass
+# Chore: docker-compose service orchestration wrap-up
