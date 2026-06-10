@@ -211,41 +211,16 @@
           </div>
         </div>
 
-        <!-- 中央桌子区域 -->
-        <div class="desk-center">
-          <div class="table-area">
-            <div class="desk-slots">
-              <div v-for="(cards, player) in deskDisplay" :key="player" :class="['played-slot', getPlayerPosClass(player)]">
-                <transition name="fade">
-                  <div class="played-cards-group" v-if="cards.length > 0">
-                    <div v-for="(card, index) in cards" :key="index">
-                      <div v-if="card.type === 'pass'" class="pass-indicator">不要</div>
-                      <div v-else class="card small-on-desk" :class="getDeskCardAnimationClass(player, index)">
-                        <img :src="getCardImage(card)" class="card-img">
-                      </div>
-                    </div>
-                  </div>
-                </transition>
-              </div>
-            </div>
-
-            <!-- 倒计时和操作按钮 -->
-            <div class="action-area">
-              <div class="countdown" v-if="currentPlayer === '我'">
-                <div class="countdown-circle">{{ countdown }}</div>
-              </div>
-              <div class="action-buttons" v-show="currentPlayer === '我'">
-                <button class="btn btn-pass" @click="pass" title="跳过本轮出牌">
-                  <span class="btn-label">不出</span>
-                  <span class="btn-countdown" v-if="countdown <= 10">{{ countdown }}s</span>
-                </button>
-                <button class="btn btn-hint" @click="hint" title="获取出牌建议">提示</button>
-                <button class="btn btn-play" @click="playCards" :disabled="selectedCards.length === 0" title="出所选牌">出牌</button>
-              </div>
-              <div class="current-player" v-if="currentPlayer !== '我'">{{ currentPlayer }} 的回合</div>
-            </div>
-          </div>
-        </div>
+        <!-- 中央桌子区域 — 使用 CardTable 组件封装 -->
+        <CardTable
+            :desk-display="cardTableDeskDisplay"
+            :current-player="currentPlayer"
+            :countdown="countdown"
+            :selected-cards="selectedCards"
+            @play="playCards"
+            @pass="pass"
+            @hint="hint"
+        />
 
         <!-- 我的信息、牌和快捷文字 -->
         <div class="player-section bottom">
@@ -332,6 +307,7 @@ import webSocketService, { WS_MESSAGE_TYPES } from '../api/websocket'
 import { getRoomDetail, ready, exitRoom } from '../api/game'
 import soundManager from '../utils/soundManager'
 import { usePlayCard } from '../composables/usePlayCard'
+import CardTable from '../components/CardTable.vue'
 
 // ============================================================
 //  游戏页面状态管理（拆分自原 inline 状态声明）
@@ -631,6 +607,17 @@ const visibleCards = computed(() => {
 const deskDisplay = ref({
   '我': [], '右对手': [], '队友': [], '左对手': []
 })
+
+/**
+ * CardTable 组件使用的 deskDisplay 格式转换
+ * 将四方向映射转为 CardTable props 约定格式
+ */
+const cardTableDeskDisplay = computed(() => ({
+  me: deskDisplay.value['我'] || [],
+  teammate: deskDisplay.value['队友'] || [],
+  leftOpponent: deskDisplay.value['左对手'] || [],
+  rightOpponent: deskDisplay.value['右对手'] || []
+}))
 
 const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1440)
 
