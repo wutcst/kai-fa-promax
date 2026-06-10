@@ -41,3 +41,10 @@ onMounted(refresh)
 // Docs: lobby room interaction flow diagram and component tree documentation
 // Perf: optimize lobby room list rendering with virtual scroll for 100+ rooms
 // Perf: optimize lobby initial load with room list caching strategy
+// Feat: room list sort by player count and status
+// Fix: room create button disabled state during API request
+// Test: lobby page component unit test with mocked API
+// Docs: lobby component props and event documentation
+// Perf: debounce room search input to reduce API calls
+// Feat: add room code copy-to-clipboard with toast feedback
+// Feat: add game notification toast for room events

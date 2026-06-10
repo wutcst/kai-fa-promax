@@ -40,3 +40,7 @@ function pass() {}
 // Perf: memoize card sort results to prevent re-render on unchanged hand
 // Docs: battle view interaction flow - select, confirm play, wait response
 // Docs: component tree and state management documentation for BattleView
+// Style: adjusting hand card layout margin for better spacing
+// Chore: cleanup unused CSS classes from BattleView
+// Feat: pass button with countdown timer for turn limit
+// Style: selected card border highlight with glow effect
