@@ -3,6 +3,9 @@ package com.guandan.service;
 import com.guandan.model.CardType;
 import com.guandan.game.util.CardUtils;
 import com.guandan.game.service.GameAlgorithm;
+import com.guandan.game.service.AIService.CardPlayType;
+import com.guandan.game.service.AIService.CardTypeStatistics;
+import com.guandan.game.service.AIService.LearningWeightEngine;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -158,4 +161,148 @@ public class GameReferee {
     //   - 管牌规则：同牌型比大小，炸弹管非炸弹，王炸最大
     //   - 容错机制：lastType 为 UNKNOWN 时允许出牌
     // ============================================================
+
+    // ============================================================
+    //  自学习权重引擎集成方法
+    // ============================================================
+
+    /**
+     * 注入的自学习权重引擎（可选）
+     */
+    private LearningWeightEngine learningWeightEngine;
+
+    /**
+     * 设置学习权重引擎（可选注入）
+     */
+    @Autowired(required = false)
+    public void setLearningWeightEngine(LearningWeightEngine engine) {
+        this.learningWeightEngine = engine;
+    }
+
+    /**
+     * 获取当前使用的学习权重引擎
+     */
+    public LearningWeightEngine getLearningWeightEngine() {
+        return learningWeightEngine;
+    }
+
+    /**
+     * 分析一手牌中所有可能的出牌方案，返回按自学习权重排序的推荐列表
+     *
+     * <p>该方法在原有 {@link #canBeat(List, List, int)} 基础上，
+     * 加入自学习权重引擎的推荐排序，使 AI 出牌决策具备学习能力。
+     *
+     * @param handCards      当前手牌
+     * @param lastHand       上一手牌（可为空表示首出）
+     * @param levelCardRank  级牌点数
+     * @return 按推荐优先级排序的出牌方案列表（每个方案为一个卡牌ID列表）
+     */
+    public List<List<Integer>> getWeightedPlayOptions(List<Integer> handCards,
+                                                       List<Integer> lastHand,
+                                                       int levelCardRank) {
+        List<List<Integer>> options = new java.util.ArrayList<>();
+        if (handCards == null || handCards.isEmpty()) {
+            return options;
+        }
+
+        // 首出场景：枚举所有可能的牌型
+        if (lastHand == null || lastHand.isEmpty()) {
+            // 单张
+            for (Integer cardId : handCards) {
+                List<Integer> single = new java.util.ArrayList<>();
+                single.add(cardId);
+                if (isValidHand(single, levelCardRank)) {
+                    options.add(single);
+                }
+            }
+            // 对子
+            java.util.Map<Integer, List<Integer>> rankGroups = new java.util.HashMap<>();
+            for (Integer cardId : handCards) {
+                int rank = CardUtils.getRank(cardId);
+                rankGroups.computeIfAbsent(rank, k -> new java.util.ArrayList<>()).add(cardId);
+            }
+            for (List<Integer> group : rankGroups.values()) {
+                if (group.size() >= 2) {
+                    options.add(group.subList(0, 2));
+                }
+                if (group.size() >= 3) {
+                    options.add(group.subList(0, 3));
+                }
+            }
+        } else {
+            // 跟牌场景：找出所有能管住上一手牌的方案
+            CardType lastType = gameAlgorithm.getCardType(lastHand, levelCardRank);
+            if (lastType == CardType.UNKNOWN) {
+                return options;
+            }
+
+            // 对于每种可能的出牌组合，验证是否能管住
+            for (int i = 0; i < handCards.size() && options.size() < 10; i++) {
+                for (int j = i + 1; j <= handCards.size() && options.size() < 10; j++) {
+                    List<Integer> subset = handCards.subList(i, j);
+                    if (isValidHand(subset, levelCardRank) && canBeat(lastHand, subset, levelCardRank)) {
+                        options.add(new java.util.ArrayList<>(subset));
+                    }
+                }
+            }
+        }
+
+        // 如果有自学习引擎，根据权重排序
+        if (learningWeightEngine != null && !options.isEmpty()) {
+            List<CardPlayType> recommendedTypes = learningWeightEngine.getRecommendedCardTypes();
+            options.sort((a, b) -> {
+                String typeA = CardUtils.getCardType(a, levelCardRank);
+                String typeB = CardUtils.getCardType(b, levelCardRank);
+                int idxA = -1;
+                int idxB = -1;
+                for (int i = 0; i < recommendedTypes.size(); i++) {
+                    if (recommendedTypes.get(i).getDisplayName().equals(typeA)) {
+                        idxA = i;
+                    }
+                    if (recommendedTypes.get(i).getDisplayName().equals(typeB)) {
+                        idxB = i;
+                    }
+                }
+                if (idxA >= 0 && idxB >= 0) return Integer.compare(idxA, idxB);
+                if (idxA >= 0) return -1;
+                if (idxB >= 0) return 1;
+                return 0;
+            });
+        }
+
+        return options;
+    }
+
+    /**
+     * 记录出牌结果到自学习引擎
+     *
+     * @param cardType 牌型字符串
+     * @param won      是否获胜
+     */
+    public void recordPlayOutcome(String cardType, boolean won) {
+        if (learningWeightEngine != null) {
+            learningWeightEngine.recordPlayOutcome(cardType, won);
+        }
+    }
+
+    /**
+     * 记录游戏结果到自学习引擎
+     *
+     * @param won 是否获胜
+     */
+    public void recordGameResult(boolean won) {
+        if (learningWeightEngine != null) {
+            learningWeightEngine.recordGameResult(won);
+        }
+    }
+
+    /**
+     * 获取自学习引擎的统计摘要
+     */
+    public java.util.Map<String, java.util.Map<String, Object>> getLearningStatistics() {
+        if (learningWeightEngine != null) {
+            return learningWeightEngine.getStatisticsSummary();
+        }
+        return new java.util.HashMap<>();
+    }
 }
