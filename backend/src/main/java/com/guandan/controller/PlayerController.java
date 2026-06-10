@@ -6,6 +6,7 @@ import com.guandan.service.PlayerService;
 import com.guandan.vo.PageResult;
 import com.guandan.vo.PlayerGameRecordVO;
 import com.guandan.vo.PlayerStatisticsVO;
+import com.guandan.vo.PlayerTrendVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,6 +33,11 @@ import java.time.LocalDateTime;
 //   ✅ 战绩列表接口 (/api/player/records) — 支持分页 + 时间筛选
 //   ✅ 空数据兜底 — statistics 返回空对象，records 返回空页
 //   ✅ 异常兜底 — Controller 层 try-catch 统一返回友好提示
+// =====
+// Phase 3 — 玩家趋势统计
+// 新增:
+//   ✅ 趋势统计接口 (/api/player/trend) — 连胜/连败 + 热力图
+//   ✅ 空数据兜底 — 趋势返回空对象
 // =====
 public class PlayerController {
 
@@ -74,6 +80,21 @@ public class PlayerController {
         } catch (Exception e) {
             log.error("获取玩家战绩记录异常: {}", e.getMessage(), e);
             return Result.error("获取战绩记录失败，请稍后重试");
+        }
+    }
+
+    @GetMapping("/player/trend")
+    @Operation(summary = "获取玩家趋势统计", description = "获取当前登录玩家的连胜/连败趋势分析和近7天对局热力图数据")
+    public Result<PlayerTrendVO> getTrend() {
+        try {
+            PlayerTrendVO trend = playerService.getPlayerTrend();
+            if (trend == null) {
+                return Result.success(new PlayerTrendVO());
+            }
+            return Result.success(trend);
+        } catch (Exception e) {
+            log.error("获取玩家趋势统计异常: {}", e.getMessage(), e);
+            return Result.error("获取趋势统计失败，请稍后重试");
         }
     }
 }

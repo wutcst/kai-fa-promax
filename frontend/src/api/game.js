@@ -228,6 +228,11 @@ export const getPlayerRecords = (params) => {
   return cachedGet('/player/records', params, 30000)
 }
 
+// 获取玩家趋势统计（连胜/连败 + 热力图，缓存 60 秒）
+export const getPlayerTrend = () => {
+  return cachedGet('/player/trend', null, 60000)
+}
+
 // ========== 大厅交互模块 ==========
 
 /**

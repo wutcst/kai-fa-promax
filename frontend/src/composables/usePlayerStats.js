@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { getPlayerStatistics, getPlayerRecords } from '@/api/game'
+import { getPlayerStatistics, getPlayerRecords, getPlayerTrend } from '@/api/game'
 
 /**
  * 玩家统计组合式函数
@@ -30,6 +30,17 @@ export function usePlayerStats() {
   const filterStartDate = ref('')
   const filterEndDate = ref('')
 
+  // 趋势数据
+  const playerTrend = ref({
+    streakCount: 0,
+    streakType: 'none',
+    maxWinStreak: 0,
+    maxLoseStreak: 0,
+    recentResults: [],
+    dailyStats: [],
+    hourlyDistribution: []
+  })
+
   // ===== 计算属性 =====
 
   /** 计算胜率 */
@@ -54,6 +65,19 @@ export function usePlayerStats() {
       playerStatistics.value = response
     } catch (error) {
       console.error('获取玩家统计信息失败：', error)
+    }
+  }
+
+  /** 获取玩家趋势统计 */
+  const fetchPlayerTrend = async () => {
+    try {
+      const response = await getPlayerTrend()
+      console.log('获取玩家趋势统计:', response)
+      if (response) {
+        playerTrend.value = response
+      }
+    } catch (error) {
+      console.error('获取玩家趋势统计失败：', error)
     }
   }
 
@@ -142,6 +166,9 @@ export function usePlayerStats() {
     buildQueryParams,
     onFilterChange,
     resetFilters,
-    changePage
+    changePage,
+    // 趋势数据
+    playerTrend,
+    fetchPlayerTrend
   }
 }
