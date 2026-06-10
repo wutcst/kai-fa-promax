@@ -179,9 +179,361 @@ public class GameReferee {
         this.learningWeightEngine = engine;
     }
 
+    // ============================================================
+    //  牌型校验责任链（Chain of Responsibility）
+    // ============================================================
+
     /**
-     * 获取当前使用的学习权重引擎
+     * 牌型校验器接口
      */
+    public interface CardValidator {
+        /**
+         * 设置下一个校验器
+         */
+        void setNext(CardValidator next);
+
+        /**
+         * 执行校验
+         * @param cardIds 卡牌ID列表
+         * @param levelCardRank 级牌点数
+         * @return 校验通过的 CardType，如果当前校验器不匹配则交给下一个
+         */
+        CardType validate(List<Integer> cardIds, int levelCardRank);
+
+        /**
+         * 获取下一个校验器
+         */
+        CardValidator getNext();
+    }
+
+    /**
+     * 单张校验器
+     */
+    public static class SingleValidator implements CardValidator {
+        private CardValidator next;
+
+        @Override
+        public void setNext(CardValidator next) { this.next = next; }
+
+        @Override
+        public CardValidator getNext() { return next; }
+
+        @Override
+        public CardType validate(List<Integer> cardIds, int levelCardRank) {
+            if (cardIds.size() == 1) {
+                return CardType.SINGLE;
+            }
+            return next != null ? next.validate(cardIds, levelCardRank) : CardType.UNKNOWN;
+        }
+    }
+
+    /**
+     * 对子校验器
+     */
+    public static class PairValidator implements CardValidator {
+        private CardValidator next;
+
+        @Override
+        public void setNext(CardValidator next) { this.next = next; }
+
+        @Override
+        public CardValidator getNext() { return next; }
+
+        @Override
+        public CardType validate(List<Integer> cardIds, int levelCardRank) {
+            if (cardIds.size() == 2) {
+                java.util.Map<Integer, Integer> rankCount = new java.util.HashMap<>();
+                for (Integer id : cardIds) {
+                    int rank = CardUtils.getRank(id);
+                    rankCount.put(rank, rankCount.getOrDefault(rank, 0) + 1);
+                }
+                if (rankCount.size() == 1) {
+                    return CardType.PAIR;
+                }
+            }
+            return next != null ? next.validate(cardIds, levelCardRank) : CardType.UNKNOWN;
+        }
+    }
+
+    /**
+     * 三张校验器
+     */
+    public static class TripleValidator implements CardValidator {
+        private CardValidator next;
+
+        @Override
+        public void setNext(CardValidator next) { this.next = next; }
+
+        @Override
+        public CardValidator getNext() { return next; }
+
+        @Override
+        public CardType validate(List<Integer> cardIds, int levelCardRank) {
+            if (cardIds.size() == 3) {
+                java.util.Map<Integer, Integer> rankCount = new java.util.HashMap<>();
+                for (Integer id : cardIds) {
+                    int rank = CardUtils.getRank(id);
+                    rankCount.put(rank, rankCount.getOrDefault(rank, 0) + 1);
+                }
+                if (rankCount.size() == 1) {
+                    return CardType.TRIPLET;
+                }
+            }
+            return next != null ? next.validate(cardIds, levelCardRank) : CardType.UNKNOWN;
+        }
+    }
+
+    /**
+     * 顺子校验器
+     */
+    public static class StraightValidator implements CardValidator {
+        private CardValidator next;
+
+        @Override
+        public void setNext(CardValidator next) { this.next = next; }
+
+        @Override
+        public CardValidator getNext() { return next; }
+
+        @Override
+        public CardType validate(List<Integer> cardIds, int levelCardRank) {
+            if (cardIds.size() >= 5) {
+                java.util.List<Integer> ranks = cardIds.stream()
+                        .map(CardUtils::getRank)
+                        .sorted()
+                        .distinct()
+                        .collect(java.util.stream.Collectors.toList());
+
+                if (ranks.stream().anyMatch(r -> r >= 13 || r == 12)) {
+                    return next != null ? next.validate(cardIds, levelCardRank) : CardType.UNKNOWN;
+                }
+
+                boolean consecutive = true;
+                for (int i = 1; i < ranks.size(); i++) {
+                    if (ranks.get(i) != ranks.get(i - 1) + 1) {
+                        consecutive = false;
+                        break;
+                    }
+                }
+                if (consecutive && ranks.size() == cardIds.size()) {
+                    return CardType.STRAIGHT;
+                }
+            }
+            return next != null ? next.validate(cardIds, levelCardRank) : CardType.UNKNOWN;
+        }
+    }
+
+    /**
+     * 三带二校验器
+     */
+    public static class ThreeWithTwoValidator implements CardValidator {
+        private CardValidator next;
+
+        @Override
+        public void setNext(CardValidator next) { this.next = next; }
+
+        @Override
+        public CardValidator getNext() { return next; }
+
+        @Override
+        public CardType validate(List<Integer> cardIds, int levelCardRank) {
+            if (cardIds.size() == 5) {
+                java.util.Map<Integer, Integer> rankCount = new java.util.HashMap<>();
+                for (Integer id : cardIds) {
+                    int rank = CardUtils.getRank(id);
+                    rankCount.put(rank, rankCount.getOrDefault(rank, 0) + 1);
+                }
+                if (rankCount.size() == 2 &&
+                        rankCount.values().stream().anyMatch(c -> c == 3) &&
+                        rankCount.values().stream().anyMatch(c -> c == 2)) {
+                    return CardType.TRIPLET_WITH_TWO;
+                }
+            }
+            return next != null ? next.validate(cardIds, levelCardRank) : CardType.UNKNOWN;
+        }
+    }
+
+    /**
+     * 钢板校验器
+     */
+    public static class SteelPlateValidator implements CardValidator {
+        private CardValidator next;
+
+        @Override
+        public void setNext(CardValidator next) { this.next = next; }
+
+        @Override
+        public CardValidator getNext() { return next; }
+
+        @Override
+        public CardType validate(List<Integer> cardIds, int levelCardRank) {
+            if (cardIds.size() == 6) {
+                java.util.Map<Integer, Integer> rankCount = new java.util.HashMap<>();
+                for (Integer id : cardIds) {
+                    int rank = CardUtils.getRank(id);
+                    rankCount.put(rank, rankCount.getOrDefault(rank, 0) + 1);
+                }
+                if (rankCount.size() == 2 &&
+                        rankCount.values().stream().allMatch(c -> c == 3)) {
+                    java.util.List<Integer> ranks = new java.util.ArrayList<>(rankCount.keySet());
+                    java.util.Collections.sort(ranks);
+                    if (ranks.get(1) == ranks.get(0) + 1) {
+                        return CardType.TRIPLET_STRAIGHT;
+                    }
+                }
+            }
+            return next != null ? next.validate(cardIds, levelCardRank) : CardType.UNKNOWN;
+        }
+    }
+
+    /**
+     * 同花顺校验器
+     */
+    public static class StraightFlushValidator implements CardValidator {
+        private CardValidator next;
+
+        @Override
+        public void setNext(CardValidator next) { this.next = next; }
+
+        @Override
+        public CardValidator getNext() { return next; }
+
+        @Override
+        public CardType validate(List<Integer> cardIds, int levelCardRank) {
+            if (cardIds.size() == 5) {
+                java.util.List<Integer> ranks = cardIds.stream()
+                        .map(CardUtils::getRank)
+                        .sorted()
+                        .distinct()
+                        .collect(java.util.stream.Collectors.toList());
+                if (ranks.stream().anyMatch(r -> r >= 13 || r == 12)) {
+                    return next != null ? next.validate(cardIds, levelCardRank) : CardType.UNKNOWN;
+                }
+                boolean consecutive = true;
+                for (int i = 1; i < ranks.size(); i++) {
+                    if (ranks.get(i) != ranks.get(i - 1) + 1) {
+                        consecutive = false;
+                        break;
+                    }
+                }
+                if (!consecutive || ranks.size() != cardIds.size()) {
+                    return next != null ? next.validate(cardIds, levelCardRank) : CardType.UNKNOWN;
+                }
+
+                int suit = CardUtils.getSuit(cardIds.get(0));
+                if (suit >= 0 && cardIds.stream().allMatch(id -> CardUtils.getSuit(id) == suit)) {
+                    return CardType.FLUSH_STRAIGHT;
+                }
+            }
+            return next != null ? next.validate(cardIds, levelCardRank) : CardType.UNKNOWN;
+        }
+    }
+
+    /**
+     * 炸弹校验器
+     */
+    public static class BombValidator implements CardValidator {
+        private CardValidator next;
+
+        @Override
+        public void setNext(CardValidator next) { this.next = next; }
+
+        @Override
+        public CardValidator getNext() { return next; }
+
+        @Override
+        public CardType validate(List<Integer> cardIds, int levelCardRank) {
+            if (cardIds.size() >= 4) {
+                java.util.Map<Integer, Integer> rankCount = new java.util.HashMap<>();
+                for (Integer id : cardIds) {
+                    int rank = CardUtils.getRank(id);
+                    rankCount.put(rank, rankCount.getOrDefault(rank, 0) + 1);
+                }
+                if (rankCount.values().stream().anyMatch(c -> c >= 4)) {
+                    return CardType.SMALL_BOMB;
+                }
+            }
+            return next != null ? next.validate(cardIds, levelCardRank) : CardType.UNKNOWN;
+        }
+    }
+
+    /**
+     * 校验链的头节点
+     */
+    private CardValidator validatorChainHead;
+
+    /**
+     * 构建默认校验链
+     */
+    private CardValidator buildDefaultValidatorChain() {
+        CardValidator single = new SingleValidator();
+        CardValidator pair = new PairValidator();
+        CardValidator triple = new TripleValidator();
+        CardValidator straight = new StraightValidator();
+        CardValidator threeWithTwo = new ThreeWithTwoValidator();
+        CardValidator steelPlate = new SteelPlateValidator();
+        CardValidator straightFlush = new StraightFlushValidator();
+        CardValidator bomb = new BombValidator();
+
+        single.setNext(pair);
+        pair.setNext(triple);
+        triple.setNext(straight);
+        straight.setNext(threeWithTwo);
+        threeWithTwo.setNext(steelPlate);
+        steelPlate.setNext(straightFlush);
+        straightFlush.setNext(bomb);
+
+        return single;
+    }
+
+    /**
+     * 通过责任链校验牌型
+     *
+     * @param cardIds 卡牌ID列表
+     * @param levelCardRank 级牌点数
+     * @return 校验通过的 CardType
+     */
+    public CardType validateByChain(List<Integer> cardIds, int levelCardRank) {
+        if (cardIds == null || cardIds.isEmpty()) {
+            return CardType.UNKNOWN;
+        }
+        if (validatorChainHead == null) {
+            validatorChainHead = buildDefaultValidatorChain();
+        }
+        return validatorChainHead.validate(cardIds, levelCardRank);
+    }
+
+    /**
+     * 使用责任链验证牌型合法性
+     */
+    public boolean isValidHandByChain(List<Integer> cardIds, int levelCardRank) {
+        if (!validateCardIds(cardIds)) {
+            return false;
+        }
+        CardType type = validateByChain(cardIds, levelCardRank);
+        if (type == CardType.UNKNOWN) {
+            log.warn("责任链校验失败：无法识别的牌型，卡牌数量={}", cardIds.size());
+        }
+        return type != CardType.UNKNOWN;
+    }
+
+    /**
+     * 获取校验链头节点
+     */
+    public CardValidator getValidatorChainHead() {
+        if (validatorChainHead == null) {
+            validatorChainHead = buildDefaultValidatorChain();
+        }
+        return validatorChainHead;
+    }
+
+    /**
+     * 替换校验链
+     */
+    public void setValidatorChain(CardValidator newHead) {
+        this.validatorChainHead = newHead;
+        log.info("牌型校验链已替换");
+    }
     public LearningWeightEngine getLearningWeightEngine() {
         return learningWeightEngine;
     }

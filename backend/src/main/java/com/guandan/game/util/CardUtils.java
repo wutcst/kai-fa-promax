@@ -922,6 +922,46 @@ public class CardUtils {
     }
 
     // ============================================================
+    //  牌型校验链辅助方法
+    // ============================================================
+
+    /**
+     * 将牌型字符串转换为 CardType 枚举（增强版，兼容所有牌型名称）
+     *
+     * @param typeStr 牌型字符串（如"单张"、"对子"等）
+     * @return CardType 枚举，无法识别返回 UNKNOWN
+     */
+    public static CardType parseCardType(String typeStr) {
+        if (typeStr == null) {
+            return CardType.UNKNOWN;
+        }
+        switch (typeStr) {
+            case "单张": return CardType.SINGLE;
+            case "对子": return CardType.PAIR;
+            case "三张": return CardType.TRIPLET;
+            case "顺子": return CardType.STRAIGHT;
+            case "三带二": return CardType.TRIPLET_WITH_TWO;
+            case "钢板": return CardType.TRIPLET_STRAIGHT;
+            case "同花顺": return CardType.FLUSH_STRAIGHT;
+            case "炸弹": return CardType.SMALL_BOMB;
+            default: return CardType.UNKNOWN;
+        }
+    }
+
+    /**
+     * 校验一手牌是否可以被校验链识别（简化入口）
+     *
+     * @param cardIds 卡牌ID列表
+     * @param levelCardRank 级牌点数
+     * @return true 如果牌型可识别
+     */
+    public static boolean isRecognizableByChain(List<Integer> cardIds, int levelCardRank) {
+        if (cardIds == null || cardIds.isEmpty()) return false;
+        String type = getCardType(cardIds, levelCardRank);
+        return type != null && !"无法识别".equals(type);
+    }
+
+    // ============================================================
     //  阶段标记 — 提升牌型规则准确性：牌型识别逻辑与边界守卫
     //  负责：卡牌ID/字符串互转、牌型判定（单张/对子/三张/顺子/
     //  三带二/钢板/同花顺/炸弹）、级牌/逢人配识别、洗牌发牌、
