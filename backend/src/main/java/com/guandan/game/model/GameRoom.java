@@ -1,9 +1,11 @@
 package com.guandan.game.model;
 
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -47,6 +49,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * [GameRoom-18] getPlayerRank 头游=1, 二游=2, 三游=3, 未出完=4
  * [GameRoom-19] clearLastHandCards 将 lastHandCards/lastHandPlayerId 置 null，tableCleared=true
  */
+@Slf4j
 @Data
 public class GameRoom {
 
@@ -54,6 +57,17 @@ public class GameRoom {
      * 房间ID
      */
     private String roomId;
+
+    /**
+     * 离线玩家快照缓存（WeakHashMap，GC可回收）
+     *
+     * 当玩家断线时，其手牌、位置等状态被快照到这里。
+     * 使用 WeakHashMap 确保当 GameRoom 不再被引用时，
+     * 离线快照可以被 GC 自动回收，避免内存泄漏。
+     *
+     * key: 玩家ID, value: 该玩家的离线快照
+     */
+    private final transient Map<Long, PlayerSnapshot> offlineSnapshots = new WeakHashMap<>();
 
     /**
      * 玩家ID列表（最多4人）
@@ -500,5 +514,116 @@ public class GameRoom {
             return false; // 非等待状态不能开始
         }
         return playerIds.size() >= 2;
+    }
+
+    // ============================================================
+    //  离线玩家快照管理（WeakHashMap 缓存）
+    // ============================================================
+
+    /**
+     * 保存离线玩家快照
+     *
+     * 当玩家断线时调用，将玩家的手牌、位置等状态保存到 WeakHashMap 缓存中。
+     * 快照数据在玩家重连时恢复。若该玩家已有旧快照，会被新快照覆盖。
+     *
+     * @param playerId 玩家ID（Long 类型，同时也是 WeakHashMap 的 key）
+     * @param handCardSnapshot 断线时的手牌快照（ID 列表的副本）
+     * @param seatIndex 断线时的座位索引
+     */
+    public void saveOfflineSnapshot(Long playerId, List<Integer> handCardSnapshot, int seatIndex) {
+        if (playerId == null) {
+            return;
+        }
+        PlayerSnapshot snapshot = new PlayerSnapshot();
+        snapshot.setPlayerId(playerId);
+        snapshot.setHandCards(handCardSnapshot != null ? new ArrayList<>(handCardSnapshot) : new ArrayList<>());
+        snapshot.setSeatIndex(seatIndex);
+        snapshot.setOfflineTime(System.currentTimeMillis());
+        snapshot.setHandCardCount(snapshot.getHandCards().size());
+        offlineSnapshots.put(playerId, snapshot);
+        log.info("离线快照已保存: playerId={}, 手牌数={}, 座位={}", playerId, snapshot.getHandCardCount(), seatIndex);
+    }
+
+    /**
+     * 获取离线玩家快照
+     *
+     * @param playerId 玩家ID
+     * @return 离线快照，若不存在返回 null
+     */
+    public PlayerSnapshot getOfflineSnapshot(Long playerId) {
+        return offlineSnapshots.get(playerId);
+    }
+
+    /**
+     * 移除离线玩家快照
+     *
+     * 玩家重连成功或完全清理会话时调用，从缓存中移除快照数据。
+     *
+     * @param playerId 玩家ID
+     */
+    public void removeOfflineSnapshot(Long playerId) {
+        PlayerSnapshot removed = offlineSnapshots.remove(playerId);
+        if (removed != null) {
+            log.info("离线快照已移除: playerId={}", playerId);
+        }
+    }
+
+    /**
+     * 检查指定玩家是否有离线快照
+     *
+     * @param playerId 玩家ID
+     * @return 是否有离线快照
+     */
+    public boolean hasOfflineSnapshot(Long playerId) {
+        return offlineSnapshots.containsKey(playerId);
+    }
+
+    /**
+     * 获取当前离线快照数量
+     *
+     * @return 离线快照数量
+     */
+    public int getOfflineSnapshotCount() {
+        return offlineSnapshots.size();
+    }
+
+    /**
+     * 清除所有离线快照
+     */
+    public void clearAllOfflineSnapshots() {
+        int count = offlineSnapshots.size();
+        offlineSnapshots.clear();
+        if (count > 0) {
+            log.info("所有离线快照已清除: roomId={}, 数量={}", roomId, count);
+        }
+    }
+
+    /**
+     * 离线玩家快照（保存断线时的游戏中间状态）
+     *
+     * 当玩家断线时，GameRoom 会创建一个 PlayerSnapshot 保存该玩家的
+     * 手牌、座位等关键信息，用于重连时恢复游戏状态。
+     */
+    @Data
+    public static class PlayerSnapshot {
+        /** 玩家ID */
+        private Long playerId;
+        /** 断线时的手牌（卡牌ID列表的副本） */
+        private List<Integer> handCards;
+        /** 断线时的座位索引 */
+        private int seatIndex;
+        /** 断线时间戳 */
+        private long offlineTime;
+        /** 手牌数量（冗余字段，方便快速查看） */
+        private int handCardCount;
+
+        /**
+         * 检查快照是否有效
+         * 断线超过30分钟视为无效快照
+         */
+        public boolean isValid() {
+            long elapsed = System.currentTimeMillis() - offlineTime;
+            return elapsed < 30 * 60 * 1000L; // 30分钟有效期
+        }
     }
 }

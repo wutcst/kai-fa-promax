@@ -1086,8 +1086,189 @@ public class GameLogicService {
         room.setLastHandPlayerId(null);
         room.setTableCleared(false);
 
+        // 清除所有离线快照
+        room.clearAllOfflineSnapshots();
+
         log.info("房间 {} 已重置，等待下一局", roomId);
         return true;
+    }
+
+    // ============================================================
+    //  新增：离线快照与重连恢复
+    // ============================================================
+
+    /**
+     * 玩家断线时缓存其游戏状态快照
+     *
+     * 当玩家因网络波动等原因断线时，将当前游戏中间状态保存到
+     * GameRoom 的 WeakHashMap 缓存中，以便重连时恢复。
+     *
+     * 保存的内容包括：
+     * - 手牌 ID 列表（深拷贝）
+     * - 座位索引
+     * - 断线时间戳
+     *
+     * @param playerId 断线玩家ID
+     */
+    public void cachePlayerStateOnDisconnect(Long playerId) {
+        if (playerId == null) {
+            return;
+        }
+
+        String pidStr = String.valueOf(playerId);
+        String roomId = playerToRoom.get(pidStr);
+        if (roomId == null) {
+            log.warn("玩家 {} 断线时未找到对应房间", playerId);
+            return;
+        }
+
+        GameRoom room = rooms.get(roomId);
+        if (room == null) {
+            log.warn("玩家 {} 断线时房间 {} 已不存在", playerId, roomId);
+            return;
+        }
+
+        // 获取玩家当前手牌（深拷贝）
+        List<Integer> handCards = room.getHandCards().get(pidStr);
+        List<Integer> handCardCopy = (handCards != null) ? new ArrayList<>(handCards) : new ArrayList<>();
+
+        // 获取玩家座位索引
+        List<String> playerIds = room.getPlayerIds();
+        int seatIndex = playerIds != null ? playerIds.indexOf(pidStr) : -1;
+        if (seatIndex < 0) {
+            seatIndex = 0;
+        }
+
+        // 保存快照到 WeakHashMap
+        room.saveOfflineSnapshot(playerId, handCardCopy, seatIndex);
+
+        log.info("玩家 {} 断线状态已缓存: roomId={}, handCards={}, seatIndex={}",
+                playerId, roomId, handCardCopy.size(), seatIndex);
+    }
+
+    /**
+     * 玩家重连时恢复游戏状态
+     *
+     * 从 GameRoom 的 WeakHashMap 缓存中读取之前保存的快照，
+     * 将手牌、座位等信息恢复到 GameRoom 中。
+     *
+     * @param playerId 重连玩家ID
+     * @return 恢复的状态信息 Map，包含手牌、座位等；若无快照则返回 null
+     */
+    public Map<String, Object> restorePlayerStateOnReconnect(Long playerId) {
+        if (playerId == null) {
+            return null;
+        }
+
+        String pidStr = String.valueOf(playerId);
+        String roomId = playerToRoom.get(pidStr);
+        if (roomId == null) {
+            log.warn("玩家 {} 重连时未找到房间映射", playerId);
+            return null;
+        }
+
+        GameRoom room = rooms.get(roomId);
+        if (room == null) {
+            log.warn("玩家 {} 重连时房间 {} 已不存在", playerId, roomId);
+            return null;
+        }
+
+        // 从 WeakHashMap 读取快照
+        GameRoom.PlayerSnapshot snapshot = room.getOfflineSnapshot(playerId);
+        if (snapshot == null) {
+            log.info("玩家 {} 重连时未找到离线快照（可能是首次连接或快照已过期）", playerId);
+            return null;
+        }
+
+        if (!snapshot.isValid()) {
+            log.warn("玩家 {} 的离线快照已过期（超过30分钟），清理快照", playerId);
+            room.removeOfflineSnapshot(playerId);
+            return null;
+        }
+
+        // 恢复手牌到 GameRoom
+        List<Integer> restoredHand = snapshot.getHandCards();
+        room.getHandCards().put(pidStr, new ArrayList<>(restoredHand));
+
+        // 移除快照（恢复后不再需要）
+        room.removeOfflineSnapshot(playerId);
+
+        // 构建恢复的状态信息
+        Map<String, Object> restoredState = new LinkedHashMap<>();
+        restoredState.put("playerId", playerId);
+        restoredState.put("roomId", roomId);
+        restoredState.put("handCards", restoredHand);
+        restoredState.put("handCardCount", restoredHand.size());
+        restoredState.put("seatIndex", snapshot.getSeatIndex());
+        restoredState.put("status", room.getStatus().name());
+        restoredState.put("levelCardRank", room.getLevelCardRank());
+        restoredState.put("levelTeamA", room.getLevelTeamA());
+        restoredState.put("levelTeamB", room.getLevelTeamB());
+        restoredState.put("currentPlayerId", room.getCurrentPlayerId());
+        restoredState.put("consecutivePassCount", room.getConsecutivePassCount());
+
+        // 各玩家手牌数量
+        Map<String, Integer> handCardCounts = new LinkedHashMap<>();
+        for (String pid : room.getPlayerIds()) {
+            List<Integer> hand = room.getHandCards().get(pid);
+            handCardCounts.put(pid, hand != null ? hand.size() : 0);
+        }
+        restoredState.put("handCardCounts", handCardCounts);
+
+        // 上一手牌信息
+        restoredState.put("lastHandCards", room.getLastHandCards());
+        restoredState.put("lastPlayerId", room.getLastPlayerId());
+        restoredState.put("tableCleared", room.isTableCleared());
+
+        // 完成排名
+        restoredState.put("firstFinishPlayerId", room.getFirstFinishPlayerId());
+        restoredState.put("secondFinishPlayerId", room.getSecondFinishPlayerId());
+        restoredState.put("thirdFinishPlayerId", room.getThirdFinishPlayerId());
+
+        log.info("玩家 {} 重连状态已恢复: roomId={}, handCards={}, seatIndex={}, levelCardRank={}",
+                playerId, roomId, restoredHand.size(), snapshot.getSeatIndex(), room.getLevelCardRank());
+
+        return restoredState;
+    }
+
+    /**
+     * 获取离线快照统计信息
+     *
+     * @param playerId 玩家ID（可选，提供则只返回该玩家的状态）
+     * @return 包含快照统计信息的 Map
+     */
+    public Map<String, Object> getOfflineSnapshotStats(Long playerId) {
+        Map<String, Object> stats = new LinkedHashMap<>();
+
+        if (playerId != null) {
+            String pidStr = String.valueOf(playerId);
+            String roomId = playerToRoom.get(pidStr);
+            GameRoom room = (roomId != null) ? rooms.get(roomId) : null;
+            if (room != null) {
+                GameRoom.PlayerSnapshot snapshot = room.getOfflineSnapshot(playerId);
+                if (snapshot != null) {
+                    stats.put("hasSnapshot", true);
+                    stats.put("offlineTime", snapshot.getOfflineTime());
+                    stats.put("handCardCount", snapshot.getHandCardCount());
+                    stats.put("seatIndex", snapshot.getSeatIndex());
+                    stats.put("isValid", snapshot.isValid());
+                } else {
+                    stats.put("hasSnapshot", false);
+                }
+            } else {
+                stats.put("hasSnapshot", false);
+            }
+        } else {
+            // 统计所有房间的离线快照总数
+            int totalSnapshots = 0;
+            for (GameRoom room : rooms.values()) {
+                totalSnapshots += room.getOfflineSnapshotCount();
+            }
+            stats.put("totalSnapshots", totalSnapshots);
+            stats.put("roomCount", rooms.size());
+        }
+
+        return stats;
     }
 
     // ============================================================
