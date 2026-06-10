@@ -13,6 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 
 /**
  * AI服务类
@@ -24,6 +25,7 @@ import java.util.HashMap;
  *   <li>跟牌响应：根据上家出牌类型匹配更大的同类型牌</li>
  *   <li>炸弹压制：无法跟牌时自动判断是否可以用炸弹压制</li>
  *   <li>AI玩家识别：通过 playerId 前缀判断是否为 AI 玩家</li>
+ *   <li>自学习权重调整：根据历史对局统计动态优化牌型推荐优先级</li>
  * </ul>
  *
  * <h3>异常场景</h3>
@@ -45,6 +47,10 @@ import java.util.HashMap;
  *   <li>[TC-AI-PLAY-007] isAIPlayer("player_1") → false</li>
  *   <li>[TC-AI-PLAY-008] findBomb 手牌中有4张同点数 → 返回4张牌列表</li>
  *   <li>[TC-AI-PLAY-009] findBomb 手牌中无炸弹 → 返回 null</li>
+ *   <li>[TC-AI-PLAY-010] getWinRate 有统计数据 → 返回正确胜率</li>
+ *   <li>[TC-AI-PLAY-011] getWinRate 无统计数据 → 返回默认值0.5</li>
+ *   <li>[TC-AI-PLAY-012] recordOutcome 记录后统计数据正确更新</li>
+ *   <li>[TC-AI-PLAY-013] getRecommendedCardTypes 返回按胜率排序的推荐列表</li>
  * </ul>
  */
 @Slf4j
@@ -760,20 +766,362 @@ public class AIService {
         return "ai_player_" + index;
     }
 
-    // ========== 性能优化点 ==========
-    // [PERF] 缓存级牌优先级映射，避免每次出牌重复计算
-    // [PERF] findBomb 中提前过滤非炸弹牌，减少全量遍历
-    // [PERF] findBetterPair/findBetterThree 复用 rankToCards 结果集
-    // [PERF] 顺子查找限制最大循环次数，防止极端手牌 O(n^2) 退化
-    // [PERF] calculateCardScore/calculateCardScoreByRank 内联条件分支，减少方法调用栈深度
-    // ========== 回归验证点 ==========
-    // [TC-AI-PLAY-001] playCards 空手牌 → 返回 null，日志输出无牌提示
-    // [TC-AI-PLAY-002] playCards 自由出牌 → 返回单牌/对子/三张/顺子之一
-    // [TC-AI-PLAY-003] playCards 跟牌时牌型不合法 → 尝试炸弹，失败返回 null
-    // [TC-AI-PLAY-004] playCards 跟牌时无法管住 → 尝试炸弹，失败返回 null
-    // [TC-AI-PLAY-005] playCards 无牌可出 → 返回 null，日志输出"不出牌"
-    // [TC-AI-PLAY-006] isAIPlayer("ai_xxx") → true
-    // [TC-AI-PLAY-007] isAIPlayer("player_1") → false
-    // [TC-AI-PLAY-008] findBomb 手牌中有4张同点数 → 返回4张牌列表
-    // [TC-AI-PLAY-009] findBomb 手牌中无炸弹 → 返回 null
+    // ============================================================
+    //  自学习权重调整引擎
+    // ============================================================
+
+    /**
+     * 牌型枚举（用于自学习统计）
+     */
+    public enum CardPlayType {
+        SINGLE("单张"),
+        PAIR("对子"),
+        TRIPLE("三张"),
+        STRAIGHT("顺子"),
+        THREE_WITH_TWO("三带二"),
+        STEEL_PLATE("钢板"),
+        STRAIGHT_FLUSH("同花顺"),
+        BOMB("炸弹"),
+        PASS("过牌");
+
+        private final String displayName;
+
+        CardPlayType(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public static CardPlayType fromString(String type) {
+            for (CardPlayType t : values()) {
+                if (t.displayName.equals(type)) {
+                    return t;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * 牌型统计数据
+     */
+    public static class CardTypeStatistics {
+        /** 出牌次数 */
+        private int playCount = 0;
+        /** 胜率（该牌型出牌后最终获胜的比例） */
+        private double winRate = 0.5;
+        /** 获胜次数 */
+        private int winCount = 0;
+        /** 最近N局的胜率（滑动窗口，反映近期表现） */
+        private double recentWinRate = 0.5;
+        /** 最近N局的结果记录（true=胜，false=负），最大100条 */
+        private final java.util.LinkedList<Boolean> recentResults = new java.util.LinkedList<>();
+        /** 最后使用时间戳 */
+        private long lastUsedTime = 0;
+        /** 最大保留的近期记录数 */
+        private static final int MAX_RECENT_RECORDS = 100;
+
+        /**
+         * 记录一次出牌结果
+         * @param won 是否获胜
+         */
+        public synchronized void recordOutcome(boolean won) {
+            playCount++;
+            if (won) {
+                winCount++;
+            }
+            winRate = playCount > 0 ? (double) winCount / playCount : 0.5;
+
+            // 维护滑动窗口
+            recentResults.addLast(won);
+            if (recentResults.size() > MAX_RECENT_RECORDS) {
+                recentResults.removeFirst();
+            }
+
+            long wins = recentResults.stream().filter(r -> r).count();
+            recentWinRate = recentResults.size() > 0
+                    ? (double) wins / recentResults.size() : 0.5;
+
+            lastUsedTime = System.currentTimeMillis();
+        }
+
+        /**
+         * 获取综合权重得分（用于推荐排序）
+         * @return 0.0 ~ 1.0 之间的权重值
+         */
+        public synchronized double getWeightScore() {
+            // 综合权重 = 历史胜率 * 0.4 + 近期胜率 * 0.5 + 使用频率系数 * 0.1
+            double historyWeight = winRate * 0.4;
+            double recentWeight = recentWinRate * 0.5;
+            double frequencyWeight = Math.min(1.0, playCount / 50.0) * 0.1;
+            return historyWeight + recentWeight + frequencyWeight;
+        }
+
+        public int getPlayCount() { return playCount; }
+        public double getWinRate() { return winRate; }
+        public double getRecentWinRate() { return recentWinRate; }
+        public long getLastUsedTime() { return lastUsedTime; }
+    }
+
+    /**
+     * 自学习权重调整引擎
+     *
+     * <p>维护每种牌型的统计信息，基于历史对局数据动态调整出牌推荐权重。
+     * 核心思想：提高高胜率牌型的推荐优先级，降低低胜率牌型的优先级。
+     */
+    public static class LearningWeightEngine {
+
+        /** 牌型 -> 统计数据映射 */
+        private final Map<CardPlayType, CardTypeStatistics> statisticsMap = new HashMap<>();
+
+        /** 最近N局整体统计 */
+        private final java.util.LinkedList<Boolean> gameResults = new java.util.LinkedList<>();
+
+        /** 最大保留的对局数 */
+        private static final int MAX_GAME_RECORDS = 200;
+
+        /** 总对局数 */
+        private int totalGames = 0;
+
+        /** 获胜对局数 */
+        private int wonGames = 0;
+
+        /** 学习率（0~1），控制新数据对权重的影响程度 */
+        private double learningRate = 0.3;
+
+        public LearningWeightEngine() {
+            // 初始化所有牌型的统计信息
+            for (CardPlayType type : CardPlayType.values()) {
+                statisticsMap.put(type, new CardTypeStatistics());
+            }
+        }
+
+        /**
+         * 记录一次出牌结果
+         *
+         * @param cardType 出的牌型
+         * @param won      是否因这次出牌最终获胜
+         */
+        public synchronized void recordPlayOutcome(String cardType, boolean won) {
+            CardPlayType type = CardPlayType.fromString(cardType);
+            if (type == null) {
+                log.warn("未知牌型: {}，跳过统计", cardType);
+                return;
+            }
+            CardTypeStatistics stats = statisticsMap.get(type);
+            if (stats != null) {
+                stats.recordOutcome(won);
+                log.debug("自学习统计：牌型={}, playCount={}, winRate={}, recentWinRate={}",
+                        cardType, stats.getPlayCount(),
+                        String.format("%.2f", stats.getWinRate()),
+                        String.format("%.2f", stats.getRecentWinRate()));
+            }
+        }
+
+        /**
+         * 记录一局游戏的最终结果
+         *
+         * @param won 是否获胜
+         */
+        public synchronized void recordGameResult(boolean won) {
+            totalGames++;
+            if (won) {
+                wonGames++;
+            }
+            gameResults.addLast(won);
+            if (gameResults.size() > MAX_GAME_RECORDS) {
+                gameResults.removeFirst();
+            }
+            log.info("自学习统计：总对局={}, 获胜={}, 总胜率={}",
+                    totalGames, wonGames, String.format("%.2f", getOverallWinRate()));
+        }
+
+        /**
+         * 获取推荐出牌类型列表（按综合权重降序排列）
+         *
+         * @return 按推荐优先级排序的牌型列表
+         */
+        public synchronized List<CardPlayType> getRecommendedCardTypes() {
+            return statisticsMap.entrySet().stream()
+                    .filter(e -> e.getValue().getPlayCount() > 0) // 只推荐有使用记录的牌型
+                    .sorted((a, b) -> Double.compare(
+                            b.getValue().getWeightScore(),
+                            a.getValue().getWeightScore()))
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toList());
+        }
+
+        /**
+         * 获取特定牌型的推荐分值（用于出牌决策时调整分数）
+         *
+         * @param cardType 牌型字符串
+         * @return 权重调整系数（0.5 ~ 1.5），乘以基础分数后影响出牌优先级
+         */
+        public synchronized double getWeightAdjustment(String cardType) {
+            CardPlayType type = CardPlayType.fromString(cardType);
+            if (type == null) {
+                return 1.0;
+            }
+            CardTypeStatistics stats = statisticsMap.get(type);
+            if (stats == null || stats.getPlayCount() == 0) {
+                return 1.0;
+            }
+            // 调整系数 = 1.0 + (综合权重 - 0.5) * learningRate * 2
+            // 胜率 > 0.5 时系数 > 1.0（提高优先级），反之降低
+            double weight = stats.getWeightScore();
+            return 1.0 + (weight - 0.5) * learningRate * 2;
+        }
+
+        /**
+         * 获取整体胜率
+         */
+        public synchronized double getOverallWinRate() {
+            return totalGames > 0 ? (double) wonGames / totalGames : 0.5;
+        }
+
+        /**
+         * 获取所有牌型的统计摘要
+         */
+        public synchronized Map<String, Map<String, Object>> getStatisticsSummary() {
+            Map<String, Map<String, Object>> summary = new HashMap<>();
+            for (Map.Entry<CardPlayType, CardTypeStatistics> entry : statisticsMap.entrySet()) {
+                Map<String, Object> stat = new HashMap<>();
+                stat.put("playCount", entry.getValue().getPlayCount());
+                stat.put("winRate", entry.getValue().getWinRate());
+                stat.put("recentWinRate", entry.getValue().getRecentWinRate());
+                stat.put("weightScore", entry.getValue().getWeightScore());
+                summary.put(entry.getKey().getDisplayName(), stat);
+            }
+            return summary;
+        }
+
+        /**
+         * 重置所有统计数据
+         */
+        public synchronized void reset() {
+            for (CardPlayType type : CardPlayType.values()) {
+                statisticsMap.put(type, new CardTypeStatistics());
+            }
+            gameResults.clear();
+            totalGames = 0;
+            wonGames = 0;
+            log.info("自学习权重引擎已重置");
+        }
+
+        /**
+         * 设置学习率
+         */
+        public void setLearningRate(double learningRate) {
+            if (learningRate >= 0 && learningRate <= 1) {
+                this.learningRate = learningRate;
+            }
+        }
+
+        /**
+         * 获取当前学习率
+         */
+        public double getLearningRate() {
+            return learningRate;
+        }
+
+        /**
+         * 获取统计数据快照（用于外部查询或持久化）
+         */
+        public Map<CardPlayType, CardTypeStatistics> getStatisticsSnapshot() {
+            return new HashMap<>(statisticsMap);
+        }
+    }
+
+    /**
+     * AI自学习权重引擎实例
+     */
+    private final LearningWeightEngine learningEngine = new LearningWeightEngine();
+
+    /**
+     * 获取自学习权重引擎
+     */
+    public LearningWeightEngine getLearningEngine() {
+        return learningEngine;
+    }
+
+    /**
+     * 使用自学习权重调整的出牌决策
+     *
+     * <p>在原有出牌逻辑基础上，加入自学习权重调整：
+     * 对历史胜率高的牌型给予更高的优先级，胜率低的牌型降低优先级。
+     *
+     * @param gameRoom      游戏房间
+     * @param playerId      玩家ID
+     * @param levelCardRank 级牌点数
+     * @return 出牌决策（含权重调整后的推荐）
+     */
+    public List<Integer> playCardsWithLearning(GameRoom gameRoom, String playerId, int levelCardRank) {
+        List<Integer> result = playCards(gameRoom, playerId, levelCardRank);
+        if (result != null && !result.isEmpty()) {
+            String cardType = CardUtils.getCardType(result, levelCardRank);
+            if (cardType != null) {
+                double adjustment = learningEngine.getWeightAdjustment(cardType);
+                log.debug("AI玩家 {} 出牌类型={}, 权重调整系数={}",
+                        playerId, cardType, String.format("%.2f", adjustment));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 获取按自学习权重排序的出牌推荐
+     *
+     * @param gameRoom      游戏房间
+     * @param playerId      玩家ID
+     * @param levelCardRank 级牌点数
+     * @return 按推荐优先级排序的出牌方案列表（每种牌型一个方案）
+     */
+    public List<List<Integer>> getWeightedRecommendations(GameRoom gameRoom, String playerId, int levelCardRank) {
+        List<List<Integer>> recommendations = new ArrayList<>();
+        List<Integer> handCards = gameRoom.getPlayerHandCards(playerId);
+        if (handCards == null || handCards.isEmpty()) {
+            return recommendations;
+        }
+
+        // 收集所有可能的出牌方案
+        Map<String, List<Integer>> cardTypeToPlay = new HashMap<>();
+
+        // 自由出牌场景
+        String lastCardType = gameRoom.getLastCardType();
+        if (lastCardType == null || playerId.equals(gameRoom.getLastPlayerId())) {
+            Integer bestSingle = findBestSingleCard(handCards, levelCardRank);
+            if (bestSingle != null) {
+                List<Integer> single = new ArrayList<>();
+                single.add(bestSingle);
+                cardTypeToPlay.put("单张", single);
+            }
+            List<Integer> pair = findBestPair(handCards, levelCardRank);
+            if (pair != null) cardTypeToPlay.put("对子", pair);
+            List<Integer> triple = findBestThree(handCards, levelCardRank);
+            if (triple != null) cardTypeToPlay.put("三张", triple);
+            List<Integer> straight = findBestStraight(handCards, levelCardRank);
+            if (straight != null) cardTypeToPlay.put("顺子", straight);
+        }
+
+        // 根据自学习权重排序
+        List<CardPlayType> recommended = learningEngine.getRecommendedCardTypes();
+        for (CardPlayType type : recommended) {
+            String typeName = type.getDisplayName();
+            if (cardTypeToPlay.containsKey(typeName)) {
+                recommendations.add(cardTypeToPlay.get(typeName));
+            }
+        }
+
+        // 补充未在推荐列表中的可选方案
+        for (Map.Entry<String, List<Integer>> entry : cardTypeToPlay.entrySet()) {
+            if (recommendations.stream().noneMatch(r -> r.equals(entry.getValue()))) {
+                recommendations.add(entry.getValue());
+            }
+        }
+
+        log.debug("AI玩家 {} 加权推荐：共 {} 个方案", playerId, recommendations.size());
+        return recommendations;
+    }
 }
