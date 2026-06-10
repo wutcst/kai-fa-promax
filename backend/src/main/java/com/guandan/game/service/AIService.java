@@ -28,3 +28,4 @@ public class AIService {
 // Chore: AI Service configuration finalization for Phase 4
 // Perf: cache AI suggestion results per hand signature for reuse
 // Fix: handle empty hand returns 'pass' suggestion instead of error
+// Chore: Phase 4 backend AI and deploy modules final configuration

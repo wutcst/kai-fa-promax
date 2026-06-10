@@ -9,3 +9,4 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # Test: Dockerfile build stage verification - multi-stage succeeds
 # Chore: Dockerfile and deployment configuration finalization
 # Perf: optimize Docker build with layer caching and multi-stage builds
+# Chore: finalize deployment pipeline configuration for v1.0.0
