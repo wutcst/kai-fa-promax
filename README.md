@@ -21,3 +21,4 @@
 ## Overall Architecture Overview
 <!-- Chore: Project board updated for final Phase 4 delivery -->
 ## Final Acceptance Checklist
+<!-- Docs: Phase 4 product goals, acceptance criteria and milestone boundaries -->

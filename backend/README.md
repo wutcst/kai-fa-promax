@@ -10,3 +10,4 @@ cd backend && mvn spring-boot:run
 <!-- Docs: backend acceptance - health check and build verified -->
 ## Deployment Guide
 - [x] Phase 1-4 all complete
+## Phase 4 deliverables
