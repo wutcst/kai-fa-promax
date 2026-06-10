@@ -13,11 +13,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import jakarta.websocket.*;
-import jakarta.websocket.server.PathParam;
+import jakarta.websocket.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * WebSocket服务器端点（增强版）
@@ -953,7 +954,7 @@ public class GameWebSocketServer {
     // ============================================================
 
     /**
-     * 向指定玩家发送消息
+     * 向指定玩家发送消息（含节流去重）
      */
     private static void sendToPlayer(String playerId, WebSocketMessage message) {
         try {
@@ -964,6 +965,12 @@ public class GameWebSocketServer {
 
             if (objectMapper == null) {
                 log.error("ObjectMapper未初始化，无法发送消息");
+                return;
+            }
+
+            // 节流去重检查：高频同类型消息不重复发送
+            if (message != null && message.getType() != null
+                    && shouldThrottleMessage(playerId, message.getType())) {
                 return;
             }
 
@@ -1066,6 +1073,63 @@ public class GameWebSocketServer {
                 sendToPlayer(playerId, message);
             }
         }
+    }
+
+    // ============================================================
+    //  消息去重与节流（减少无效广播流量）
+    // ============================================================
+
+    /**
+     * 消息发送去重注册表：key = playerId + ":" + messageType，value = 最近发送时间戳
+     * 同一类型的消息在去重窗口内不会重复发送给同一个玩家
+     */
+    private static final ConcurrentHashMap<String, Long> sendThrottleMap = new ConcurrentHashMap<>();
+
+    /**
+     * 消息去重窗口（毫秒）- 同类型消息对同一玩家的最小发送间隔
+     */
+    private static final long THROTTLE_WINDOW_MS = 1500;
+
+    /**
+     * 节流消息类型列表 - 只有这些高频消息类型会被节流
+     */
+    private static final java.util.Set<String> THROTTLED_MESSAGE_TYPES = java.util.Set.of(
+            "PLAYER_ACTION", "TURN_CHANGE", "ROOM_UPDATE", "PLAYER_DISCONNECT"
+    );
+
+    /**
+     * 判断消息是否应被节流（去重）
+     *
+     * @param playerId    目标玩家ID
+     * @param messageType 消息类型
+     * @return true 表示该消息应被丢弃（同一类型在窗口期内刚发过）
+     */
+    private static boolean shouldThrottleMessage(String playerId, String messageType) {
+        if (playerId == null || messageType == null) {
+            return false;
+        }
+        if (!THROTTLED_MESSAGE_TYPES.contains(messageType)) {
+            return false;
+        }
+        String key = playerId + ":" + messageType;
+        long now = System.currentTimeMillis();
+        Long lastSent = sendThrottleMap.get(key);
+        if (lastSent != null && (now - lastSent) < THROTTLE_WINDOW_MS) {
+            log.debug("消息节流：跳过 {} -> {}（距上次发送仅 {}ms）",
+                    messageType, playerId, now - lastSent);
+            return true;
+        }
+        sendThrottleMap.put(key, now);
+        return false;
+    }
+
+    /**
+     * 清理过期的节流记录（定时调用，避免内存泄漏）
+     */
+    public static void cleanExpiredThrottleRecords() {
+        long now = System.currentTimeMillis();
+        sendThrottleMap.entrySet().removeIf(entry ->
+                (now - entry.getValue()) > THROTTLE_WINDOW_MS * 3);
     }
 
     // ============================================================

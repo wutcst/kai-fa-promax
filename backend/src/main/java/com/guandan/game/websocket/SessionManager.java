@@ -108,9 +108,19 @@ public class SessionManager {
     private static final int DISCONNECTED_RETENTION_TIME = 300; // 5分钟
 
     /**
+     * 僵尸连接清理间隔（秒）- 比心跳检测更频繁地扫描僵尸连接
+     */
+    private static final int ZOMBIE_SCAN_INTERVAL = 15;
+
+    /**
+     * 僵尸连接判定阈值（秒）- 超过此时间无任何I/O活动视为僵尸连接
+     */
+    private static final int ZOMBIE_TIMEOUT = 45;
+
+    /**
      * 定时线程池
      */
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
     /**
      * 在线玩家数量
@@ -118,11 +128,13 @@ public class SessionManager {
     private final AtomicInteger onlineCount = new AtomicInteger(0);
 
     /**
-     * 初始化：启动心跳检测任务
+     * 初始化：启动心跳检测任务和僵尸连接清理任务
      */
     public SessionManager() {
         scheduler.scheduleAtFixedRate(this::heartbeatCheck, HEARTBEAT_INTERVAL, HEARTBEAT_INTERVAL, TimeUnit.SECONDS);
-        log.info("SessionManager初始化完成，心跳检测已启动（间隔{}秒）", HEARTBEAT_INTERVAL);
+        scheduler.scheduleAtFixedRate(this::zombieScanAndClean, ZOMBIE_SCAN_INTERVAL, ZOMBIE_SCAN_INTERVAL, TimeUnit.SECONDS);
+        log.info("SessionManager初始化完成，心跳检测已启动（间隔{}秒），僵尸扫描已启动（间隔{}秒）",
+                HEARTBEAT_INTERVAL, ZOMBIE_SCAN_INTERVAL);
     }
 
     /**
@@ -333,6 +345,131 @@ public class SessionManager {
         stats.setOfflineCount(offlineCount);
         stats.setTotalReconnects(reconnectCount);
         return stats;
+    }
+
+    /**
+     * 僵尸连接扫描与清理：自动检测并清理长期无活动的僵尸Session
+     *
+     * <p>与 {@link #heartbeatCheck()} 不同，此方法专注于检测"在线但无I/O活动"的僵尸连接。
+     * 判定条件：Session 在 WebSocket 容器中标记为 open，但超过 {@link #ZOMBIE_TIMEOUT}
+     * 未收到任何心跳或消息。
+     *
+     * <p>清理策略：
+     * <ol>
+     *   <li>检测在线Session的 lastIoActivity 是否超过 ZOMBIE_TIMEOUT</li>
+     *   <li>确认 WebSocket Session.isOpen() 返回 true（但实际已失效）</li>
+     *   <li>发送探测消息（ping），5秒内无 pong 则确认为僵尸连接</li>
+     *   <li>确认后执行 cleanupZombieSession</li>
+     * </ol>
+     */
+    private void zombieScanAndClean() {
+        long currentTime = System.currentTimeMillis();
+        int zombieCount = 0;
+
+        for (Map.Entry<String, SessionInfo> entry : sessions.entrySet()) {
+            SessionInfo info = entry.getValue();
+            if (!info.isOnline()) {
+                continue;
+            }
+
+            // 检查lastIoActivity是否超时
+            long idleTime = (currentTime - info.getLastIoActivity()) / 1000;
+            if (idleTime <= ZOMBIE_TIMEOUT) {
+                continue;
+            }
+
+            String playerId = entry.getKey();
+            Session wsSession = webSocketSessions.get(playerId);
+            if (wsSession == null) {
+                // Session引用已丢失但状态仍在线 → 直接清理
+                log.warn("检测到僵尸连接：玩家 {} 在线但WebSocket Session已丢失（空闲{}秒），执行清理",
+                        playerId, idleTime);
+                cleanupZombieSession(playerId, info);
+                zombieCount++;
+                continue;
+            }
+
+            // Session仍被标记为open，但长时间无I/O → 发探测包确认
+            if (wsSession.isOpen()) {
+                try {
+                    log.warn("检测到疑似僵尸连接：玩家 {} 空闲{}秒，发送探测消息", playerId, idleTime);
+                    wsSession.getBasicRemote().sendText("{\"type\":\"ping\"}");
+                    // 标记探测时间，由下一次扫描确认是否有pong响应
+                    info.markProbeSent(currentTime);
+                } catch (IOException e) {
+                    // 发送失败 → 确认为僵尸连接
+                    log.warn("探测消息发送失败，确认玩家 {} 为僵尸连接", playerId);
+                    cleanupZombieSession(playerId, info);
+                    zombieCount++;
+                }
+            } else {
+                // Session已关闭但状态未同步 → 直接清理
+                log.warn("检测到僵尸连接：玩家 {} Session已关闭但未同步，执行清理", playerId);
+                cleanupZombieSession(playerId, info);
+                zombieCount++;
+            }
+        }
+
+        if (zombieCount > 0) {
+            log.info("僵尸连接扫描完成：已清理 {} 个僵尸连接，当前在线={}", zombieCount, getOnlineCount());
+        }
+    }
+
+    /**
+     * 清理僵尸连接的内部方法
+     *
+     * @param playerId 玩家标识
+     * @param info     会话信息
+     */
+    private void cleanupZombieSession(String playerId, SessionInfo info) {
+        // 记录僵尸连接统计
+        info.incrementZombieCount();
+
+        // 先标记离线再移除
+        if (info.isOnline()) {
+            markOffline(playerId);
+        }
+        removeWebSocketSession(playerId);
+
+        log.warn("僵尸连接已清理：playerId={}, 累计僵尸次数={}", playerId, info.getZombieCount());
+
+        // 如果离线清理时间超过阈值，完全移除会话数据
+        long disconnectDuration = (System.currentTimeMillis() - info.getDisconnectTime()) / 1000;
+        if (disconnectDuration > DISCONNECTED_RETENTION_TIME) {
+            removeSession(playerId);
+            log.info("僵尸连接数据已完全清理：playerId={}", playerId);
+        }
+    }
+
+    /**
+     * 获取僵尸连接的统计信息
+     */
+    public ZombieStats getZombieStats() {
+        ZombieStats stats = new ZombieStats();
+        int totalZombieCount = 0;
+        long currentTime = System.currentTimeMillis();
+
+        for (SessionInfo info : sessions.values()) {
+            totalZombieCount += info.getZombieCount();
+            if (info.isOnline()) {
+                long idleTime = (currentTime - info.getLastIoActivity()) / 1000;
+                if (idleTime > ZOMBIE_TIMEOUT) {
+                    stats.addRiskPlayer(info.getPlayerId(), idleTime);
+                }
+            }
+        }
+        stats.setTotalZombies(totalZombieCount);
+        return stats;
+    }
+
+    /**
+     * 更新玩家I/O活动时间
+     */
+    public void updateIoActivity(String playerId) {
+        SessionInfo info = sessions.get(playerId);
+        if (info != null) {
+            info.setLastIoActivity(System.currentTimeMillis());
+        }
     }
 
     /**
@@ -559,6 +696,20 @@ public class SessionManager {
         private long disconnectTime;
         private boolean online;
         private int reconnectCount;
+        /** 最后I/O活动时间（用于检测僵尸连接） */
+        private long lastIoActivity = System.currentTimeMillis();
+        /** 被判定为僵尸连接的累计次数 */
+        private int zombieCount = 0;
+        /** 最后一次发送探测消息的时间戳（0表示未发送） */
+        private long probeSentTime = 0L;
+
+        public void incrementZombieCount() {
+            this.zombieCount++;
+        }
+
+        public void markProbeSent(long timestamp) {
+            this.probeSentTime = timestamp;
+        }
     }
 
     /**
@@ -571,5 +722,67 @@ public class SessionManager {
         private int totalSessions;
         private int roomCount;
         private int totalReconnects;
+    }
+
+    /**
+     * 僵尸连接统计信息
+     */
+    @Data
+    public static class ZombieStats {
+        /** 累计僵尸连接次数 */
+        private int totalZombies;
+        /** 当前高风险玩家列表（playerId -> 空闲秒数） */
+        private Map<String, Long> riskPlayers = new ConcurrentHashMap<>();
+
+        public void addRiskPlayer(String playerId, long idleSeconds) {
+            riskPlayers.put(playerId, idleSeconds);
+        }
+    }
+
+    /**
+     * 消息去重注册表：用于在广播级别跟踪最近发送的消息摘要，
+     * 避免同一类型的消息在短时间内重复广播给同一 Session。
+     *
+     * <p>每条记录包含：
+     * <ul>
+     *   <li>playerId + messageType 作为唯一键</li>
+     *   <li>发送时间戳，用于判断是否超过去重窗口</li>
+     * </ul>
+     */
+    private final ConcurrentHashMap<String, Long> messageDedupRegistry = new ConcurrentHashMap<>();
+
+    /**
+     * 消息去重窗口（毫秒）
+     */
+    private static final long DEDUP_WINDOW_MS = 2000;
+
+    /**
+     * 检查并记录消息去重状态
+     *
+     * @param playerId   目标玩家
+     * @param messageType 消息类型（如 PLAYER_ACTION, TURN_CHANGE）
+     * @return true 如果该消息应被去重（即同类消息在窗口期内已发送过）
+     */
+    public boolean isDuplicateMessage(String playerId, String messageType) {
+        if (playerId == null || messageType == null) {
+            return false;
+        }
+        String key = playerId + ":" + messageType;
+        long now = System.currentTimeMillis();
+        Long lastSent = messageDedupRegistry.get(key);
+        if (lastSent != null && (now - lastSent) < DEDUP_WINDOW_MS) {
+            return true;
+        }
+        messageDedupRegistry.put(key, now);
+        return false;
+    }
+
+    /**
+     * 清理过期的去重记录
+     */
+    public void clearExpiredDedupRecords() {
+        long now = System.currentTimeMillis();
+        messageDedupRegistry.entrySet().removeIf(entry ->
+                (now - entry.getValue()) > DEDUP_WINDOW_MS * 2);
     }
 }
