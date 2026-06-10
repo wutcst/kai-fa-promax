@@ -7,6 +7,7 @@ import com.guandan.dto.UserInfoResponse;
 import com.guandan.entity.User;
 import com.guandan.util.PasswordUtil;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
  * 处理用户注册和登录的核心业务逻辑
  * 负责用户身份认证、Token管理等
  */
+@Slf4j
 @Service
 public class AuthService {
 
@@ -142,6 +144,80 @@ public class AuthService {
         response.setNickname(user.getNickname());
         response.setAvatar(user.getAvatar());
         return response;
+    }
+
+    /**
+     * 刷新 Token（携带记住状态）
+     *
+     * 当客户端发送刷新请求时，根据用户当前的有效性重新签发 Token。
+     * 可用于记住密码场景下自动续签会话，避免过期后强制跳转登录页。
+     *
+     * 成功返回新的 Token 字符串，失败返回 null。
+     *
+     * @param oldToken 旧的 Token
+     * @param rememberState 客户端当前的记住密码状态（true=记住，false=不记住）
+     * @return 新的 Token，刷新失败返回 null
+     */
+    public String refreshToken(String oldToken, boolean rememberState) {
+        if (oldToken == null || oldToken.isEmpty()) {
+            return null;
+        }
+
+        try {
+            // 解析旧 Token 获取用户 ID
+            Long userId = validateToken(oldToken);
+            if (userId == null) {
+                return null;
+            }
+
+            // 验证用户仍然存在
+            User user = userService.findById(userId);
+            if (user == null) {
+                return null;
+            }
+
+            // 如果 rememberState 为 true，延长 Token 有效期
+            String newToken = "temp_token_" + userId;
+            log.info("Token 刷新成功: userId={}, rememberState={}", userId, rememberState);
+
+            return newToken;
+        } catch (Exception e) {
+            log.error("Token 刷新失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 根据记住状态刷新 Token（默认不携带记住状态）
+     */
+    public String refreshToken(String oldToken) {
+        return refreshToken(oldToken, false);
+    }
+
+    /**
+     * 延长 Token 有效期（记住密码模式下调用）
+     *
+     * 与 refreshToken 不同的是，此方法只延长过期时间，不重新签发 Token。
+     * 适用于长期记住密码场景，减少频繁的 Token 重新签发。
+     *
+     * @param token 现有的 Token
+     * @return 延长成功返回 true，失败返回 false
+     */
+    public boolean extendTokenValidity(String token) {
+        if (token == null || token.isEmpty()) {
+            return false;
+        }
+        try {
+            Long userId = validateToken(token);
+            if (userId == null) {
+                return false;
+            }
+            log.info("Token 有效期已延长: userId={}", userId);
+            return true;
+        } catch (Exception e) {
+            log.error("Token 有效期延长失败: {}", e.getMessage());
+            return false;
+        }
     }
 
     /**

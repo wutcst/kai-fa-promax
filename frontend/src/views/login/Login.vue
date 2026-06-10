@@ -13,7 +13,10 @@
               <el-input v-model="loginForm.username" placeholder="请输入6位账号" maxlength="6" />
             </el-form-item>
             <el-form-item label="密码" prop="password">
-              <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" maxlength="10" />
+              <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" maxlength="10" show-password />
+            </el-form-item>
+            <el-form-item>
+              <el-checkbox v-model="rememberPassword" class="remember-checkbox">记住密码</el-checkbox>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" class="login-btn" @click="handleLogin">
@@ -45,11 +48,16 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import { login, register } from '../../api/auth'
+
+// ── 记住密码相关常量 ──
+const REMEMBER_KEY = 'login_remember'
+const STORED_ACCOUNT_KEY = 'login_stored_account'
+const STORED_PASSWORD_KEY = 'login_stored_password'
 
 const router = useRouter()
 const activeTab = ref('login')
@@ -58,6 +66,7 @@ const registerFormRef = ref(null)
 
 const loginForm = reactive({ username: '', password: '' })
 const registerForm = reactive({ nickname: '', password: '', confirmPwd: '' })
+const rememberPassword = ref(false)
 
 const loginRules = reactive({
   username: [
@@ -85,6 +94,90 @@ const registerRules = reactive({
   ]
 })
 
+/**
+ * 加载保存的记住密码状态
+ * 从 localStorage 读取记住状态、账号和密码，自动填充表单
+ */
+const loadRememberedCredentials = () => {
+  try {
+    const remembered = localStorage.getItem(REMEMBER_KEY)
+    if (remembered !== 'true') return
+
+    rememberPassword.value = true
+    const savedAccount = localStorage.getItem(STORED_ACCOUNT_KEY)
+    const savedPassword = localStorage.getItem(STORED_PASSWORD_KEY)
+
+    if (savedAccount) {
+      loginForm.username = savedAccount
+    }
+    if (savedPassword) {
+      loginForm.password = savedPassword
+    }
+  } catch (e) {
+    console.warn('加载保存的凭据失败:', e)
+  }
+}
+
+/**
+ * 保存记住密码凭据到 localStorage
+ * 当记住密码勾选时，保存账号和密码到本地存储
+ */
+const saveRememberedCredentials = () => {
+  try {
+    if (rememberPassword.value) {
+      localStorage.setItem(REMEMBER_KEY, 'true')
+      localStorage.setItem(STORED_ACCOUNT_KEY, loginForm.username)
+      localStorage.setItem(STORED_PASSWORD_KEY, loginForm.password)
+    } else {
+      localStorage.removeItem(REMEMBER_KEY)
+      localStorage.removeItem(STORED_ACCOUNT_KEY)
+      localStorage.removeItem(STORED_PASSWORD_KEY)
+    }
+  } catch (e) {
+    console.warn('保存凭据失败:', e)
+  }
+}
+
+/**
+ * 清除已保存的记住密码凭据
+ * 在退出登录或切换账号时调用
+ */
+const clearRememberedCredentials = () => {
+  try {
+    localStorage.removeItem(REMEMBER_KEY)
+    localStorage.removeItem(STORED_ACCOUNT_KEY)
+    localStorage.removeItem(STORED_PASSWORD_KEY)
+    rememberPassword.value = false
+  } catch (e) {
+    console.warn('清除凭据失败:', e)
+  }
+}
+
+// 监听记住密码状态变化，实时同步到 localStorage
+watch(rememberPassword, (newVal) => {
+  if (!newVal) {
+    clearRememberedCredentials()
+  }
+})
+
+// 监听账号密码变化，记住密码勾选时实时保存
+watch(() => loginForm.username, () => {
+  if (rememberPassword.value) {
+    saveRememberedCredentials()
+  }
+})
+
+watch(() => loginForm.password, () => {
+  if (rememberPassword.value) {
+    saveRememberedCredentials()
+  }
+})
+
+// 页面挂载时加载已保存的凭据
+onMounted(() => {
+  loadRememberedCredentials()
+})
+
 const handleLogin = () => {
   loginFormRef.value.validate(valid => {
     if (!valid) return
@@ -104,6 +197,9 @@ const handleLogin = () => {
 
         sessionStorage.setItem('token', userInfo.token)
         sessionStorage.setItem('isLogin', 'true')
+
+        // 保存记住密码状态
+        saveRememberedCredentials()
 
         ElMessage.success('登录成功')
         setTimeout(() => router.push('/lobby'), 1000)
@@ -220,6 +316,18 @@ const handleRegister = () => {
 .login-form :deep(.el-form-item__label) {
   font-weight: bold;
   color: #5a3518;
+}
+
+/* ── 记住密码复选框 ── */
+.remember-checkbox {
+  margin-left: 4px;
+  color: #5a3518;
+  font-weight: 500;
+}
+
+:deep(.remember-checkbox .el-checkbox__label) {
+  color: #5a3518;
+  font-size: 14px;
 }
 
 /* ── 输入框聚焦和悬停样式增强 ── */
