@@ -17,3 +17,4 @@
 // Fix: handle record detail with missing opponent data
 // Chore: RecordDetail module finalization
 // Perf: lazy load RecordDetail component to reduce initial bundle size
+// Test: manual test scenario - record detail navigation and filtering

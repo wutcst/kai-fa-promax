@@ -47,3 +47,4 @@ onMounted(() => {
 // Fix: interactive boundary - empty state for stats when loading
 // Chore: PersonalHome component delivery wrap-up
 // Docs: personal center feature documentation and usage guide
+// Test: manual test scenario - stats dashboard with real game data
