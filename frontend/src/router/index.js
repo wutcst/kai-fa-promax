@@ -2,12 +2,34 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import Login from '../views/login/Login.vue'
 import Lobby from '../views/lobby/Lobby.vue'
 import PersonalHome from '../views/PersonalHome.vue'
+import SkeletonLoader from '../components/SkeletonLoader.vue'
 
 const routes = [
   { path: '/', redirect: '/login' },
-  { path: '/login', name: 'login', component: Login },
-  { path: '/lobby', name: 'lobby', component: Lobby, meta: { requiresAuth: true } },
-  { path: '/personal-home', name: 'personalHome', component: PersonalHome, meta: { requiresAuth: true } },
+  {
+    path: '/login',
+    name: 'login',
+    component: Login,
+    meta: { transition: 'fade' }
+  },
+  {
+    path: '/lobby',
+    name: 'lobby',
+    component: Lobby,
+    meta: { requiresAuth: true, transition: 'slide-left' }
+  },
+  {
+    path: '/personal-home',
+    name: 'personalHome',
+    component: PersonalHome,
+    meta: { requiresAuth: true, transition: 'slide-left' }
+  },
+  {
+    path: '/battle',
+    name: 'battle',
+    component: () => import('../views/BattleView.vue'),
+    meta: { requiresAuth: true, transition: 'slide-up' }
+  },
   { path: '/:pathMatch(.*)*', redirect: '/login' }
 ]
 
@@ -15,6 +37,16 @@ const router = createRouter({
   history: createWebHashHistory(),
   routes
 })
+
+/**
+ * 路由过渡动画配置
+ * 通过 route.meta.transition 控制每个路由的过渡名称
+ */
+const routeTransitionNames = {
+  'fade': 'fade',
+  'slide-left': 'slide-left',
+  'slide-up': 'slide-up'
+}
 
 /**
  * 路由守卫
@@ -67,7 +99,8 @@ export default router
 // 3. 未知路径守卫：/* → /login
 // 4. Title 守卫：设置 document.title
 // 5. 路由元数据：requiresAuth 控制访问权限
-// 6. 路由组件懒加载支持（预留）
+// 6. 路由组件懒加载支持（已启用 /battle 路由懒加载）
+// 7. 路由过渡动画：每个路由可配置 meta.transition
 
 // ── 联调说明 ──
 // 1. beforeEach 守卫已覆盖全部路由切换场景
@@ -75,3 +108,14 @@ export default router
 // 3. 页面刷新后从 localStorage 恢复登录状态
 // 4. 未知路径统一兜底到 /login
 // 5. 根路径 / → /login 重定向
+// 6. 路由懒加载 /battle → 异步加载 BattleView.vue 减少首屏体积
+// 7. SkeletonLoader 已在 router 中导入，可在任意路由组件中直接使用
+
+// ── 过渡动画使用说明 ──
+// 1. 在 App.vue 中用 <router-view v-slot="{ Component, route }">
+//       <transition :name="route.meta.transition || 'fade'" mode="out-in">
+//         <component :is="Component" />
+//       </transition>
+//    </router-view> 包裹路由视图
+// 2. 动画类名: .fade-enter-active, .fade-leave-active, .slide-left-enter-active, .slide-left-leave-active
+// 3. 过渡时长统一 0.3s ease
