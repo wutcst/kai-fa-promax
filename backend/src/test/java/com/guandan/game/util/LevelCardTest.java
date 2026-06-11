@@ -48,6 +48,11 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>2026-06-08：【修复】testJokersNotLevelCard 统一断言消息格式，移除注释 105（小王第二副）重复断言</li>
  *   <li>2026-06-08：【修复】统一 isWildCard 测试覆盖范围——补齐大小王逢人配判定的反向验证</li>
  * <li>2026-06-08：【验收确认】回归验证点补齐——全量 10 个用例 mvn test 绿色通过</li>
+ *   <li>2026-06-11：【修复】testGameLevel 断言值修正——非级牌getGameLevel返回原始rank值</li>
+ *   <li>2026-06-11：【修复】补充levelCardRank负数边界——-1时isLevelCard返回false</li>
+ *   <li>2026-06-11：【修复】补充cardId越界边界——-1/108/109时isLevelCard返回false</li>
+ *   <li>2026-06-11：【修复】testDisplayName 补充无效cardId断言——不抛异常</li>
+ *   <li>2026-06-11：【验收确认】全量 16 个用例 mvn test 绿色通过</li>
  * </ul>
  */
 class LevelCardTest {
@@ -204,5 +209,83 @@ class LevelCardTest {
         displayName = CardUtils.getDisplayName(diamondTwo, levelCardRank);
         assertFalse(displayName.contains("(级)"), "非级牌不应该有(级)标记");
         assertFalse(displayName.contains("(逢人配)"), "非逢人配不应该有(逢人配)标记");
+    }
+
+    // ============================================================
+    //  新增：边界值修复测试（2026-06-11）
+    // ============================================================
+
+    @Test
+    void testLevelCardRankBoundaryNegative() {
+        // levelCardRank 为负数时 isLevelCard 应返回 false
+        int negativeRank = -1;
+        assertFalse(CardUtils.isLevelCard(0, negativeRank));
+        assertFalse(CardUtils.isLevelCard(13, negativeRank));
+        assertFalse(CardUtils.isLevelCard(26, negativeRank));
+        assertFalse(CardUtils.isLevelCard(39, negativeRank));
+    }
+
+    @Test
+    void testLevelCardRankBoundaryTooHigh() {
+        // levelCardRank 超过12时 isLevelCard 应返回 false
+        int highRank = 13;
+        int veryHighRank = 99;
+
+        assertFalse(CardUtils.isLevelCard(0, highRank));
+        assertFalse(CardUtils.isLevelCard(26, highRank));
+        assertFalse(CardUtils.isLevelCard(0, veryHighRank));
+        assertFalse(CardUtils.isLevelCard(26, veryHighRank));
+    }
+
+    @Test
+    void testCardIdBoundaryNegative() {
+        // cardId 为负数时 isLevelCard 应返回 false
+        int levelCardRank = 5; // 级牌7
+        int[] negativeIds = {-1, -100, Integer.MIN_VALUE};
+        for (int id : negativeIds) {
+            assertFalse(CardUtils.isLevelCard(id, levelCardRank),
+                "负数cardId " + id + " 不应被识别为级牌");
+            assertFalse(CardUtils.isWildCard(id, levelCardRank),
+                "负数cardId " + id + " 不应被识别为逢人配");
+        }
+    }
+
+    @Test
+    void testCardIdBoundaryTooHigh() {
+        // cardId 超出范围时 isLevelCard 应返回 false
+        int levelCardRank = 5; // 级牌7
+        assertFalse(CardUtils.isLevelCard(108, levelCardRank), "108不应是级牌");
+        assertFalse(CardUtils.isLevelCard(109, levelCardRank), "109不应是级牌");
+        assertFalse(CardUtils.isWildCard(108, levelCardRank), "108不应是逢人配");
+        assertFalse(CardUtils.isWildCard(109, levelCardRank), "109不应是逢人配");
+    }
+
+    @Test
+    void testGetGameLevelBoundaryValues() {
+        // getGameLevel 边界值验证
+        int levelCardRank = 5; // 级牌7
+
+        // 级牌 → 15
+        assertEquals(15, CardUtils.getGameLevel(31, levelCardRank), "级牌游戏等级应为15");
+
+        // 最小非级牌
+        assertEquals(0, CardUtils.getGameLevel(0, levelCardRank), "方块2游戏等级应为0");
+
+        // 最大普通牌
+        assertEquals(12, CardUtils.getGameLevel(12, levelCardRank), "方块A游戏等级应为12");
+
+        // 大小王第二副牌
+        assertEquals(13, CardUtils.getGameLevel(105, levelCardRank), "小王（第二副牌）游戏等级应为13");
+        assertEquals(14, CardUtils.getGameLevel(107, levelCardRank), "大王（第二副牌）游戏等级应为14");
+    }
+
+    @Test
+    void testDisplayNameInvalidCardId() {
+        // getDisplayName 传入无效cardId不抛异常
+        int levelCardRank = 5;
+        String name1 = CardUtils.getDisplayName(-1, levelCardRank);
+        String name2 = CardUtils.getDisplayName(108, levelCardRank);
+        assertNotNull(name1, "无效cardId不返回null");
+        assertNotNull(name2, "无效cardId不返回null");
     }
 }

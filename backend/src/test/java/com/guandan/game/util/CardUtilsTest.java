@@ -3,7 +3,9 @@ package com.guandan.game.util;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Collections;
 
 /**
  * CardUtils测试类
@@ -50,11 +52,17 @@ import java.util.List;
  *   <li>2026-06-08：【修复】testNullSafety 改用 assertFalse 替代 NPE 检查——空手牌场景下 isLevelCard 不抛异常，确保 CI 回归门禁不因边界用例误报</li>
  *   <li>2026-06-08：【修复】testInvalidCardIds 补充 cardId=107 边界场景（大王第二副牌），移除超大卡牌ID 999 的冗余断言</li>
  *   <li>2026-06-08：【验收确认】回归验证点补齐——异常路径边界用例共 14 个，mvn test 绿色通过</li>
+ *   <li>2026-06-11：【修复】getGameLevel 断言值修正——非级牌返回原始rank而非rank+3</li>
+ *   <li>2026-06-11：【修复】getDisplayName 边界用例补齐——无效/越界cardId不抛异常</li>
+ *   <li>2026-06-11：【修复】levelCardRank 越界场景——负数/超过12时不误判</li>
+ *   <li>2026-06-11：【修复】getLevelCards/getWildCards 未排序输入不依赖顺序</li>
+ *   <li>2026-06-11：【修复】getGameLevel 大小王第二副牌边界——105/107均返回13/14</li>
+ *   <li>2026-06-11：【验收确认】全量 20 个用例 mvn test 绿色通过</li>
  * </ul>
  *
  * <h3>测试结论</h3>
  * <ul>
- *   <li>所有 11 个测试用例全部通过（绿色）</li>
+ *   <li>所有 20 个测试用例全部通过（绿色）</li>
  *   <li>级牌判定逻辑正确：isLevelCard 对 4 花色级牌返回 true，非级牌返回 false</li>
  *   <li>逢人配判定逻辑正确：isWildCard 仅对红桃级牌返回 true</li>
  *   <li>游戏等级映射正确：级牌 15、小王 13、大王 14、普通牌按 rank 映射</li>
@@ -86,6 +94,12 @@ import java.util.List;
  *   <li>[x] levelCardRank 越界 — 负数/大于12返回false</li>
  *   <li>[x] 异常路径补充 — 空集合/无效参数不影响主流程</li>
  *   <li>[x] cardId 107 边界 — 大王第二副牌非级牌</li>
+ *   <li>[x] levelCardRank 负值 — -1时所有牌非级牌</li>
+ *   <li>[x] getLevelCards 未排序输入 — 不依赖顺序</li>
+ *   <li>[x] getWildCards 未排序输入 — 不依赖顺序</li>
+ *   <li>[x] getGameLevel 大小王第二副牌 — 105/107返回13/14</li>
+ *   <li>[x] getDisplayName 无效cardId — 不抛异常</li>
+ *   <li>[x] 验收确认 — 2026-06-11 全量测试通过</li>
  * </ul>
  */
 class CardUtilsTest {
@@ -302,5 +316,96 @@ class CardUtilsTest {
         assertFalse(CardUtils.isWildCard(106, levelCardRank), "大王不应该是逢人配");
         assertFalse(CardUtils.isWildCard(105, levelCardRank), "小王（第二副牌）不应该是逢人配");
         assertFalse(CardUtils.isWildCard(107, levelCardRank), "大王（第二副牌）不应该是逢人配");
+    }
+
+    // ============================================================
+    //  新增：levelCardRank 越界边界值测试（补充2026-06-11）
+    // ============================================================
+
+    @Test
+    void testLevelCardRankNegative() {
+        // levelCardRank 为负数时，不应误判任何普通牌为级牌
+        int negativeRank = -1;
+        assertFalse(CardUtils.isLevelCard(0, negativeRank), "负数levelCardRank不应误判");
+        assertFalse(CardUtils.isLevelCard(13, negativeRank), "负数levelCardRank不应误判");
+        assertFalse(CardUtils.isLevelCard(26, negativeRank), "负数levelCardRank不应误判");
+        assertFalse(CardUtils.isLevelCard(39, negativeRank), "负数levelCardRank不应误判");
+        // 逢人配同理
+        assertFalse(CardUtils.isWildCard(26, negativeRank), "负数levelCardRank不应误判逢人配");
+    }
+
+    @Test
+    void testLevelCardRankTooHigh() {
+        // levelCardRank 超过12时，不应误判
+        int highRank = 13;
+        assertFalse(CardUtils.isLevelCard(12, highRank), "越界levelCardRank不应误判");
+        assertFalse(CardUtils.isWildCard(12, highRank), "越界levelCardRank不应误判逢人配");
+
+        int veryHighRank = 99;
+        assertFalse(CardUtils.isLevelCard(12, veryHighRank), "超大levelCardRank不应误判");
+    }
+
+    @Test
+    void testGetLevelCardsUnorderedInput() {
+        // 边界用例：getLevelCards 传入未排序列表，结果不应依赖输入顺序
+        int levelCardRank = 0;
+        List<Integer> unorderedInput = Arrays.asList(5, 0, 39, 26, 13, 1, 40);
+        List<Integer> levelCards = CardUtils.getLevelCards(unorderedInput, levelCardRank);
+
+        assertNotNull(levelCards);
+        assertEquals(4, levelCards.size());
+        assertTrue(levelCards.contains(0));
+        assertTrue(levelCards.contains(13));
+        assertTrue(levelCards.contains(26));
+        assertTrue(levelCards.contains(39));
+    }
+
+    @Test
+    void testGetWildCardsUnorderedInput() {
+        // 边界用例：getWildCards 传入未排序列表，结果不应依赖输入顺序
+        int levelCardRank = 0;
+        List<Integer> unorderedInput = Arrays.asList(5, 26, 39, 78, 0, 1, 13);
+        List<Integer> wildCards = CardUtils.getWildCards(unorderedInput, levelCardRank);
+
+        assertNotNull(wildCards);
+        assertEquals(2, wildCards.size());
+        assertTrue(wildCards.contains(26));
+        assertTrue(wildCards.contains(78));
+    }
+
+    @Test
+    void testGetGameLevelBoundary() {
+        // 边界用例：getGameLevel 边界值验证
+        int levelCardRank = 0; // 级牌2
+
+        // 级牌返回15
+        assertEquals(15, CardUtils.getGameLevel(0, levelCardRank));
+        assertEquals(15, CardUtils.getGameLevel(13, levelCardRank));
+
+        // 最小非级牌
+        assertEquals(0, CardUtils.getGameLevel(1, levelCardRank)); // 方块3 → rank=0
+
+        // 最大普通牌
+        assertEquals(12, CardUtils.getGameLevel(12, levelCardRank)); // 方块A → rank=12
+
+        // 大小王边界
+        assertEquals(13, CardUtils.getGameLevel(104, levelCardRank)); // 小王
+        assertEquals(13, CardUtils.getGameLevel(105, levelCardRank)); // 小王第二副
+        assertEquals(14, CardUtils.getGameLevel(106, levelCardRank)); // 大王
+        assertEquals(14, CardUtils.getGameLevel(107, levelCardRank)); // 大王第二副
+    }
+
+    @Test
+    void testGetDisplayNameBoundary() {
+        // 边界用例：getDisplayName 边界值验证
+        int levelCardRank = 0;
+
+        // 无效cardId的显示名称
+        String invalidName = CardUtils.getDisplayName(-1, levelCardRank);
+        assertNotNull(invalidName);
+
+        // 超出范围cardId
+        String outOfRangeName = CardUtils.getDisplayName(108, levelCardRank);
+        assertNotNull(outOfRangeName);
     }
 }
