@@ -254,7 +254,8 @@
             </div>
           </div>
 
-          <div class="my-hand" :style="handStyle" @mousedown="startDragging">
+          <div class="my-hand" :style="handStyle" @mousedown="startDragging"
+               @touchstart.prevent="() => {}">
             <div v-for="(card, index) in myCards" :key="'my-' + index"
                  class="card"
                  :class="{
@@ -272,7 +273,11 @@
                  @mouseenter="handleCardMouseenter(index, $event)"
                  @dragstart="handleDragStart(index, $event)"
                  @dragover.prevent
-                 @drop="handleDragDrop(index, $event)">
+                 @drop="handleDragDrop(index, $event)"
+                 @touchstart.stop="handleTouchStart(index, $event)"
+                 @touchmove.stop="handleTouchMove(index, $event)"
+                 @touchend.stop="handleTouchEnd"
+                 @touchcancel.stop="handleTouchEnd">
               <!-- 牌型匹配高亮标签 -->
               <div v-if="isMatchHighlighted(index) && selectedCardType" class="card-type-badge">{{ selectedCardType }}</div>
               <img :src="getCardImage(card)" :alt="getCardName(card)" class="card-img">
@@ -1486,6 +1491,146 @@ const handleDragDrop = (targetIndex, event) => {
   myCards.value = newCards
   draggedCardIndex.value = null
 }
+
+// ============================================================
+//  移动端触屏手势选牌和滑动连选交互（2026-06-11）
+// ============================================================
+
+/** 触屏起始触摸点的X坐标 */
+const touchStartX = ref(0)
+/** 触屏起始触摸点的Y坐标 */
+const touchStartY = ref(0)
+/** 触屏起始时已选中的卡牌索引集合（用于滑动模式判断） */
+const touchStartSelection = ref(new Set())
+/** 触屏滑动过程中最后进入的卡牌索引 */
+const touchLastEnteredIndex = ref(-1)
+/** 触摸长按定时器 */
+const longPressTimer = ref(null)
+/** 是否处于长按模式 */
+const isLongPressMode = ref(false)
+/** 长按阈值（毫秒） */
+const LONG_PRESS_MS = 500
+/** 滑动最小距离（px，小于此距离视为点击） */
+const SWIPE_THRESHOLD = 8
+
+/**
+ * 触摸开始：记录起始位置和当前选中状态
+ */
+const handleTouchStart = (index, event) => {
+  if (currentPlayer.value !== '我') return
+
+  const touch = event.touches[0]
+  touchStartX.value = touch.clientX
+  touchStartY.value = touch.clientY
+  touchLastEnteredIndex.value = index
+  touchStartSelection.value = new Set(selectedCards.value)
+
+  // 启动长按定时器（500ms后切换该牌选中状态）
+  if (longPressTimer.value) {
+    clearTimeout(longPressTimer.value)
+  }
+  longPressTimer.value = setTimeout(() => {
+    isLongPressMode.value = true
+    // 长按切换当前牌选中状态
+    toggleCardLogic(index)
+    // 震动反馈（如果设备支持）
+    if (navigator.vibrate) {
+      navigator.vibrate(20)
+    }
+  }, LONG_PRESS_MS)
+}
+
+/**
+ * 触摸移动：滑动连选/取消选牌
+ */
+const handleTouchMove = (index, event) => {
+  if (currentPlayer.value !== '我') return
+  if (isLongPressMode.value) return // 长按模式不响应滑动
+
+  const touch = event.touches[0]
+  const deltaX = Math.abs(touch.clientX - touchStartX.value)
+  const deltaY = Math.abs(touch.clientY - touchStartY.value)
+
+  // 移动距离超过阈值才视为滑动，防止误触
+  if (deltaX < SWIPE_THRESHOLD && deltaY < SWIPE_THRESHOLD) return
+
+  // 取消长按定时器（已滑动则不触发长按）
+  if (longPressTimer.value) {
+    clearTimeout(longPressTimer.value)
+    longPressTimer.value = null
+  }
+
+  // 如果进入的是新卡牌索引，切换其选中状态
+  if (index !== touchLastEnteredIndex.value) {
+    touchLastEnteredIndex.value = index
+    compatiTouchToggle(index)
+  }
+}
+
+/**
+ * 兼容性滑动选牌切换
+ * 以起始选中状态为基准决定是选中还是取消
+ */
+const compatiTouchToggle = (index) => {
+  const wasSelected = touchStartSelection.value.has(index)
+  if (wasSelected) {
+    // 起始为选中，则滑动经过时取消选中
+    selectedCards.value = selectedCards.value.filter(i => i !== index)
+  } else {
+    // 起始为未选中，则滑动经过时选中（防止重复添加）
+    if (!selectedCards.value.includes(index)) {
+      selectedCards.value.push(index)
+    }
+  }
+  detectAndHighlightCardType()
+}
+
+/**
+ * 触摸结束：清除长按定时器，重置状态
+ */
+const handleTouchEnd = () => {
+  if (longPressTimer.value) {
+    clearTimeout(longPressTimer.value)
+    longPressTimer.value = null
+  }
+  isLongPressMode.value = false
+  touchLastEnteredIndex.value = -1
+}
+
+// ============================================================
+//  集成触屏手势到现有的卡牌事件循环
+// ============================================================
+
+/**
+ * 统一触屏/鼠标选牌入口
+ * 供模板中 @touchstart 调用，自动区分触摸和鼠标
+ */
+const unifiedCardTouchStart = (index, event) => {
+  if (event.type === 'touchstart') {
+    handleTouchStart(index, event)
+  } else {
+    handleCardMousedown(index, event)
+  }
+}
+
+/**
+ * 统一触屏/鼠标移动入口
+ */
+const unifiedCardTouchMove = (index, event) => {
+  if (event.type === 'touchmove') {
+    handleTouchMove(index, event)
+  } else {
+    handleCardMouseenter(index, event)
+  }
+}
+
+// ============================================================
+//  选牌交互中重置 dragType 的说明
+//  在 handleCardMousedown 开始拖拽时，dragType 基于当前卡牌是否已被选中：
+//  选中 → dragType=false（滑动时取消选中的牌）、未选中 → dragType=true（滑动时选中沿途的牌）
+//  在 toggleCardLogic 中更新 selectedCards 后，dragType 不被重置，
+//  拖拽模式在一次 mousedown→mouseup 周期内保持一致。
+// ============================================================
 
 // 使用 usePlayCard composable 替代内联出牌逻辑
 const {
