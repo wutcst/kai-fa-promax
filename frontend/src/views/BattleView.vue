@@ -115,6 +115,7 @@
               :type="isReady ? 'info' : 'primary'"
               size="large"
               @click="toggleReady"
+              v-if="!isSpectator"
           >
             {{ isReady ? '取消准备' : '准备就绪' }}
           </el-button>
@@ -138,6 +139,13 @@
     <!-- 游戏阶段（准备后显示） -->
     <transition name="fade">
       <div class="game-stage" v-if="gameState !== 'prepare'">
+        <!-- 观战模式标识 -->
+        <div class="spectate-banner" v-if="isSpectator">
+          <el-tag type="warning" size="small" effect="dark">观战模式</el-tag>
+          <span class="spectate-hint">仅可查看牌局，不可操作</span>
+          <el-button size="small" type="info" plain @click="leaveSpectateMode">退出观战</el-button>
+        </div>
+
         <!-- 左上角级牌显示框 -->
         <div class="level-card-container">
           <div class="level-card-title">当前级牌</div>
@@ -304,7 +312,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import '../assets/card.css'
 import { idToCard, cardsToIds, bulkIdToCard, isSameCards } from '../utils/cardConverter'
 import webSocketService, { WS_MESSAGE_TYPES } from '../api/websocket'
-import { getRoomDetail, ready, exitRoom } from '../api/game'
+import { getRoomDetail, ready, exitRoom, spectateRoom, leaveSpectate, getSpectateBoard } from '../api/game'
 import soundManager from '../utils/soundManager'
 import { usePlayCard } from '../composables/usePlayCard'
 import CardTable from '../components/CardTable.vue'
@@ -524,6 +532,8 @@ const rightOpponentCards = ref(Array(27).fill(null))
 const selectedCards = ref([])
 const suggestedCards = ref([])
 const currentPlayer = ref('我')
+const isSpectator = ref(false)
+const spectatePollTimer = ref(null)
 const isDragging = ref(false)
 const dragType = ref(true)
 const mouseDownX = ref(0)
@@ -986,6 +996,7 @@ onMounted(() => {
 
   fetchRoomDetail().then(() => {
     connectWebSocket()
+    checkSpectateQuery()
   })
 
   webSocketService.on(WS_MESSAGE_TYPES.GAME_START, handleGameStart)
@@ -1137,6 +1148,131 @@ const exitAndDissolveRoom = () => {
   })
 }
 
+// ── 观战模式 ──
+
+/**
+ * 进入观战模式
+ */
+const enterSpectateMode = async (roomNo) => {
+  try {
+    const res = await spectateRoom(roomNo)
+    isSpectator.value = true
+    gameState.value = 'playing' // 直接进入游戏视图
+    ElMessage.success('已进入观战模式')
+    // 填充观战数据
+    if (res.board) {
+      applySpectateBoard(res.board)
+    }
+    // 启动轮询
+    startSpectatePolling(roomNo)
+  } catch (e) {
+    ElMessage.error(e.localizedMessage || '进入观战模式失败')
+  }
+}
+
+/**
+ * 退出观战模式
+ */
+const leaveSpectateMode = async () => {
+  try {
+    await leaveSpectate(roomId.value)
+    isSpectator.value = false
+    gameState.value = 'prepare'
+    stopSpectatePolling()
+    ElMessage.info('已退出观战模式')
+    router.push('/lobby')
+  } catch (e) {
+    ElMessage.error('退出观战失败')
+  }
+}
+
+/**
+ * 启动观战轮询
+ */
+const startSpectatePolling = (roomNo) => {
+  stopSpectatePolling()
+  spectatePollTimer.value = setInterval(async () => {
+    try {
+      const res = await getSpectateBoard(roomNo)
+      if (res && res.board) {
+        applySpectateBoard(res.board)
+      }
+    } catch (e) {
+      // 房间可能已结束，停止轮询
+      if (e.errorCode === 7004 || e.status === 404) {
+        stopSpectatePolling()
+        ElMessage.info('房间游戏已结束')
+      }
+    }
+  }, 2000) // 2秒轮询
+}
+
+/**
+ * 停止观战轮询
+ */
+const stopSpectatePolling = () => {
+  if (spectatePollTimer.value) {
+    clearInterval(spectatePollTimer.value)
+    spectatePollTimer.value = null
+  }
+}
+
+/**
+ * 应用观战牌局快照到页面状态
+ */
+const applySpectateBoard = (board) => {
+  if (!board) return
+
+  // 当前出牌玩家
+  if (board.currentPlayerId) {
+    const pos = Object.keys(playerPositions.value).find(
+        p => String(playerPositions.value[p]) === String(board.currentPlayerId)
+    )
+    currentPlayer.value = pos || board.currentPlayerId
+  }
+
+  // 玩家手牌数量（观战模式不暴露具体牌面）
+  if (board.playerCardCounts) {
+    for (const [pid, count] of Object.entries(board.playerCardCounts)) {
+      const pos = Object.keys(playerPositions.value).find(
+          p => String(playerPositions.value[p]) === String(pid)
+      )
+      if (pos) {
+        const arr = Array(Number(count)).fill(null)
+        if (pos === '我') myCards.value = arr
+        else if (pos === '队友') teammateCards.value = arr
+        else if (pos === '左对手') leftOpponentCards.value = arr
+        else if (pos === '右对手') rightOpponentCards.value = arr
+      }
+    }
+  }
+
+  // 桌面展示
+  if (board.deskCardCounts) {
+    const newDesk = { '我': [], '右对手': [], '队友': [], '左对手': [] }
+    for (const [pos, count] of Object.entries(board.deskCardCounts)) {
+      const mappedPos = pos === 'top' ? '队友' :
+          pos === 'left' ? '左对手' :
+              pos === 'right' ? '右对手' : '我'
+      newDesk[mappedPos] = count > 0 ? Array(count).fill({ type: 'back' }) : []
+    }
+    deskDisplay.value = newDesk
+  }
+}
+
+/**
+ * 根据 URL 参数判断是否以观战模式进入
+ */
+const checkSpectateQuery = () => {
+  const spectateParam = route.query.spectate
+  if (spectateParam === '1' || spectateParam === 'true') {
+    const roomParam = route.query.roomId || roomId.value
+    if (roomParam) {
+      enterSpectateMode(roomParam)
+    }
+  }
+}
+
 const tryExitRoomAndDisconnect = () => {
   try {
     exitRoom(getGameRoomId())
@@ -1182,6 +1318,7 @@ onBeforeUnmount(() => {
   myCards.value = []
   selectedCards.value = []
   suggestedCards.value = []
+  stopSpectatePolling()
   tryExitRoomAndDisconnect()
 })
 
@@ -3356,5 +3493,36 @@ const handleError = (data) => {
   .played-slot.pos-bottom .played-cards-group > div {
     margin-left: -10px !important;
   }
+}
+
+/* ========== 观战模式提示条 ========== */
+.spectate-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  height: 40px;
+  background: linear-gradient(90deg, rgba(230, 162, 60, 0.92), rgba(200, 120, 40, 0.92));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(4px);
+}
+
+.spectate-hint {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.spectate-banner .el-button {
+  height: 28px;
+  font-size: 12px;
+  padding: 0 12px;
 }
 </style>
