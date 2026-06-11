@@ -52,16 +52,23 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data  # 接口字段：持久化 AOF 和 RDB 文件
+    healthcheck:
+      # 异常场景：Redis 健康检查失败 → backend 依赖等待，不会启动
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   backend:
-    image: maven:3.9-eclipse-temurin-17
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: guandan-backend:latest
     container_name: guandan-backend
-    working_dir: /app
     restart: unless-stopped
     volumes:
-      - ./backend:/app
-      - maven_repo:/root/.m2
-    command: mvn spring-boot:run
+      - backend_logs:/app/logs  # 接口字段：日志卷挂载，持久化运行日志
+      - backend_data:/app/data  # 接口字段：数据卷挂载，持久化临时数据
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/guandan?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
@@ -78,14 +85,44 @@ services:
       HEALTHCHECK_RETRIES: "10"
       HEALTHCHECK_TIMEOUT: "30s"
       # 部署环境标识
-      DEPLOY_ENV: "development"
+      DEPLOY_ENV: "production"
+      # 日志级别
+      LOGGING_LEVEL_ROOT: "INFO"
+      LOGGING_FILE_PATH: "/app/logs/guandan.log"
     ports:
       - "8081:8081"
     depends_on:
       mysql:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      # 异常场景：应用启动超时（start-period=90s）内连续检测失败 → 标记 unhealthy
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start-period: 90s
+      retries: 5
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: guandan-nginx
+    restart: unless-stopped
+    volumes:
+      - ./backend/nginx/conf.d:/etc/nginx/conf.d:ro  # 接口字段：Nginx 配置挂载
+      - nginx_logs:/var/log/nginx  # 接口字段：Nginx 日志卷挂载
+    ports:
+      - "80:80"    # 接口字段：HTTP 端口
+      - "443:443"  # 接口字段：HTTPS 端口（预留）
+    depends_on:
+      backend:
+        condition: service_healthy
+    # 异常场景：后端全部不可用 → Nginx 返回 502，不对外暴露后端重启细节
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
 
   frontend:
     image: node:22-alpine
@@ -98,13 +135,17 @@ services:
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     environment:
       CHOKIDAR_USEPOLLING: "true"
+      VITE_API_BASE_URL: "/api"  # 接口字段：通过 Nginx 转发 API 请求
     ports:
       - "5173:5173"
     depends_on:
-      - backend
+      - nginx
 
 volumes:
   mysql_data:
   redis_data:
   maven_repo:
   frontend_node_modules:
+  backend_logs:       # 接口字段：后端日志持久化卷
+  backend_data:       # 接口字段：后端数据持久化卷
+  nginx_logs:         # 接口字段：Nginx 日志持久化卷
