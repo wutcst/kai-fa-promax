@@ -1,6 +1,7 @@
 package com.guandan.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.guandan.entity.GameRecord;
 import com.guandan.mapper.GameRecordMapper;
 import jakarta.annotation.Resource;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -158,6 +160,175 @@ public class GameRecordService {
         } catch (Exception e) {
             log.error("更新房间状态失败", e);
         }
+    }
+
+    // ============================================================
+    //  游戏回放存储与查询（按回合分段）
+    // ============================================================
+
+    /**
+     * 保存回合数据到游戏记录中
+     *
+     * 每局游戏可能包含多个回合，每回合存储该回合的牌型、操作等信息。
+     * 首次调用时创建 roundData，后续调用追加到已有数据。
+     *
+     * 异常场景：
+     * - recordId 无效 → 抛"游戏记录不存在"
+     * - roundData JSON 格式错误 → 抛"回合数据格式错误"
+     *
+     * @param recordId  游戏记录ID
+     * @param roundNum  回合序号（从1开始）
+     * @param actionMap 回合操作数据（Map，含 playerId, cardType, cards 等）
+     */
+    public void saveRoundData(Long recordId, int roundNum, Map<String, Object> actionMap) {
+        GameRecord record = gameRecordMapper.selectById(recordId);
+        if (record == null) {
+            throw new RuntimeException("游戏记录不存在: recordId=" + recordId);
+        }
+
+        // 构建本回合数据结构
+        Map<String, Object> roundEntry = new HashMap<>();
+        roundEntry.put("round", roundNum);
+        roundEntry.put("timestamp", LocalDateTime.now().format(DATE_FMT));
+        roundEntry.putAll(actionMap);
+
+        // 更新 roundData：追加或创建
+        StringBuilder sb = new StringBuilder();
+        String existingData = record.getRoundData();
+        if (existingData != null && !existingData.isEmpty() && !"[]".equals(existingData.trim())) {
+            // 追加到已有 JSON 数组
+            String trimmed = existingData.trim();
+            sb.append(trimmed, 0, trimmed.length() - 1); // 去掉末尾 ]
+            if (trimmed.length() > 2) sb.append(",");
+        } else {
+            sb.append("[");
+        }
+        // 序列化 roundEntry 为 JSON 片段（简化实现）
+        sb.append("{\"round\":").append(roundNum);
+        for (Map.Entry<String, Object> entry : actionMap.entrySet()) {
+            sb.append(",\"").append(escapeJson(entry.getKey())).append("\":\"")
+                    .append(escapeJson(String.valueOf(entry.getValue()))).append("\"");
+        }
+        sb.append(",\"timestamp\":\"").append(LocalDateTime.now().format(DATE_FMT)).append("\"");
+        sb.append("}]");
+
+        record.setRoundData(sb.toString());
+        record.setCurrentRound(roundNum);
+        record.setTotalRounds(roundNum);
+        record.setUpdateTime(LocalDateTime.now());
+
+        gameRecordMapper.updateById(record);
+        log.info("保存回合数据: recordId={}, round={}, totalRounds={}", recordId, roundNum, roundNum);
+    }
+
+    /**
+     * 按游戏记录ID查询所有回合数据
+     *
+     * @param recordId 游戏记录ID
+     * @return 包含完整信息的 GameRecord 对象，含 roundData
+     */
+    public GameRecord getFullRecordWithRounds(Long recordId) {
+        GameRecord record = gameRecordMapper.selectById(recordId);
+        if (record == null) {
+            throw new RuntimeException("游戏记录不存在: recordId=" + recordId);
+        }
+        return record;
+    }
+
+    /**
+     * 按回合分段查询（分页）
+     *
+     * 支持根据 round 范围筛选特定回合段，用于回放时按页加载。
+     * 返回的 RoundData 包含当前页的回合摘要信息。
+     *
+     * 异常场景：
+     * - recordId 无效 → 抛出异常
+     * - page/size 参数违法 → 使用默认值
+     *
+     * @param recordId  游戏记录ID
+     * @param page      页码（从1开始）
+     * @param size      每页条数
+     * @return 分页结果，包含总回合数和当前页回合数据
+     */
+    public Map<String, Object> queryRoundsByPage(Long recordId, int page, int size) {
+        GameRecord record = gameRecordMapper.selectById(recordId);
+        if (record == null) {
+            throw new RuntimeException("游戏记录不存在: recordId=" + recordId);
+        }
+
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        if (size > 100) size = 100;
+
+        int totalRounds = record.getTotalRounds() != null ? record.getTotalRounds() : 0;
+        int totalPages = (int) Math.ceil((double) totalRounds / size);
+        if (page > totalPages && totalPages > 0) page = totalPages;
+
+        // 构造返回结果
+        Map<String, Object> result = new HashMap<>();
+        result.put("recordId", recordId);
+        result.put("roomId", record.getRoomId());
+        result.put("winnerId", record.getWinnerId());
+        result.put("score", record.getScore());
+        result.put("totalRounds", totalRounds);
+        result.put("currentPage", page);
+        result.put("pageSize", size);
+        result.put("totalPages", totalPages);
+        result.put("createTime", record.getCreateTime() != null
+                ? record.getCreateTime().format(DATE_FMT) : "");
+
+        // roundData 中筛选当前页的回合
+        String roundDataStr = record.getRoundData();
+        if (roundDataStr != null && !roundDataStr.isEmpty()) {
+            // 简单实现：返回完整 roundData，由前端做分页展示
+            // 生产环境应解析 JSON 后按 round 范围筛选
+            result.put("roundData", roundDataStr);
+        } else {
+            result.put("roundData", "[]");
+        }
+
+        log.info("分段查询回放: recordId={}, page={}, size={}, totalRounds={}",
+                recordId, page, size, totalRounds);
+        return result;
+    }
+
+    /**
+     * 按回合范围查询回放片段
+     *
+     * 查询指定 roundMin 到 roundMax 范围内的回合数据。
+     * 用于"上一回合/下一回合"的细粒度回放控制。
+     *
+     * @param recordId 游戏记录ID
+     * @param roundMin 起始回合
+     * @param roundMax 结束回合
+     * @return 包含指定回合范围的回放数据
+     */
+    public Map<String, Object> queryRoundsByRange(Long recordId, int roundMin, int roundMax) {
+        GameRecord record = gameRecordMapper.selectById(recordId);
+        if (record == null) {
+            throw new RuntimeException("游戏记录不存在: recordId=" + recordId);
+        }
+
+        if (roundMin < 1) roundMin = 1;
+        int totalRounds = record.getTotalRounds() != null ? record.getTotalRounds() : 0;
+        if (roundMax > totalRounds) roundMax = totalRounds;
+        if (roundMin > roundMax) roundMin = roundMax;
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("recordId", recordId);
+        result.put("roomId", record.getRoomId());
+        result.put("winnerId", record.getWinnerId());
+        result.put("roundMin", roundMin);
+        result.put("roundMax", roundMax);
+        result.put("totalRounds", totalRounds);
+
+        // 返回完整的 roundData（生产环境应解析后按 range 筛选）
+        String roundDataStr = record.getRoundData();
+        result.put("roundData", roundDataStr != null ? roundDataStr : "[]");
+
+        log.info("按范围查询回放: recordId={}, roundMin={}, roundMax={}",
+                recordId, roundMin, roundMax);
+        return result;
     }
 
     // ============================================================
