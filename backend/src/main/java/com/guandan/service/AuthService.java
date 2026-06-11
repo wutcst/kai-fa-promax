@@ -356,6 +356,261 @@ public class AuthService {
             throw new RuntimeException("Token解析失败");
         }
     }
+
+    // ================================================================
+    //  密码重置流程（邮箱验证码 + Token 限时机制）
+    // ================================================================
+
+    /**
+     * 密码重置 Token 前缀
+     */
+    private static final String RESET_PREFIX = "reset_token_";
+
+    /**
+     * 密码重置 Token 有效期（毫秒），默认 15 分钟
+     */
+    private static final long RESET_TOKEN_EXPIRY_MS = 15 * 60 * 1000L;
+
+    /**
+     * 邮箱验证码存储（生产环境应替换为 Redis）
+     * key: email, value: verificationCode
+     */
+    private final java.util.Map<String, String> emailVerificationCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * 密码重置 Token 存储（生产环境应替换为 Redis）
+     * key: resetToken, value: {userId, expiryTimestamp}
+     */
+    private final java.util.Map<String, java.util.Map<String, Object>> resetTokenCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * 发送邮箱验证码（用于密码重置）
+     *
+     * 完整流程：
+     * 1. 校验邮箱格式合法性
+     * 2. 查找对应用户是否存在
+     * 3. 生成6位随机数字验证码
+     * 4. 缓存验证码（关联邮箱，5分钟有效）
+     * 5. 模拟发送验证码（实际调用邮件服务）
+     *
+     * 异常场景：
+     * - 邮箱格式非法 → 抛"邮箱格式不合法"
+     * - 对应用户不存在 → 抛"该邮箱未注册"
+     * - 验证码生成失败 → 抛"验证码生成失败，请重试"
+     *
+     * @param email 用户注册邮箱
+     * @return 验证码（生产环境不应返回给客户端）
+     */
+    public String sendPasswordResetCode(String email) {
+        if (email == null || !email.matches("^[\\w.-]+@[\\w.-]+\\.\\w{2,}$")) {
+            throw new RuntimeException("邮箱格式不合法");
+        }
+
+        // 校验邮箱是否已注册（通过 userService 查找）
+        User user = userService.findByEmail(email);
+        if (user == null) {
+            // 不暴露用户是否存在，但这里为明确提示
+            throw new RuntimeException("该邮箱未注册");
+        }
+
+        // 生成6位随机验证码
+        String code = String.format("%06d", (int) (Math.random() * 1000000));
+        emailVerificationCache.put(email, code);
+
+        // 模拟发送邮件（生产环境对接邮件服务 SDK）
+        log.info("密码重置验证码已发送: email={}, code={}", email, code);
+
+        // 5分钟后自动清除验证码
+        java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
+                .schedule(() -> {
+                    emailVerificationCache.remove(email);
+                    log.debug("验证码已过期清除: email={}", email);
+                }, 5, java.util.concurrent.TimeUnit.MINUTES);
+
+        return code;
+    }
+
+    /**
+     * 校验邮箱验证码
+     *
+     * 校验规则：
+     * - email 和 code 均非空
+     * - code 与缓存中的值一致
+     * - 验证码校验通过后立即从缓存中移除（一次性使用）
+     *
+     * @param email 用户邮箱
+     * @param code  用户输入的验证码
+     * @return true 校验通过，false 校验失败
+     */
+    public boolean verifyEmailCode(String email, String code) {
+        if (email == null || code == null) {
+            return false;
+        }
+        String cachedCode = emailVerificationCache.get(email);
+        if (cachedCode == null) {
+            log.warn("验证码不存在或已过期: email={}", email);
+            return false;
+        }
+        boolean matched = cachedCode.equals(code.trim());
+        if (matched) {
+            // 一次性使用，立即清除
+            emailVerificationCache.remove(email);
+            log.info("邮箱验证码校验通过: email={}", email);
+        } else {
+            log.warn("邮箱验证码校验失败: email={}", email);
+        }
+        return matched;
+    }
+
+    /**
+     * 生成密码重置 Token（验证码校验通过后调用）
+     *
+     * 流程：
+     * 1. 根据邮箱查找对应用户
+     * 2. 生成带时间戳的 Token（格式: reset_token_{userId}_{timestamp}_{random})
+     * 3. 将 Token 存入缓存，记录到期时间
+     * 4. 返回 Token 字符串
+     *
+     * 异常场景：
+     * - 邮箱未注册 → 抛"用户不存在"
+     * - Token 生成异常 → 抛"Token生成失败"
+     *
+     * @param email 用户邮箱
+     * @return 限时密码重置 Token
+     */
+    public String generateResetToken(String email) {
+        User user = userService.findByEmail(email);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+
+        long now = System.currentTimeMillis();
+        long expiry = now + RESET_TOKEN_EXPIRY_MS;
+        String token = RESET_PREFIX + user.getId() + "_" + now + "_"
+                + String.format("%04x", (int) (Math.random() * 0xFFFF));
+
+        java.util.Map<String, Object> tokenData = new java.util.HashMap<>();
+        tokenData.put("userId", user.getId());
+        tokenData.put("expiry", expiry);
+        resetTokenCache.put(token, tokenData);
+
+        log.info("密码重置Token已生成: userId={}, 有效期15分钟", user.getId());
+        return token;
+    }
+
+    /**
+     * 重置密码（携带重置 Token）
+     *
+     * 流程：
+     * 1. 校验 resetToken 和 newPassword 非空
+     * 2. 校验 Token 格式和有效期
+     * 3. 检查新密码长度（6-10位）
+     * 4. BCrypt 加密新密码
+     * 5. 更新用户密码
+     * 6. 清除已使用的重置 Token
+     *
+     * 异常场景：
+     * - Token 为空或格式无效 → 抛"重置Token无效"
+     * - Token 已过期 → 抛"重置链接已过期，请重新获取"
+     * - 密码格式不合法 → 抛"密码长度必须在6-10位之间"
+     * - 用户被删除 → 抛"用户不存在"
+     * - 更新失败 → 抛"密码重置失败，请稍后重试"
+     *
+     * @param resetToken  密码重置 Token
+     * @param newPassword 新密码
+     */
+    public void resetPassword(String resetToken, String newPassword) {
+        if (resetToken == null || !resetToken.startsWith(RESET_PREFIX)) {
+            throw new RuntimeException("重置Token无效");
+        }
+
+        // 从缓存获取 Token 数据
+        java.util.Map<String, Object> tokenData = resetTokenCache.get(resetToken);
+        if (tokenData == null) {
+            throw new RuntimeException("重置Token无效或已使用");
+        }
+
+        // 检查有效期
+        long expiry = (long) tokenData.get("expiry");
+        if (System.currentTimeMillis() > expiry) {
+            resetTokenCache.remove(resetToken);
+            throw new RuntimeException("重置链接已过期，请重新获取");
+        }
+
+        // 校验新密码
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new RuntimeException("新密码不能为空");
+        }
+        String trimmedPassword = newPassword.trim();
+        if (trimmedPassword.length() < 6 || trimmedPassword.length() > 10) {
+            throw new RuntimeException("密码长度必须在6-10位之间");
+        }
+
+        // 获取用户并更新密码
+        Long userId = (Long) tokenData.get("userId");
+        User user = userService.findById(userId);
+        if (user == null) {
+            resetTokenCache.remove(resetToken);
+            throw new RuntimeException("用户不存在");
+        }
+
+        String hashedPassword = PasswordUtil.hashPassword(trimmedPassword);
+        user.setPassword(hashedPassword);
+        boolean updated = userService.updateUser(user);
+        if (!updated) {
+            throw new RuntimeException("密码重置失败，请稍后重试");
+        }
+
+        // 清除已使用的 Token
+        resetTokenCache.remove(resetToken);
+        log.info("密码重置成功: userId={}", userId);
+    }
+
+    /**
+     * 校验重置 Token 是否有效
+     *
+     * 用于前端在展示重置表单前预校验 Token 状态。
+     * 不消费 Token，仅查询。
+     *
+     * @param resetToken 密码重置 Token
+     * @return true 有效，false 无效或已过期
+     */
+    public boolean isResetTokenValid(String resetToken) {
+        if (resetToken == null || !resetToken.startsWith(RESET_PREFIX)) {
+            return false;
+        }
+        java.util.Map<String, Object> tokenData = resetTokenCache.get(resetToken);
+        if (tokenData == null) {
+            return false;
+        }
+        long expiry = (long) tokenData.get("expiry");
+        return System.currentTimeMillis() <= expiry;
+    }
+
+    /**
+     * 清除所有过期重置 Token（定时清理任务入口）
+     *
+     * 由外部调度任务（如 ScheduledExecutorService）周期性调用，
+     * 防止重置 Token 缓存无限膨胀。
+     */
+    public void purgeExpiredResetTokens() {
+        long now = System.currentTimeMillis();
+        int removed = 0;
+        java.util.Iterator<java.util.Map.Entry<String, java.util.Map<String, Object>>> it =
+                resetTokenCache.entrySet().iterator();
+        while (it.hasNext()) {
+            java.util.Map.Entry<String, java.util.Map<String, Object>> entry = it.next();
+            long expiry = (long) entry.getValue().get("expiry");
+            if (now > expiry) {
+                it.remove();
+                removed++;
+            }
+        }
+        if (removed > 0) {
+            log.info("已清除 {} 个过期的重置Token", removed);
+        }
+    }
 }
 
     // ── Phase 1 手动回归测试验证点 ──
