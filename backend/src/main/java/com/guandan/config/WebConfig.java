@@ -13,10 +13,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * 功能说明：
  * 1. CORS跨域配置 —— 允许所有来源的前端请求
  * 2. Token拦截器注册 —— 除登录、注册、WebSocket外全部拦截
+ * 3. 限流拦截器注册 —— 对敏感API进行令牌桶和IP频次控制
  * <p>
  * 接口字段：
  * - addCorsMappings(): 配置跨域允许的来源、方法、头信息
- * - addInterceptors(): 注册TokenInterceptor，配置排除路径
+ * - addInterceptors(): 注册TokenInterceptor和RateLimitInterceptor，配置排除路径
  * <p>
  * 异常场景：
  * - CORS配置不当 → 浏览器跨域请求被拒绝
@@ -33,6 +34,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * 8. allowCredentials=true 且 allowedOriginPatterns="*" 不冲突
  * 9. CORS maxAge=3600 缓存预检结果1小时
  * 10. 响应Content-Type为application/json;charset=UTF-8
+ * 11. RateLimitInterceptor 已注册到 /api/** 路径
+ * 12. 限流排除路径 /api/login、/api/register、/ws/** 正确配置
  * ─────────────────────────────────────────────────────────
  * <p>
  * ── 提交材料 ──────────────────────────────────────────────
@@ -51,6 +54,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Autowired
     private TokenInterceptor tokenInterceptor;
 
+    @Autowired
+    private RateLimitInterceptor rateLimitInterceptor;
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
@@ -63,6 +69,13 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 限流拦截器 - 对所有API生效，order=0 优先执行
+        registry.addInterceptor(rateLimitInterceptor)
+                .addPathPatterns("/api/**")
+                .excludePathPatterns("/api/login", "/api/register", "/ws/**")
+                .order(0);
+
+        // Token认证拦截器 - order=1 在限流之后执行
         registry.addInterceptor(tokenInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns("/api/login", "/api/register", "/ws/**")
