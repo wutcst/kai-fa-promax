@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
  * - 游戏开始/状态查询
  * - 房间状态查询（等待页）
  * - 房主提示信息
+ * - 观战模式（非玩家只读视角同步牌局）
  *
  * 配置说明：
  * - 准备接口（POST /api/game/ready）：房主自动视为已准备，无需调用此接口
@@ -38,6 +40,9 @@ import java.util.stream.Collectors;
  * - 房主提示（GET /api/game/{roomNo}/host-tip）：返回可开始/人数不足/未准备等提示
  * - 玩家状态（GET /api/game/{roomNo}/player-status）：返回每个玩家的准备详情
  * - 等待页完整状态（GET /api/game/{roomNo}/waiting-status）：等待页一站式状态查询
+ * - 观战进入（POST /api/game/{roomNo}/spectate）：非玩家以只读视角进入房间
+ * - 观战退出（POST /api/game/{roomNo}/spectate/leave）：观战者离开房间
+ * - 观战牌局（GET /api/game/{roomNo}/spectate/board）：返回只读牌局快照
  * - 最少人数要求：2 人（不包括房主自动准备）
  * - 最大人数限制：4 人（与 RoomService.MAX_PLAYERS 对齐）
  * -
@@ -867,6 +872,267 @@ public class GameController {
      */
     private Long validateAndGetUserId(String token) {
         return getUserIdFromToken(token);
+    }
+
+    // ============================================================
+    //  观战模式：非玩家可进入只读视角同步牌局
+    // ============================================================
+
+    /** 观战者集合：roomNo -> Set<userId> */
+    private final Map<String, Set<Long>> spectateRoomViewers = new ConcurrentHashMap<>();
+
+    /** 观战者最大人数 */
+    private static final int MAX_SPECTATORS_PER_ROOM = 50;
+
+    /**
+     * 进入观战模式
+     * POST /api/game/{roomNo}/spectate
+     *
+     * 非玩家以只读视角进入房间，可实时查看牌局状态，
+     * 但无法进行任何操作（出牌、准备、发言等）。
+     *
+     * 请求参数：无（仅需 Token 和 roomNo）
+     *
+     * 返回结构：
+     * {
+     *   "code": 200,
+     *   "data": {
+     *     "roomNo": "123456",
+     *     "status": "PLAYING",
+     *     "spectatorId": "user_1001",
+     *     "spectatorCount": 2,
+     *     "players": [ { "seatIndex": 0, "nickname": "玩家A", "cardCount": 27 } ],
+     *     "board": { ... 当前牌局快照 ... },
+     *     "message": "已进入观战模式"
+     *   }
+     * }
+     *
+     * 异常场景：
+     * - 房间不存在
+     * - 房间未开始游戏（无可观战的牌局）
+     * - 玩家已在房间中（请直接进入游戏）
+     * - 观战人数已满
+     */
+    @PostMapping("/game/{roomNo}/spectate")
+    public Result<Map<String, Object>> spectateRoom(
+            @RequestHeader("Authorization") String token,
+            @PathVariable String roomNo) {
+        try {
+            Long userId = getUserIdFromToken(token);
+            if (userId == null) {
+                return Result.error(com.guandan.common.Result.ErrorCode.UNAUTHORIZED);
+            }
+
+            Room room = roomService.getRoomByRoomNo(roomNo);
+            if (room == null) {
+                return Result.error(com.guandan.common.Result.ErrorCode.ROOM_NOT_FOUND);
+            }
+
+            // 检查玩家是否已在房间中（已在房间则不应使用观战）
+            RoomPlayer existingPlayer = roomService.getRoomPlayer(room.getId(), userId);
+            if (existingPlayer != null) {
+                return Result.error("你已在房间中，无需观战模式");
+            }
+
+            // 检查房间是否已有观战者名额
+            Set<Long> viewers = spectateRoomViewers.computeIfAbsent(roomNo, k -> ConcurrentHashMap.newKeySet());
+            if (viewers.size() >= MAX_SPECTATORS_PER_ROOM) {
+                return Result.error(com.guandan.common.Result.ErrorCode.SPECTATOR_FULL);
+            }
+
+            viewers.add(userId);
+
+            // 构建牌局快照
+            String roomId = "room_" + roomNo;
+            GameRoom gameRoom = gameLogicService.getRoom(roomId);
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("roomNo", roomNo);
+            data.put("status", room.getStatus() == 0 ? "WAITING" :
+                    room.getStatus() == 1 ? "PLAYING" : "FINISHED");
+            data.put("spectatorId", "user_" + userId);
+            data.put("spectatorCount", viewers.size());
+            data.put("message", "已进入观战模式");
+
+            // 玩家基本信息
+            List<RoomPlayer> roomPlayers = roomService.getRoomPlayers(room.getId());
+            List<Map<String, Object>> playerInfos = new ArrayList<>();
+            if (roomPlayers != null) {
+                for (RoomPlayer rp : roomPlayers) {
+                    Map<String, Object> pi = new LinkedHashMap<>();
+                    pi.put("seatIndex", rp.getSeatIndex());
+                    User u = userMapper.selectById(rp.getUserId());
+                    pi.put("nickname", u != null ? u.getNickname() : ("玩家" + rp.getUserId()));
+                    pi.put("cardCount", getPlayerCardCount(roomId, String.valueOf(rp.getUserId())));
+                    pi.put("userId", rp.getUserId());
+                    pi.put("isReady", rp.getIsReady());
+                    playerInfos.add(pi);
+                }
+            }
+            data.put("players", playerInfos);
+
+            // 牌局快照（仅对 PLAYING 状态）
+            if (gameRoom != null) {
+                data.put("board", buildSpectateBoard(gameRoom));
+            }
+
+            return Result.success(data);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 退出观战模式
+     * POST /api/game/{roomNo}/spectate/leave
+     */
+    @PostMapping("/game/{roomNo}/spectate/leave")
+    public Result<Map<String, Object>> leaveSpectate(
+            @RequestHeader("Authorization") String token,
+            @PathVariable String roomNo) {
+        try {
+            Long userId = getUserIdFromToken(token);
+            if (userId == null) {
+                return Result.error(com.guandan.common.Result.ErrorCode.UNAUTHORIZED);
+            }
+
+            Set<Long> viewers = spectateRoomViewers.get(roomNo);
+            if (viewers != null) {
+                viewers.remove(userId);
+                if (viewers.isEmpty()) {
+                    spectateRoomViewers.remove(roomNo);
+                }
+            }
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("roomNo", roomNo);
+            data.put("message", "已退出观战模式");
+            return Result.success(data);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取观战牌局快照（轮询用）
+     * GET /api/game/{roomNo}/spectate/board
+     *
+     * 返回只读牌局快照，供观战者前端轮询刷新。
+     *
+     * 返回结构：
+     * {
+     *   "code": 200,
+     *   "data": {
+     *     "roomNo": "123456",
+     *     "status": "PLAYING",
+     *     "currentPlayerId": "1002",
+     *     "currentPlayerNickname": "玩家B",
+     *     "deskDisplay": { ... },
+     *     "players": [ { "position": "top", "nickname": "玩家A", "cardCount": 12 } ],
+     *     "levelCard": 5,
+     *     "finishOrder": ["player_1001"],
+     *     "finishLabels": { "player_1001": "头游" }
+     *   }
+     * }
+     */
+    @GetMapping("/game/{roomNo}/spectate/board")
+    public Result<Map<String, Object>> getSpectateBoard(
+            @RequestHeader("Authorization") String token,
+            @PathVariable String roomNo) {
+        try {
+            Long userId = getUserIdFromToken(token);
+            if (userId == null) {
+                return Result.error(com.guandan.common.Result.ErrorCode.UNAUTHORIZED);
+            }
+
+            // 验证该用户是否为观战者
+            Set<Long> viewers = spectateRoomViewers.get(roomNo);
+            if (viewers == null || !viewers.contains(userId)) {
+                return Result.error("你未处于该房间的观战模式");
+            }
+
+            Room room = roomService.getRoomByRoomNo(roomNo);
+            if (room == null) {
+                return Result.error("房间不存在");
+            }
+
+            String roomId = "room_" + roomNo;
+            GameRoom gameRoom = gameLogicService.getRoom(roomId);
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("roomNo", roomNo);
+            data.put("status", room.getStatus() == 0 ? "WAITING" :
+                    room.getStatus() == 1 ? "PLAYING" : "FINISHED");
+
+            if (gameRoom != null) {
+                data.put("board", buildSpectateBoard(gameRoom));
+            }
+
+            return Result.success(data);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 构建观战牌局快照
+     */
+    private Map<String, Object> buildSpectateBoard(GameRoom gameRoom) {
+        if (gameRoom == null) return Collections.emptyMap();
+
+        Map<String, Object> board = new LinkedHashMap<>();
+
+        // 当前出牌玩家
+        board.put("currentPlayerId", gameRoom.getCurrentPlayerId());
+
+        // 各玩家手牌数量（不暴露具体牌面）
+        Map<String, Object> playerCards = new LinkedHashMap<>();
+        for (String pid : gameRoom.getPlayerIds()) {
+            List<Integer> hand = gameRoom.getHandCards().get(pid);
+            playerCards.put(pid, hand != null ? hand.size() : 0);
+        }
+        board.put("playerCardCounts", playerCards);
+
+        // 最近一手牌
+        board.put("lastPlayerId", gameRoom.getLastPlayerId());
+        board.put("lastHandCards", gameRoom.getLastHandCards());
+        board.put("consecutivePassCount", gameRoom.getConsecutivePassCount());
+        board.put("tableCleared", gameRoom.isTableCleared());
+
+        // 桌面四方出牌展示（仅显示牌背，不暴露具体牌面）
+        Map<String, Integer> deskCardCounts = new LinkedHashMap<>();
+        Map<String, Object> rawDesk = gameRoom.getDeskDisplay();
+        if (rawDesk != null) {
+            for (Map.Entry<String, Object> entry : rawDesk.entrySet()) {
+                Object val = entry.getValue();
+                if (val instanceof List) {
+                    deskCardCounts.put(entry.getKey(), ((List<?>) val).size());
+                } else {
+                    deskCardCounts.put(entry.getKey(), 0);
+                }
+            }
+        }
+        board.put("deskCardCounts", deskCardCounts);
+
+        // 完成顺序
+        List<String> finishOrderList = gameRoom.getFinishOrder();
+        board.put("finishOrder", finishOrderList != null ? finishOrderList : Collections.emptyList());
+
+        return board;
+    }
+
+    /**
+     * 获取玩家当前手牌数量
+     */
+    private int getPlayerCardCount(String roomId, String playerId) {
+        try {
+            GameRoom room = gameLogicService.getRoom(roomId);
+            if (room == null) return 0;
+            List<Integer> hand = room.getHandCards().get(playerId);
+            return hand != null ? hand.size() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     // ============================================================

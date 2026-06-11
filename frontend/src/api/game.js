@@ -233,7 +233,48 @@ export const getPlayerTrend = () => {
   return cachedGet('/player/trend', null, 60000)
 }
 
-// ========== 大厅交互模块 ==========
+// ========== 观战模式模块 ==========
+
+/**
+ * 进入观战模式
+ * POST /api/game/{roomNo}/spectate
+ *
+ * 以只读视角进入房间，可实时查看牌局状态但无法操作。
+ * 调用此接口表示进入观战模式，返回当前牌局快照。
+ */
+export const spectateRoom = (roomNo) => {
+  if (!roomNo) {
+    return Promise.reject(new Error('房间号不能为空'))
+  }
+  return axiosInstance.post(`/game/${roomNo}/spectate`)
+}
+
+/**
+ * 退出观战模式
+ * POST /api/game/{roomNo}/spectate/leave
+ *
+ * 观战者离开当前房间的观战模式。
+ */
+export const leaveSpectate = (roomNo) => {
+  if (!roomNo) {
+    return Promise.reject(new Error('房间号不能为空'))
+  }
+  return axiosInstance.post(`/game/${roomNo}/spectate/leave`)
+}
+
+/**
+ * 获取观战牌局快照（轮询用）
+ * GET /api/game/{roomNo}/spectate/board
+ *
+ * 返回只读牌局快照，供观战者前端轮询刷新。
+ * 包含当前出牌玩家、手牌数量、桌面展示等信息。
+ */
+export const getSpectateBoard = (roomNo) => {
+  if (!roomNo) {
+    return Promise.reject(new Error('房间号不能为空'))
+  }
+  return axiosInstance.get(`/game/${roomNo}/spectate/board`)
+}
 
 /**
  * 本地存储工具 —— 保存房间状态到 localStorage
