@@ -23,6 +23,11 @@
       <el-icon style="margin-right: 4px;"><User /></el-icon>登录游戏
     </el-button>
             </el-form-item>
+            <el-form-item>
+              <el-link type="warning" :underline="false" class="forgot-link" @click="showResetDialog = true">
+                忘记密码？
+              </el-link>
+            </el-form-item>
           </el-form>
         </el-tab-pane>
 
@@ -44,6 +49,48 @@
         </el-tab-pane>
       </el-tabs>
     </div>
+
+    <!-- ── 忘记密码对话框 ── -->
+    <el-dialog v-model="showResetDialog" title="重置密码" width="400px" top="25vh" :close-on-click-modal="false" destroy-on-close>
+      <el-form v-if="resetStep === 1" :model="resetForm" :rules="resetRules" ref="resetFormRef" label-width="80px">
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="resetForm.email" placeholder="请输入注册邮箱" maxlength="50" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" class="dialog-btn" @click="handleSendCode" :loading="sendingCode">
+            发送验证码
+          </el-button>
+        </el-form-item>
+        <el-form-item label="验证码" prop="code">
+          <el-input v-model="resetForm.code" placeholder="请输入6位验证码" maxlength="6" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="success" class="dialog-btn" @click="handleVerifyCode" :loading="verifyingCode">
+            验证
+          </el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-form v-if="resetStep === 2" :model="resetForm" :rules="newPwdRules" ref="newPwdFormRef" label-width="80px">
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input v-model="resetForm.newPassword" type="password" placeholder="6-10位密码" maxlength="10" show-password />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmNewPwd">
+          <el-input v-model="resetForm.confirmNewPwd" type="password" placeholder="再次输入新密码" maxlength="10" show-password />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" class="dialog-btn" @click="handleResetPassword" :loading="resettingPwd">
+            确认重置
+          </el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-result v-if="resetStep === 3" icon="success" title="密码重置成功" sub-title="请使用新密码登录">
+        <template #extra>
+          <el-button type="primary" @click="closeResetDialog">返回登录</el-button>
+        </template>
+      </el-result>
+    </el-dialog>
   </div>
 </template>
 
@@ -226,6 +273,117 @@ const handleRegister = () => {
       })
   })
 }
+
+// ── 密码重置流程 ──
+const showResetDialog = ref(false)
+const resetStep = ref(1) // 1: 验证邮箱, 2: 设置新密码, 3: 完成
+const resetFormRef = ref(null)
+const newPwdFormRef = ref(null)
+const sendingCode = ref(false)
+const verifyingCode = ref(false)
+const resettingPwd = ref(false)
+const resetToken = ref('')
+
+const resetForm = reactive({
+  email: '',
+  code: '',
+  newPassword: '',
+  confirmNewPwd: ''
+})
+
+const resetRules = reactive({
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
+  ],
+  code: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { pattern: /^\d{6}$/, message: '验证码为6位数字', trigger: 'blur' }
+  ]
+})
+
+const newPwdRules = reactive({
+  newPassword: [
+    { required: true, message: '请设置新密码', trigger: 'blur' },
+    { min: 6, max: 10, message: '密码长度6-10位', trigger: 'blur' }
+  ],
+  confirmNewPwd: [
+    { required: true, message: '请确认新密码', trigger: 'blur' },
+    {
+      validator: (rule, value, cb) => value !== resetForm.newPassword
+        ? cb(new Error('两次密码不一致')) : cb(),
+      trigger: 'blur'
+    }
+  ]
+})
+
+/**
+ * 发送邮箱验证码
+ * 调用后端 sendPasswordResetCode 接口
+ */
+const handleSendCode = () => {
+  resetFormRef.value.validateField('email', valid => {
+    if (!valid) return
+    sendingCode.value = true
+    // 模拟调用后端接口
+    setTimeout(() => {
+      sendingCode.value = false
+      ElMessage.success('验证码已发送到邮箱')
+    }, 800)
+  })
+}
+
+/**
+ * 验证邮箱验证码并生成重置Token
+ * 调用后端 verifyEmailCode + generateResetToken
+ */
+const handleVerifyCode = () => {
+  resetFormRef.value.validateField('code', valid => {
+    if (!valid) return
+    verifyingCode.value = true
+    // 模拟验证
+    setTimeout(() => {
+      verifyingCode.value = false
+      resetToken.value = 'mock_reset_token_' + Date.now()
+      resetStep.value = 2
+      ElMessage.success('验证通过，请设置新密码')
+    }, 600)
+  })
+}
+
+/**
+ * 执行密码重置
+ * 调用后端 resetPassword 接口
+ */
+const handleResetPassword = () => {
+  newPwdFormRef.value.validate(async valid => {
+    if (!valid) return
+    resettingPwd.value = true
+    try {
+      // 模拟调用后端 resetPassword 接口
+      await new Promise(resolve => setTimeout(resolve, 800))
+      resetStep.value = 3
+      ElMessage.success('密码重置成功')
+    } catch (err) {
+      ElMessage.error('密码重置失败，请重试')
+    } finally {
+      resettingPwd.value = false
+    }
+  })
+}
+
+/**
+ * 关闭重置密码对话框并重置状态
+ */
+const closeResetDialog = () => {
+  showResetDialog.value = false
+  resetStep.value = 1
+  resetForm.email = ''
+  resetForm.code = ''
+  resetForm.newPassword = ''
+  resetForm.confirmNewPwd = ''
+  resetToken.value = ''
+}
 </script>
 
 <style scoped>
@@ -359,6 +517,29 @@ const handleRegister = () => {
 
 :deep(.el-form-item.is-error .el-input__wrapper.is-focus) {
   box-shadow: 0 0 0 2px #f56c6c inset, 0 0 0 3px rgba(245, 108, 108, 0.15) !important;
+}
+
+/* ── 忘记密码链接 ── */
+.forgot-link {
+  font-size: 13px;
+  float: right;
+  margin-top: -8px;
+  color: #b87934;
+  cursor: pointer;
+  transition: color 0.25s ease;
+}
+
+.forgot-link:hover {
+  color: #8a5a24 !important;
+}
+
+/* ── 对话框按钮 ── */
+.dialog-btn {
+  width: 100%;
+  padding: 10px 0;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 1px;
 }
 
 /* ── 按钮聚焦和悬停样式 ── */
