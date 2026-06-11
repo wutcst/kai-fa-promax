@@ -76,12 +76,22 @@ class WebSocketService {
     this.token = null
     this.listeners = {}
     this.reconnectAttempts = 0
-    this.maxReconnectAttempts = 5
+    this.maxReconnectAttempts = 10
     this.reconnectInterval = 3000
     this.heartbeatInterval = 30000
     this.heartbeatTimer = null
     this.reconnectTimer = null
     this.lastNotReadyToastAt = 0
+
+    // 指数退避重连参数
+    this.baseDelay = 1000       // 初始延迟 1s
+    this.maxDelay = 30000       // 最大延迟 30s
+    this.jitterFactor = 0.3     // 随机抖动因子 ±30%
+    this.lastReconnectAt = 0    // 上次重连时间
+    this.healthCheckTimer = null
+    this.healthCheckInterval = 15000  // 健康检查间隔 15s
+    this.lastMessageAt = 0      // 最后收到消息的时间
+    this.connectionStartTime = 0
   }
 
   /**
@@ -116,14 +126,19 @@ class WebSocketService {
 
     try {
       this.socket = new WebSocket(wsUrl)
+      this.connectionStartTime = Date.now()
 
       this.socket.onopen = () => {
         console.log('WebSocket连接成功')
         this.isConnected = true
         this.reconnectAttempts = 0
+        this.lastMessageAt = Date.now()
 
         // 启动心跳检测
         this.startHeartbeat()
+
+        // 启动健康检查
+        this.startHealthCheck()
 
         // 加入房间（如果提供了房间ID）
         if (this.roomId) {
@@ -140,6 +155,9 @@ class WebSocketService {
           const message = JSON.parse(event.data)
           const { type, data } = message
 
+          // 更新最后消息接收时间
+          this.lastMessageAt = Date.now()
+
           if (type) {
             this.emit(type, data || message)
           } else {
@@ -154,8 +172,9 @@ class WebSocketService {
         console.log('WebSocket连接关闭, code:', event.code)
         this.isConnected = false
 
-        // 停止心跳检测
+        // 停止心跳检测和健康检查
         this.stopHeartbeat()
+        this.stopHealthCheck()
 
         // 触发连接关闭事件
         this.emit('disconnect')
@@ -196,8 +215,9 @@ class WebSocketService {
       this.isConnected = false
     }
 
-    // 停止心跳检测
+    // 停止心跳检测和健康检查
     this.stopHeartbeat()
+    this.stopHealthCheck()
 
     // 清除状态
     this.playerId = null
@@ -295,7 +315,72 @@ class WebSocketService {
   }
 
   /**
-   * 尝试重连
+   * 启动健康检查
+   *
+   * 定期检查 WebSocket 连接的健康状况。如果在健康检查间隔内
+   * 没有收到任何消息（包括心跳 pong），则认为连接已失效，
+   * 触发主动重连。
+   */
+  startHealthCheck() {
+    this.stopHealthCheck()
+    this.lastMessageAt = Date.now()
+    this.healthCheckTimer = setInterval(() => {
+      const now = Date.now()
+      const elapsed = now - this.lastMessageAt
+
+      // 如果超过心跳间隔的2倍仍未收到任何消息，判定为健康检查超时
+      if (elapsed > this.heartbeatInterval * 2) {
+        console.warn(`WebSocket健康检查超时: 已${Math.round(elapsed / 1000)}秒无消息`)
+        this.emit('healthCheckTimeout', { elapsed })
+
+        // 尝试发送一个 ping 探测
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+          try {
+            this.socket.send(JSON.stringify({ type: 'ping', data: { timestamp: now } }))
+          } catch (e) {
+            console.error('健康检查ping发送失败:', e)
+          }
+        }
+      }
+    }, this.healthCheckInterval)
+  }
+
+  /**
+   * 停止健康检查
+   */
+  stopHealthCheck() {
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer)
+      this.healthCheckTimer = null
+    }
+  }
+
+  /**
+   * 计算指数退避延迟（带随机抖动）
+   *
+   * 退避策略：baseDelay * 2^attempt，上限 maxDelay
+   * 随机抖动：在计算值的基础上 ±jitterFactor 范围内的随机偏移
+   *
+   * @param {number} attempt 当前重连尝试次数（从0开始）
+   * @returns {number} 计算后的延迟毫秒数
+   */
+  getBackoffDelay(attempt) {
+    // 指数退避：1s, 2s, 4s, 8s, 16s, 30s, 30s...
+    const exponentialDelay = Math.min(
+      this.baseDelay * Math.pow(2, attempt),
+      this.maxDelay
+    )
+
+    // 随机抖动：±30%
+    const jitter = exponentialDelay * this.jitterFactor * (Math.random() * 2 - 1)
+    const finalDelay = Math.round(exponentialDelay + jitter)
+
+    // 确保不小于 baseDelay 的一半，不大于 maxDelay
+    return Math.max(Math.round(this.baseDelay / 2), Math.min(finalDelay, this.maxDelay))
+  }
+
+  /**
+   * 尝试重连（指数退避 + 随机抖动）
    */
   attemptReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
@@ -305,13 +390,28 @@ class WebSocketService {
     }
 
     this.reconnectAttempts++
-    console.log(`WebSocket尝试重连(${this.reconnectAttempts}/${this.maxReconnectAttempts})...`)
+
+    // 计算指数退避延迟
+    const attemptIndex = this.reconnectAttempts - 1
+    const delay = this.getBackoffDelay(attemptIndex)
+
+    // 防止短时间内多次重连
+    const now = Date.now()
+    const timeSinceLastReconnect = now - this.lastReconnectAt
+    const effectiveDelay = Math.max(delay, timeSinceLastReconnect < delay ? delay - timeSinceLastReconnect : 0)
+
+    console.log(
+      `WebSocket尝试重连(${this.reconnectAttempts}/${this.maxReconnectAttempts})...` +
+      ` 退避延迟: ${delay}ms, 实际延迟: ${effectiveDelay}ms`
+    )
+
+    this.lastReconnectAt = now + effectiveDelay
 
     this.reconnectTimer = setTimeout(() => {
       if (this.playerId) {
         this.connect(this.playerId, this.roomId)
       }
-    }, this.reconnectInterval)
+    }, effectiveDelay)
   }
 
   /**

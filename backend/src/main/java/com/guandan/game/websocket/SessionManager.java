@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * WebSocket会话管理器
@@ -126,6 +127,32 @@ public class SessionManager {
      * 在线玩家数量
      */
     private final AtomicInteger onlineCount = new AtomicInteger(0);
+
+    /**
+     * 健康检查超时回调
+     *
+     * 当检测到某个玩家的连接长时间（超过 CONNECTION_TIMEOUT）无活动时，
+     * 通过此回调通知注册的监听器。监听器可以在此回调中执行断线清理逻辑。
+     *
+     * 参数：playerId - 健康检查超时的玩家ID
+     */
+    private Consumer<String> onHealthCheckTimeout = null;
+
+    /**
+     * 健康检查超时时间（秒）- 超过此时间无任何消息活动视为超时
+     * 与 CONNECTION_TIMEOUT 配合使用，CONNECTION_TIMEOUT 针对心跳，
+     * 此参数针对所有 I/O 活动
+     */
+    private static final int HEALTH_CHECK_TIMEOUT = 90;
+
+    /**
+     * 设置健康检查超时回调
+     *
+     * @param callback 回调函数，接收超时玩家的 playerId
+     */
+    public void setOnHealthCheckTimeout(Consumer<String> callback) {
+        this.onHealthCheckTimeout = callback;
+    }
 
     /**
      * 初始化：启动心跳检测任务和僵尸连接清理任务
@@ -474,11 +501,15 @@ public class SessionManager {
 
     /**
      * 心跳检测：定期检查并清理超时连接
+     *
+     * <p>同时检测在线玩家的 I/O 活动是否超过 {@link #HEALTH_CHECK_TIMEOUT}，
+     * 如果超时且已注册 {@link #onHealthCheckTimeout} 回调，触发回调通知。
      */
     private void heartbeatCheck() {
         long currentTime = System.currentTimeMillis();
         int timeoutCount = 0;
         int cleanedCount = 0;
+        int healthTimeoutCount = 0;
 
         for (Map.Entry<String, SessionInfo> entry : sessions.entrySet()) {
             SessionInfo sessionInfo = entry.getValue();
@@ -491,6 +522,19 @@ public class SessionManager {
                     markOffline(entry.getKey());
                     timeoutCount++;
                 }
+
+                // 健康检查：检测 I/O 活动是否超时
+                long ioElapsed = (currentTime - sessionInfo.getLastIoActivity()) / 1000;
+                if (ioElapsed > HEALTH_CHECK_TIMEOUT && onHealthCheckTimeout != null) {
+                    String playerId = entry.getKey();
+                    log.warn("玩家 {} 健康检查超时（{}秒无I/O活动），触发超时回调", playerId, ioElapsed);
+                    try {
+                        onHealthCheckTimeout.accept(playerId);
+                    } catch (Exception e) {
+                        log.error("健康检查超时回调执行失败: playerId={}", playerId, e);
+                    }
+                    healthTimeoutCount++;
+                }
             } else {
                 long disconnectedTime = (currentTime - sessionInfo.getDisconnectTime()) / 1000;
                 if (disconnectedTime > DISCONNECTED_RETENTION_TIME) {
@@ -501,9 +545,9 @@ public class SessionManager {
             }
         }
 
-        if (timeoutCount > 0 || cleanedCount > 0) {
-            log.info("心跳检测完成：超时断线={}, 清理会话={}, 当前在线={}",
-                    timeoutCount, cleanedCount, getOnlineCount());
+        if (timeoutCount > 0 || cleanedCount > 0 || healthTimeoutCount > 0) {
+            log.info("心跳检测完成：超时断线={}, 健康检查超时={}, 清理会话={}, 当前在线={}",
+                    timeoutCount, healthTimeoutCount, cleanedCount, getOnlineCount());
         }
     }
 
