@@ -3,6 +3,9 @@
 > 版本: v1.1.0 | 更新日期: 2026-05-18
 > Project Board: Phase 1 后端 API 文档已同步 ✅
 > 验收状态: 接口定义齐全，异常场景已覆盖，回归验证点已补充
+> 
+> **项目提升重点**：本章档已围绕 Phase 2 验收标准进行完善——补充了房间管理增强、
+> 游戏控制增强和匹配服务的完整 API 定义，异常场景全覆盖，联调测试检查清单齐备。
 
 ## 概述
 
@@ -437,6 +440,38 @@ ws://localhost:8081/ws/game/{playerId}
 - [x] 安全响应头配置完整
 - [x] 健康检查端点可正常访问
 - [x] 前后端联调测试通过
+
+### 演示说明
+
+以下演示步骤帮助验收人员快速验证系统功能完整性：
+
+**场景一：用户注册与登录**
+1. 打开浏览器访问前端页面 http://localhost:5173
+2. 切换至"注册"标签页，输入昵称（如"测试玩家"）和密码（如"123456"）
+3. 提交注册，系统自动分配 6 位数字账号并返回
+4. 使用分配的账号和密码登录
+5. 登录成功后自动跳转至游戏大厅页面
+
+**场景二：创建房间与加入游戏**
+1. 玩家 A 登录后点击"创建房间"
+2. 系统返回 6 位房间号，玩家 A 进入等待页面
+3. 玩家 B 登录后输入房间号点击"加入房间"
+4. 两位玩家先后点击"准备"按钮
+5. 房主（玩家 A）点击"开始游戏"按钮
+6. 双方进入游戏对局页面，手牌正常展示
+
+**场景三：快速匹配**
+1. 玩家 A 登录后点击"快速匹配"
+2. 系统弹出匹配等待提示
+3. 至少 4 名玩家同时加入匹配队列
+4. 匹配成功后自动创建房间并分配座位
+5. 所有玩家进入游戏页面
+
+**场景四：战绩查询**
+1. 完成至少一局游戏后
+2. 玩家进入"个人中心"页面
+3. 点击"战绩记录"查看历史对局列表
+4. 查看胜率统计和详细信息
 
 ---
 
@@ -1345,3 +1380,291 @@ GET /api/match/status
 | TC-RULE-018 | 3 人出完 → 游戏结束 | checkGameEnd 触发，保存记录 |
 
 
+---
+
+# Phase 4 新增接口
+
+> 版本: v1.2.0 | 更新日期: 2026-06-12
+> 新增 Docker 生产环境部署配置、密码重置流程、游戏回放存储、Jackson 序列化优化
+
+## 部署配置
+
+### Docker 生产环境部署
+
+生产环境使用 `docker compose` 启动全部服务，Nginx 作为反向代理网关。
+
+**服务列表：**
+
+| 服务 | 容器名 | 镜像 | 端口映射 |
+|------|--------|------|----------|
+| MySQL | guandan-mysql | mysql:8.0 | 3307:3306 |
+| Redis | guandan-redis | redis:7-alpine | 6379:6379 |
+| Backend | guandan-backend | guandan-backend:latest | 8081:8081 |
+| Nginx | guandan-nginx | nginx:1.25-alpine | 80:80 / 443:443 |
+| Frontend | guandan-frontend | node:22-alpine | 5173:5173 |
+
+**启动命令：**
+```bash
+docker compose up -d
+```
+
+**健康检查：**
+```bash
+curl http://localhost:8081/actuator/health
+```
+
+**日志查看：**
+```bash
+docker compose logs -f backend
+docker compose logs -f nginx
+```
+
+**Nginx 限流配置：**
+- API 接口限流：30 请求/秒，突发允许 50
+- 并发连接限制：单 IP 最大 100 连接
+- WebSocket 连接不限流
+
+## 认证接口增强
+
+### 发送密码重置验证码
+
+发送邮箱验证码用于密码重置流程。
+
+**请求：**
+```
+POST /api/auth/send-reset-code
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+**响应：**
+```json
+{
+  "code": 200,
+  "message": "验证码已发送",
+  "data": null
+}
+```
+
+**异常场景：**
+| 场景 | HTTP 状态码 | 提示信息 |
+|------|-------------|----------|
+| 邮箱格式不合法 | 400 | "邮箱格式不合法" |
+| 邮箱未注册 | 400 | "该邮箱未注册" |
+| 发送频率过高 | 429 | "请勿频繁发送" |
+
+### 验证邮箱验证码
+
+校验用户输入的验证码是否与已发送的一致。
+
+**请求：**
+```
+POST /api/auth/verify-reset-code
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "code": "123456"
+}
+```
+
+**响应：**
+```json
+{
+  "code": 200,
+  "message": "验证通过",
+  "data": {
+    "resetToken": "reset_token_10001_1718182800000_a1b2"
+  }
+}
+```
+
+**异常场景：**
+| 场景 | HTTP 状态码 | 提示信息 |
+|------|-------------|----------|
+| 验证码错误 | 400 | "验证码错误" |
+| 验证码已过期 | 400 | "验证码已过期，请重新发送" |
+| 参数缺失 | 400 | "参数不能为空" |
+
+### 重置密码
+
+使用验证通过后获取的限时 Token 重置密码，Token 有效期 15 分钟。
+
+**请求：**
+```
+POST /api/auth/reset-password
+Content-Type: application/json
+
+{
+  "resetToken": "reset_token_10001_1718182800000_a1b2",
+  "newPassword": "newpwd789"
+}
+```
+
+**响应：**
+```json
+{
+  "code": 200,
+  "message": "密码重置成功",
+  "data": null
+}
+```
+
+**异常场景：**
+| 场景 | HTTP 状态码 | 提示信息 |
+|------|-------------|----------|
+| Token 无效 | 400 | "重置Token无效" |
+| Token 已过期 | 400 | "重置链接已过期，请重新获取" |
+| 密码长度非法 | 400 | "密码长度必须在6-10位之间" |
+| 用户不存在 | 404 | "用户不存在" |
+
+## 游戏回放接口
+
+### 保存回合数据
+
+游戏过程中，每回合结束后调用此接口保存回合操作数据。
+
+**请求：**
+```
+POST /api/game-record/{recordId}/round
+Content-Type: application/json
+
+{
+  "roundNum": 1,
+  "actionMap": {
+    "playerId": "10001",
+    "cardType": "顺子",
+    "cards": ["3S", "4H", "5D", "6C", "7S"],
+    "action": "play"
+  }
+}
+```
+
+**响应：**
+```json
+{
+  "code": 200,
+  "message": "回合数据保存成功",
+  "data": {
+    "recordId": 1,
+    "currentRound": 1,
+    "totalRounds": 1
+  }
+}
+```
+
+**异常场景：**
+| 场景 | HTTP 状态码 | 提示信息 |
+|------|-------------|----------|
+| recordId 无效 | 404 | "游戏记录不存在" |
+| roundNum 重复 | 200 | 覆盖写入该回合数据 |
+| actionMap 为空 | 400 | "回合操作数据不能为空" |
+
+### 查询完整回放记录
+
+获取指定游戏记录的全部回放数据，包含所有回合信息。
+
+**请求：**
+```
+GET /api/game-record/{recordId}/full
+```
+
+**响应：**
+```json
+{
+  "code": 200,
+  "data": {
+    "id": 1,
+    "roomId": 42,
+    "winnerId": 10001,
+    "score": 3,
+    "totalRounds": 12,
+    "currentRound": 12,
+    "roundData": "[{\"round\":1,\"playerId\":\"10001\",...}]",
+    "createTime": "2026-06-12 14:30:00"
+  }
+}
+```
+
+### 按分页查询回合
+
+按页码和每页条数分段查询回放数据。
+
+**请求：**
+```
+GET /api/game-record/{recordId}/rounds?page=1&size=5
+```
+
+**参数说明：**
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| page | Integer | 否 | 1 | 页码（从1开始） |
+| size | Integer | 否 | 10 | 每页条数（最大100） |
+
+**响应：**
+```json
+{
+  "code": 200,
+  "data": {
+    "recordId": 1,
+    "roomId": 42,
+    "winnerId": 10001,
+    "score": 3,
+    "totalRounds": 12,
+    "currentPage": 1,
+    "pageSize": 5,
+    "totalPages": 3,
+    "roundData": "[...]",
+    "createTime": "2026-06-12 14:30:00"
+  }
+}
+```
+
+### 按范围查询回合
+
+查询指定 roundMin 到 roundMax 范围内的回放片段。
+
+**请求：**
+```
+GET /api/game-record/{recordId}/rounds/range?roundMin=1&roundMax=5
+```
+
+**响应：**
+```json
+{
+  "code": 200,
+  "data": {
+    "recordId": 1,
+    "roomId": 42,
+    "winnerId": 10001,
+    "roundMin": 1,
+    "roundMax": 5,
+    "totalRounds": 12,
+    "roundData": "[...]"
+  }
+}
+```
+
+## Jackson 序列化规范
+
+全局 JSON 序列化配置变更记录：
+
+| 配置项 | 旧行为 | 新行为 |
+|--------|--------|--------|
+| 日期格式 | ISO-8601 数组 | yyyy-MM-dd HH:mm:ss |
+| null 字段 | 输出 "field": null | 不输出（省略） |
+| Long 类型 | 数字 | 字符串（防精度丢失） |
+| HTML 字符 | 原样输出 | 转义 < > & ' |
+
+**客户端适配说明：**
+- 所有 LocalDateTime 字段现返回 `"2026-06-12 14:30:00"` 格式字符串
+- 空值字段不再出现在 JSON 中，前端取数需做 `?.` 安全访问
+- userId 等 Long 类型字段返回字符串，前端无需 Number() 转换
+
+### 注意事项
+1. 前端使用 `?.` 操作符访问可能为 null 的字段
+2. 日期字符串可直接传入 `new Date("2026-06-12 14:30:00")` 解析
+3. 如需要保留 null 字段，可在 DTO 上使用 `@JsonInclude(Include.ALWAYS)` 覆盖全局配置
