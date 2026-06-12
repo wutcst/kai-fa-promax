@@ -1,5 +1,40 @@
 # Changelog
 
+## [v1.2.0] - 2026-06-12
+
+### 新增
+- 后端：Docker 多阶段构建，生产镜像体积优化
+- 后端：docker-compose 生产环境配置，集成 Nginx 反向代理
+- 后端：Nginx SSL 配置、限流保护（API 30r/s + 并发连接限制）
+- 后端：日志卷挂载（backend_logs, nginx_logs, backend_data）
+- 后端：密码重置流程（邮箱验证码 + 限时 Token 机制）
+- 后端：游戏回放记录存储，支持按回合分段查询
+- 后端：Jackson 全局序列化配置优化
+- 后端：Docker Compose 服务健康检查全覆盖
+- 后端：Nginx HSTS 和安全响应头增强
+
+### 优化
+- 后端：Jackson 日期格式统一为 yyyy-MM-dd HH:mm:ss
+- 后端：Jackson null 字段不输出，减少 payload 体积
+- 后端：Jackson Long 转 String 输出，防止前端精度丢失
+- 后端：Dockerfile 非 root 用户运行，安全加固
+- 后端：Nginx 配置从 HTTP 升级为 HTTPS + HTTP/2
+- 后端：Redis 服务增加健康检查
+
+### 文档
+- API 文档：新增 Phase 4 接口说明（密码重置、游戏回放、部署配置、序列化规范）
+- CHANGELOG：新增 v1.2.0 版本记录
+
+### 验收标准（v1.2.0）
+- [x] Docker 多阶段构建通过
+- [x] docker-compose 生产环境正常启动
+- [x] Nginx HTTPS + 限流配置生效
+- [x] 密码重置全流程（发码 → 校验 → 重置）可用
+- [x] 游戏回放按回合存储和分段查询正常
+- [x] Jackson 序列化规范生效（日期格式、null 处理、字符转义）
+
+---
+
 ## [v1.1.0] - 2026-06-07
 
 ### 新增
