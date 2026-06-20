@@ -1,7 +1,10 @@
 # 掼蛋游戏平台
 
 > 武汉理工大学 软件工程实践课程项目
-> **版本**: v1.2.0 | **状态**: 已完成 | **里程碑**: Phase 4 — 最终归档
+> **版本**: v1.0.0 (最终归档) | **状态**: 已完成 ✅ | **里程碑**: Phase 4 — 结项
+>
+> **项目结项声明**：截至 2026-06-20，掼蛋游戏项目已圆满完成全部四个阶段的开发、测试和文档工作。
+> 项目代码已冻结，所有 Issue 已关闭，协同开发报告已完成归档。
 
 [![Java CI](https://img.shields.io/badge/Java%20CI-Passing-brightgreen)](https://github.com/xiyu1296/kai-fa-promax/actions)
 [![Vue CI](https://img.shields.io/badge/Vue%20CI-Passing-brightgreen)](https://github.com/xiyu1296/kai-fa-promax/actions)
