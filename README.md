@@ -236,11 +236,6 @@ docker compose up -d
       <td align="center">后端开发</td>
       <td>认证模块开发、房间与匹配模块、游戏逻辑与牌型算法、WebSocket 连接管理</td>
     </tr>
-    <tr>
-      <td align="center"><b>xiyu1296</b></td>
-      <td align="center">部署运维 / 文档</td>
-      <td>服务器部署与环境配置、README 与文档维护、协同开发报告汇总</td>
-    </tr>
   </table>
 </div>
 
