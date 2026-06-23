@@ -212,29 +212,34 @@ docker compose up -d
 <div align="center">
   <table>
     <tr>
-      <th align="center" width="120">成员</th>
-      <th align="center" width="140">角色</th>
-      <th align="left">主要负责</th>
+      <th align="center" width="20">#</th>
+      <th align="center" width="110">角色</th>
+      <th align="center" width="90">负责人</th>
+      <th align="left">工作内容</th>
     </tr>
     <tr>
-      <td align="center"><b>杨丝婳</b></td>
-      <td align="center">项目负责人 / 全栈</td>
-      <td>系统架构设计、后端核心开发、游戏引擎实现、WebSocket 通信、文档管理、CI/CD 流水线、Docker 部署</td>
+      <td align="center">1</td>
+      <td align="center"><b>后端开发</b></td>
+      <td align="center">何涛</td>
+      <td>用户鉴权、房间系统开发；对战核心逻辑、WebSocket 通信；AI 接口对接、后端工程搭建维护<br><small>核心职责：接口 · 数据 · 规则</small></td>
     </tr>
     <tr>
-      <td align="center"><b>陈懋任</b></td>
-      <td align="center">前端开发 / 部署运维</td>
-      <td>前端页面开发（登录 / 大厅 / 对战 / 个人中心）、API 对接与状态管理、UI/UX 设计优化、服务器部署维护、Nginx 配置与安全加固</td>
+      <td align="center">2</td>
+      <td align="center"><b>前端开发</b></td>
+      <td align="center">陈懋任</td>
+      <td>Vue3 页面开发、路由守卫配置；前后端接口联调、Token 权限管理；WebSocket 消息监听、项目云部署<br><small>核心职责：页面 · 交互 · 部署</small></td>
     </tr>
     <tr>
-      <td align="center"><b>王玉珏</b></td>
-      <td align="center">全栈开发 / 测试</td>
-      <td>后端服务开发（房间管理 / 匹配 / 战绩）、单元测试与回归验证、前端联调与接口测试</td>
+      <td align="center">3</td>
+      <td align="center"><b>项目管理</b></td>
+      <td align="center">杨丝婳</td>
+      <td>Milestone 里程碑、Issue 任务管理；版本日志（CHANGELOG）、Tag 标签、Release 版本发布管理；验收材料整理、项目各类报告汇总<br><small>核心职责：文档 · 版本 · 发布</small></td>
     </tr>
     <tr>
-      <td align="center"><b>何涛</b></td>
-      <td align="center">后端开发</td>
-      <td>认证模块开发、房间与匹配模块、游戏逻辑与牌型算法、WebSocket 连接管理</td>
+      <td align="center">4</td>
+      <td align="center"><b>测试质量</b></td>
+      <td align="center">王玉珏</td>
+      <td>编写测试用例、功能回归测试；PR 代码评审、Actions 流水线核查；Docker 环境验收、留存测试截图证据<br><small>核心职责：测试 · 评审 · 验收</small></td>
     </tr>
   </table>
 </div>
