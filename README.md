@@ -65,6 +65,37 @@
   </table>
 </div>
 
+## 🏗 设计图纸
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><b>🏛 系统架构图</b></td>
+      <td align="center"><b>📦 平台功能模块结构图</b></td>
+    </tr>
+    <tr>
+      <td><img src="readmestatic/系统架构图.png" width="400" style="border-radius: 8px;"></td>
+      <td><img src="readmestatic/平台功能模块结构图.png" width="400" style="border-radius: 8px;"></td>
+    </tr>
+    <tr>
+      <td align="center"><b>🎨 前端架构图</b></td>
+      <td align="center"><b>🔧 后端分层架构图</b></td>
+    </tr>
+    <tr>
+      <td><img src="readmestatic/前端架构图.png" width="400" style="border-radius: 8px;"></td>
+      <td><img src="readmestatic/后端分层架构图.png" width="400" style="border-radius: 8px;"></td>
+    </tr>
+    <tr>
+      <td align="center"><b>🗄 数据库 E-R 图</b></td>
+      <td align="center"><b>📐 用例 UML 图</b></td>
+    </tr>
+    <tr>
+      <td><img src="readmestatic/数据库E-R图.png" width="400" style="border-radius: 8px;"></td>
+      <td><img src="readmestatic/用例UML图.png" width="400" style="border-radius: 8px;"></td>
+    </tr>
+  </table>
+</div>
+
 ---
 
 ## ✨ 功能预览
